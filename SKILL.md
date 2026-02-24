@@ -114,34 +114,43 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 
 **Work space defaults**: `\vspace{5cm}` per problem; `8cm` for multi-step; `10cm+` for graphs.
 
-### 4. Write and run the verification script
+### 4. Write and run the verification file
 
-Before compiling, write `/tmp/verify_TOPIC_DATE.py` by populating `scripts/verify.py` with real `check()` calls for each problem. Then run it:
+Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file describing each problem and its expected answer. The bundled `scripts/verify.py` evaluates this using SymPy. No generated code is ever executed.
 
 ```bash
-bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.py
+bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 ```
 
-**For each problem**, add one of:
-- `check(N, "description", lambda: <sympy assertion>)` — for algebraic problems SymPy can verify
-- `manual(N, "description")` — for graphs, word problems, proofs, sign charts
+**JSON format:**
+```json
+{
+  "topic": "graphing polynomials",
+  "problems": [
+    {"id": 1, "type": "solve",  "expr": "x**2 - 5*x + 6",      "expected": [2, 3]},
+    {"id": 2, "type": "factor", "expr": "x**2 - 7*x + 12",     "expected": "(x-3)*(x-4)"},
+    {"id": 3, "type": "eval",   "expr": "(x-1)*(x+2)", "at": {"x": 0}, "expected": -2},
+    {"id": 4, "type": "zeros",  "expr": "x*(x-3)**2",           "expected": [0, 3]},
+    {"id": 5, "type": "expand", "expr": "(x+2)**2",             "expected": "x**2 + 4*x + 4"},
+    {"id": 6, "type": "manual", "desc": "Graph sketch — verify visually"}
+  ]
+}
+```
 
-**Coverage by problem type:**
+**Type reference:**
 
-| Type | Verifiable? | How |
+| Type | Verifiable? | What it checks |
 |---|---|---|
-| Solve equation | ✅ | `set(solve(expr, x)) == {val1, val2}` |
-| Factor expression | ✅ | `factor(expr) == expected` or `expand(factor(expr) - expected) == 0` |
-| Simplify radical | ✅ | `simplify(expr - expected) == 0` |
-| Evaluate f(a) | ✅ | `expr.subs(x, a) == value` |
-| Find zeros | ✅ | `set(solve(expr, x)) == {r1, r2, ...}` |
-| y-intercept | ✅ | `expr.subs(x, 0) == value` |
-| Leading coefficient / degree | ✅ | `Poly(expr,x).nth(n) > 0` and `degree(expr,x) == n` |
-| Sketch graph | 👁 manual | Verify visually |
-| Sign chart | 👁 manual | Verify by hand |
-| Word problem setup | 👁 manual | Verify logic |
+| `solve` | ✅ | Roots of expr=0 match expected list |
+| `factor` | ✅ | Factored form matches expected |
+| `expand` | ✅ | Expanded form matches expected |
+| `eval` | ✅ | expr evaluated at given values matches expected |
+| `zeros` | ✅ | Zeros of expr match expected list |
+| `manual` | 👁 | Flagged for human review — never fails automatically |
 
-**If verification fails:** fix the LaTeX source and re-run before compiling. Do not send incorrect worksheets.
+Use `manual` for: graph sketches, sign charts, word problem setups, proofs.
+
+**If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 
 ### 5. Compile
 

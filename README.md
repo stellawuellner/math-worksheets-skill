@@ -28,7 +28,7 @@ brew install tectonic   # LaTeX compiler — auto-downloads packages on first us
 
 **Python 3** is also required (standard on macOS). The skill uses it for model detection and answer verification.
 
-**sympy** (used by the SymPy verification step) is installed automatically on first run into `~/.local/share/math-worksheets-skill/venv` — no manual step needed. If you'd prefer to install it yourself:
+**sympy** is required for answer verification:
 ```bash
 pip3 install sympy
 ```
@@ -63,9 +63,10 @@ math-worksheets/
 ## Changelog
 
 ### v2.0.0 — 2026-02-23
-- **Security:** Removed `fetch_model_config.sh` — skill no longer makes network requests at runtime
+- **Security:** Eliminated RCE surface — verification no longer generates or executes AI-written Python code. The AI now writes a structured JSON data file (`verify_TOPIC_DATE.json`); the fixed, auditable `scripts/verify.py` evaluates it using SymPy. No user input is ever executed as code.
+- **Security:** Removed `fetch_model_config.sh` — skill no longer makes any network requests at runtime
+- **Security:** Removed auto-`pip install` from `run_verify.sh`; sympy must be installed as a prerequisite (`pip3 install sympy`)
 - **Security:** `check_reasoning_model.sh` is now fully local; reads OpenClaw config optionally with graceful fallback to bundled defaults
-- **Fix:** `run_verify.sh` — removed dev environment artifacts (`/tmp/*-venv` paths); sympy now installs to `~/.local/share/math-worksheets-skill/venv` if not already available
 - `references/model-rankings.json` remains bundled as a static reference
 
 ### v1.0.0 — 2026-02-22

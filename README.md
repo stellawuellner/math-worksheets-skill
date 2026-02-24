@@ -23,7 +23,14 @@ Or download `math-worksheets.skill` from [ClawhHub](https://clawhub.com) and ins
 
 **Prerequisites:**
 ```bash
-brew install tectonic   # LaTeX compiler — auto-downloads packages
+brew install tectonic   # LaTeX compiler — auto-downloads packages on first use
+```
+
+**Python 3** is also required (standard on macOS). The skill uses it for model detection and answer verification.
+
+**sympy** (used by the SymPy verification step) is installed automatically on first run into `~/.local/share/math-worksheets-skill/venv` — no manual step needed. If you'd prefer to install it yourself:
+```bash
+pip3 install sympy
 ```
 
 ## Usage

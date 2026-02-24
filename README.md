@@ -1,5 +1,7 @@
 # math-worksheets — OpenClaw Skill
 
+**v2.0.0** · [Changelog](#changelog)
+
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
 
 ## Features
@@ -7,8 +9,7 @@ Generate professional math practice worksheets, answer keys, and study guides fo
 - **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
 - **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
 - **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students
-- **Auto reasoning-model detection** — automatically uses the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none configured
-- **Live model rankings** — fetched from this repo with a 7-day cache so recommendations stay current as models evolve
+- **Auto reasoning-model detection** — automatically uses the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none configured. All detection is local — no network calls.
 - **Channel mirroring** — sends back via the same channel the request came from (Telegram, iMessage, email)
 - **K-12 coverage** — Pre-Algebra through Pre-Calculus (see `references/problem-library.md` for full topic menu)
 
@@ -52,15 +53,21 @@ math-worksheets/
     └── model-rankings.json          ← bundled model ranking reference
 ```
 
-## Keeping Model Rankings Fresh
+## Changelog
 
-The skill fetches `references/model-rankings.json` from this repo with a 7-day local cache. To update rankings when new models ship:
+### v2.0.0 — 2026-02-23
+- **Security:** Removed `fetch_model_config.sh` — skill no longer makes network requests at runtime
+- **Security:** `check_reasoning_model.sh` is now fully local; reads OpenClaw config optionally with graceful fallback to bundled defaults
+- **Fix:** `run_verify.sh` — removed dev environment artifacts (`/tmp/*-venv` paths); sympy now installs to `~/.local/share/math-worksheets-skill/venv` if not already available
+- `references/model-rankings.json` remains bundled as a static reference
 
-1. Edit `references/model-rankings.json` — add new entries to `FOUND_REASONING` or `FOUND_STRONG`
-2. Bump `last_updated`
-3. Commit and push — all installed instances pick it up within 7 days
-
-PRs welcome for new model additions.
+### v1.0.0 — 2026-02-22
+- Initial release
+- Three documents per request: worksheet, answer key, skills summary
+- SymPy verification gate (exit 0/1/2)
+- Auto reasoning-model detection
+- LaTeX compilation via tectonic
+- Channel-matched delivery (Telegram, iMessage)
 
 ## License
 

@@ -41,8 +41,7 @@ The skill handles everything: model selection, problem generation, SymPy verific
 math-worksheets/
 ├── SKILL.md                          ← workflow and instructions
 ├── scripts/
-│   ├── check_reasoning_model.sh     ← auto-detects best available model
-│   ├── fetch_model_config.sh        ← fetches live model rankings (7-day cache)
+│   ├── check_reasoning_model.sh     ← auto-detects best available model (local only)
 │   ├── compile.sh                   ← tectonic PDF compiler wrapper
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
 │   └── verify.py                   ← SymPy verification template
@@ -50,7 +49,7 @@ math-worksheets/
     ├── latex-templates.md           ← LaTeX patterns (coordinate planes, figures, answer key)
     ├── problem-library.md           ← K-12 problem type menu by course
     ├── model-rankings.md            ← human-readable model guidance
-    └── model-rankings.json          ← machine-readable rankings (fetched by skill)
+    └── model-rankings.json          ← bundled model ranking reference
 ```
 
 ## Keeping Model Rankings Fresh

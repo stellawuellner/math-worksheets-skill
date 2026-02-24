@@ -1,88 +1,78 @@
 #!/usr/bin/env bash
 # check_reasoning_model.sh — Detect the best available reasoning model for math
 #
-# Model rankings are fetched from a hosted JSON (7-day cache) so recommendations
-# stay current as new models ship. Falls back to bundled JSON, then hardcoded defaults.
+# Reads the active OpenClaw model config (if present) and checks whether a
+# reasoning model or strong fallback is configured. All logic is local — no
+# network requests are made.
 #
 # Outputs one line: "<STATUS> <alias> <full-model-id>"
-#   STATUS = FOUND_REASONING | FOUND_STRONG | NONE
+#   FOUND_REASONING — a dedicated reasoning model is active (o3, DeepThink, R1, etc.)
+#   FOUND_STRONG    — a strong non-reasoning model is active (Opus, etc.)
+#   NONE            — only standard models found; recommend switching
 #
-# Exit 0 = usable model found (FOUND_REASONING or FOUND_STRONG)
-# Exit 1 = only standard models available (NONE)
+# Exit 0 = usable model found
+# Exit 1 = only standard models available
 
-set -euo pipefail
+set -uo pipefail
 
-SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG="${HOME}/.openclaw/openclaw.json"
-
-# ── Hardcoded defaults (last-resort fallback if JSON unavailable) ─────────────
-HARDCODED_REASONING=(
-  "o3|openai/o3"
-  "o1|openai/o1"
-  "deepthink|gemini-2.5-pro-deepthink"
-  "deepthink|gemini-2.0-pro-deepthink"
+# ── Reasoning model patterns (in priority order) ──────────────────────────────
+# Format: "alias|substring-to-match-in-model-id"
+REASONING_PATTERNS=(
+  "o3|/o3"
+  "o1|/o1"
+  "deepthink|deepthink"
   "deepseek|deepseek-r1"
+  "deepseek|deepseek/r1"
 )
-HARDCODED_STRONG=(
+
+# ── Strong non-reasoning models (excellent for math, not pure reasoning) ──────
+STRONG_PATTERNS=(
   "opus|claude-opus-4"
-  "opus|claude-opus-3-5"
+  "opus|claude-opus-3"
 )
 
-# ── Read configured models from OpenClaw ─────────────────────────────────────
-if [[ ! -f "$CONFIG" ]]; then
-  echo "NONE (openclaw config not found)" >&2
-  exit 1
-fi
+# ── Try to read configured models from OpenClaw config (optional) ─────────────
+# The config file is only read if it exists. Nothing fails if it doesn't.
+CONFIGURED_MODELS=""
+CONFIG_PATHS=(
+  "${HOME}/.openclaw/config.json"
+  "${HOME}/.openclaw/openclaw.json"
+)
 
-CONFIGURED_MODELS=$(python3 -c "
-import json
-with open('$CONFIG') as f:
-    cfg = json.load(f)
-models = set()
-defaults = cfg.get('agents', {}).get('defaults', {})
-for key in defaults.get('models', {}).keys():
-    models.add(key.lower())
-model_cfg = defaults.get('model', {})
-for m in [model_cfg.get('primary', '')] + model_cfg.get('fallbacks', []):
-    if m: models.add(m.lower())
-for m in sorted(models): print(m)
-" 2>/dev/null || true)
-
-if [[ -z "$CONFIGURED_MODELS" ]]; then
-  echo "NONE (could not parse openclaw config)" >&2
-  exit 1
-fi
-
-# ── Try to load JSON rankings (fetched > bundled > hardcoded) ─────────────────
-check_from_json() {
-  local json_file="$1"
-  local tier="$2"
-
-  python3 -c "
+for config_path in "${CONFIG_PATHS[@]}"; do
+  if [[ -f "$config_path" ]]; then
+    CONFIGURED_MODELS=$(python3 -c "
 import json, sys
-with open('$json_file') as f:
-    rankings = json.load(f)
+try:
+    with open('$config_path') as f:
+        cfg = json.load(f)
+    models = set()
+    defaults = cfg.get('agents', {}).get('defaults', {})
+    for key in defaults.get('models', {}).keys():
+        models.add(key.lower())
+    model_cfg = defaults.get('model', {})
+    primary = model_cfg.get('primary', '')
+    if primary:
+        models.add(primary.lower())
+    for m in model_cfg.get('fallbacks', []):
+        if m: models.add(m.lower())
+    for m in sorted(models):
+        print(m)
+except Exception:
+    sys.exit(0)
+" 2>/dev/null || true)
+    break
+  fi
+done
 
-configured = '''$CONFIGURED_MODELS'''.strip().split('\n')
-tier_data = rankings.get('tiers', {}).get('$tier', {})
-for entry in tier_data.get('patterns', []):
-    alias = entry['alias']
-    pattern = entry['match'].lower()
-    for model in configured:
-        if pattern in model:
-            print(f'{alias} {model}')
-            sys.exit(0)
-sys.exit(1)
-" 2>/dev/null
-}
-
-check_from_list() {
+# ── Match against a pattern list ──────────────────────────────────────────────
+check_patterns() {
   local -n patterns=$1
   for entry in "${patterns[@]}"; do
     local alias="${entry%%|*}"
-    local pattern="${entry##*|}"
+    local substr="${entry##*|}"
     local match
-    match=$(echo "$CONFIGURED_MODELS" | grep -i "$pattern" | head -1 || true)
+    match=$(echo "$CONFIGURED_MODELS" | grep -i "$substr" | head -1 || true)
     if [[ -n "$match" ]]; then
       echo "$alias $match"
       return 0
@@ -91,37 +81,18 @@ check_from_list() {
   return 1
 }
 
-# ── Resolve model config file ─────────────────────────────────────────────────
-CONFIG_JSON=$(bash "$SKILL_DIR/scripts/fetch_model_config.sh" 2>/dev/null || echo "NONE")
-
 # ── Check Tier 1: Reasoning models ───────────────────────────────────────────
-if [[ "$CONFIG_JSON" != "NONE" && -f "$CONFIG_JSON" ]]; then
-  result=$(check_from_json "$CONFIG_JSON" "FOUND_REASONING" 2>/dev/null || true)
-  if [[ -n "$result" ]]; then
-    echo "FOUND_REASONING $result"
-    exit 0
-  fi
-fi
-# Hardcoded fallback for Tier 1
-if result=$(check_from_list HARDCODED_REASONING 2>/dev/null); then
+if result=$(check_patterns REASONING_PATTERNS 2>/dev/null); then
   echo "FOUND_REASONING $result"
   exit 0
 fi
 
 # ── Check Tier 2: Strong non-reasoning ───────────────────────────────────────
-if [[ "$CONFIG_JSON" != "NONE" && -f "$CONFIG_JSON" ]]; then
-  result=$(check_from_json "$CONFIG_JSON" "FOUND_STRONG" 2>/dev/null || true)
-  if [[ -n "$result" ]]; then
-    echo "FOUND_STRONG $result"
-    exit 0
-  fi
-fi
-# Hardcoded fallback for Tier 2
-if result=$(check_from_list HARDCODED_STRONG 2>/dev/null); then
+if result=$(check_patterns STRONG_PATTERNS 2>/dev/null); then
   echo "FOUND_STRONG $result"
   exit 0
 fi
 
-# ── Nothing useful ────────────────────────────────────────────────────────────
+# ── Nothing useful found ──────────────────────────────────────────────────────
 echo "NONE"
 exit 1

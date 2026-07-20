@@ -1,19 +1,23 @@
-# math-worksheets — OpenClaw Skill
+# math-worksheets — Agent Skill
 
-**v2.0.0** · [Changelog](#changelog)
+**v2.1.0** · [Changelog](#changelog)
 
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
+
+Works with any AI agent that can read files and run shell commands: **OpenClaw**, **Claude Code**, **Gemini**, **Codex**, and others. The skill follows the standard `SKILL.md` format (YAML frontmatter + instructions), and all platform-specific steps have portable fallbacks.
 
 ## Features
 
 - **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
 - **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
 - **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students
-- **Auto reasoning-model detection** — automatically uses the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none configured. All detection is local — no network calls.
-- **Channel mirroring** — sends back via the same channel the request came from (Telegram, iMessage, email)
+- **Auto reasoning-model detection** — inspects the host agent's config (OpenClaw, Claude Code, Gemini, Codex) and common `*_MODEL` environment variables to find the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none is configured. All detection is local — no network calls.
+- **Platform-appropriate delivery** — chat-connected agents send the PDFs back on the originating channel (Telegram, iMessage, email); CLI/IDE agents report the output paths on disk
 - **K-12 coverage** — Pre-Algebra through Pre-Calculus (see `references/problem-library.md` for full topic menu)
 
 ## Install
+
+### OpenClaw
 
 ```bash
 openclaw skills install math-worksheets
@@ -21,14 +25,39 @@ openclaw skills install math-worksheets
 
 Or download `math-worksheets.skill` from [ClawhHub](https://clawhub.com) and install locally.
 
-**Prerequisites:**
+### Claude Code
+
+Clone into your skills directory (personal or per-project):
+
 ```bash
-brew install tectonic   # LaTeX compiler — auto-downloads packages on first use
+git clone https://github.com/stellawuellner/math-worksheets-skill ~/.claude/skills/math-worksheets
+# or, for a single project:
+git clone https://github.com/stellawuellner/math-worksheets-skill .claude/skills/math-worksheets
 ```
 
-**Python 3** is also required (standard on macOS). The skill uses it for model detection and answer verification.
+Claude Code picks up the skill from `SKILL.md` automatically.
 
-**sympy** is required for answer verification:
+### Gemini, Codex, and other agents
+
+Clone the repo anywhere and point the agent at it — e.g. reference the skill from your `GEMINI.md` / `AGENTS.md` context file, or just say:
+
+> *"Follow the instructions in ~/skills/math-worksheets/SKILL.md to make a worksheet on factoring trinomials."*
+
+Everything in the skill is plain markdown, bash, and Python — no agent-specific runtime is required.
+
+### Prerequisites (all platforms)
+
+**tectonic** — the LaTeX compiler (auto-downloads packages on first use):
+
+```bash
+brew install tectonic       # macOS or Linux with Homebrew
+cargo install tectonic      # any platform with Rust
+sudo apt install tectonic   # Debian/Ubuntu (recent releases)
+# or a release binary: https://github.com/tectonic-typesetting/tectonic/releases
+```
+
+**Python 3** with **sympy** for answer verification:
+
 ```bash
 pip3 install sympy
 ```
@@ -61,6 +90,13 @@ math-worksheets/
 ```
 
 ## Changelog
+
+### v2.1.0 — 2026-07-20
+- **Portability:** Skill is now agent-agnostic — works in OpenClaw, Claude Code, Gemini, Codex, and any agent that can read files and run shell commands
+- `check_reasoning_model.sh` now inspects OpenClaw, Claude Code (`~/.claude/settings.json`), Gemini (`~/.gemini/settings.json`), and Codex (`~/.codex/config.toml`) configs plus common `*_MODEL` environment variables; recognizes bare OpenAI reasoning-model ids (`o3`, `o3-pro`, `o1`) used by Codex
+- SKILL.md delegation and delivery steps rewritten per-platform with portable fallbacks (generate inline / report file paths when no subagent or channel tooling exists)
+- `compile.sh` finds tectonic in cargo and Linuxbrew locations; docs cover non-Homebrew installs
+- Removed stale hosted-JSON ranking text from SKILL.md (rankings are bundled-only since v2.0.0)
 
 ### v2.0.0 — 2026-02-23
 - **Security:** Eliminated RCE surface — verification no longer generates or executes AI-written Python code. The AI now writes a structured JSON data file (`verify_TOPIC_DATE.json`); the fixed, auditable `scripts/verify.py` evaluates it using SymPy. No user input is ever executed as code.

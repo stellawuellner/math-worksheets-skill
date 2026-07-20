@@ -20,10 +20,20 @@ if [[ ! -f "$TEX_FILE" ]]; then
   exit 1
 fi
 
-# Locate tectonic
-TECTONIC=$(command -v tectonic 2>/dev/null || echo "/opt/homebrew/bin/tectonic")
-if [[ ! -x "$TECTONIC" ]]; then
-  echo "Error: tectonic not found. Install with: brew install tectonic" >&2
+# Locate tectonic (PATH first, then common install locations)
+TECTONIC=""
+for candidate in "$(command -v tectonic 2>/dev/null || true)" \
+                 "/opt/homebrew/bin/tectonic" \
+                 "/usr/local/bin/tectonic" \
+                 "${HOME}/.cargo/bin/tectonic" \
+                 "/home/linuxbrew/.linuxbrew/bin/tectonic"; do
+  if [[ -n "$candidate" && -x "$candidate" ]]; then
+    TECTONIC="$candidate"
+    break
+  fi
+done
+if [[ -z "$TECTONIC" ]]; then
+  echo "Error: tectonic not found. Install with: brew install tectonic (or cargo install tectonic)" >&2
   exit 1
 fi
 

@@ -7,40 +7,39 @@ description: Generate professional math practice worksheets and full answer keys
 
 Generate a student worksheet PDF + full step-by-step answer key PDF for any K-12 math topic. Compiles LaTeX with `tectonic` (no TeX installation required — it auto-downloads packages).
 
-## Model Selection (Automatic)
+This skill is **agent-agnostic**: it works in any agent harness that can read files and run shell commands (OpenClaw, Claude Code, Gemini, Codex, etc.). Platform-specific steps below are always optional with a portable fallback.
 
-This skill auto-detects the best available reasoning model and uses it for problem generation. Reasoning models (o1, o3, DeepSeek R1, Gemini DeepThink) work through math step-by-step and make significantly fewer errors than standard models.
+Throughout this document, `$SKILL_DIR` means the directory containing this SKILL.md. Resolve it once at the start (e.g. `SKILL_DIR=/path/to/math-worksheets`) — do not rely on `$0`, which is only meaningful inside a script.
 
-Model rankings are kept fresh via a three-layer fallback:
-1. **Hosted JSON** (fetched from GitHub, 7-day cache) — updated by maintainers as models ship
-2. **Bundled JSON** (`references/model-rankings.json`) — updated with each skill release on ClawhHub
-3. **Hardcoded defaults** in the script — last-resort, never stale enough to cause failures
+## Model Selection (Automatic, Best-Effort)
 
-To update rankings without waiting for a skill release: edit the hosted JSON at the GitHub URL in `references/model-rankings.md`. The skill picks it up within 7 days.
+Reasoning models (o1, o3, DeepSeek R1, Gemini DeepThink) work through math step-by-step and make significantly fewer errors than standard models. This skill tries to detect the best available model and delegate problem generation to it. **Every branch degrades gracefully** — if detection or delegation isn't possible on the current platform, generate the problems yourself; the SymPy verification gate (Step 4) catches most errors regardless.
+
+Rankings are bundled in `references/model-rankings.json` (human-readable notes in `references/model-rankings.md`) and updated with each skill release. Detection is fully local — no network calls.
 
 **Step 0 — run model detection before anything else:**
 
 ```bash
-SKILL_DIR="$(dirname "$0")"
 result=$(bash "$SKILL_DIR/scripts/check_reasoning_model.sh")
-status=$(echo "$result" | awk '{print $1}')   # FOUND, FALLBACK, or NONE
+status=$(echo "$result" | awk '{print $1}')   # FOUND_REASONING, FOUND_STRONG, or NONE
 model_alias=$(echo "$result" | awk '{print $2}')
 model_full=$(echo "$result" | awk '{print $3}')
 ```
 
+The script inspects the host agent's config files (OpenClaw, Claude Code, Gemini, Codex) plus common `*_MODEL` environment variables. If the script can't run (no bash, no python3), skip detection and treat the status as `NONE`.
+
+**How to delegate depends on the platform** — use whichever mechanism the current harness provides:
+
+- **OpenClaw**: `sessions_spawn(task="<generation prompt>", model=model_alias)`
+- **Claude Code**: spawn a subagent via the Agent/Task tool, passing the model override if the detected model is available to the harness; otherwise generate inline.
+- **Gemini / Codex / other agents**: per-task model switching is generally not available — generate the problems inline with the current model.
+- **No subagent support at all**: generate inline. This is always acceptable.
+
 Then branch on the status:
 
-**`FOUND_REASONING`** (o3, o1, DeepThink, DeepSeek R1) — best case, use for problem generation:
-```
-sessions_spawn(task="<problem generation prompt>", model=model_alias)
-```
-No warning needed. Sub-agent writes the .tex files + verify script, announces completion.
+**`FOUND_REASONING`** (o3, o1, DeepThink, DeepSeek R1) — best case. Delegate problem generation to it (or, if the current model *is* the reasoning model, just proceed). No warning needed.
 
-**`FOUND_STRONG`** (Claude Opus) — excellent quality, use it without alarming the user:
-```
-sessions_spawn(task="<generation prompt>", model=model_alias)
-```
-Optionally add a quiet note: *"Using Opus — solid math accuracy and excellent LaTeX. For the hardest Algebra 2 problems, a reasoning model (DeepThink/o1) would be marginally better."*
+**`FOUND_STRONG`** (Claude Opus) — excellent quality, use it without alarming the user. Optionally add a quiet note: *"Using Opus — solid math accuracy and excellent LaTeX. For the hardest Algebra 2 problems, a reasoning model (DeepThink/o1) would be marginally better."*
 
 **`NONE`** — standard model only; proceed but surface a clear recommendation:
 ```
@@ -55,17 +54,24 @@ SymPy verification will catch most errors regardless.
 
 | Status | Model examples | Action |
 |---|---|---|
-| `FOUND_REASONING` | DeepThink, o1, o3, R1 | Spawn silently, no warning |
-| `FOUND_STRONG` | Claude Opus 4.x | Spawn silently, optional quiet note |
+| `FOUND_REASONING` | DeepThink, o1, o3, R1 | Use it silently, no warning |
+| `FOUND_STRONG` | Claude Opus 4.x | Use it silently, optional quiet note |
 | `NONE` | Sonnet, Flash, GPT-4o | Use current model + show recommendation |
 
 ## Prerequisites
 
+**tectonic** (LaTeX compiler — auto-downloads packages on demand). Install with whichever is available:
+
 ```bash
-brew install tectonic   # macOS/Linux — downloads packages on demand
+brew install tectonic       # macOS or Linux with Homebrew
+cargo install tectonic      # any platform with Rust
+sudo apt install tectonic   # Debian/Ubuntu (recent releases)
+# or download a release binary: https://github.com/tectonic-typesetting/tectonic/releases
 ```
 
-Output directory (create if needed): `~/Documents/Worksheets/`
+**python3 + sympy** for answer verification: `pip3 install sympy`
+
+Output directory (create if needed): `~/Documents/Worksheets/`. In headless or sandboxed environments where the user won't browse `~/Documents`, use `./worksheets/` inside the workspace instead and report the paths.
 
 ## Workflow
 
@@ -77,7 +83,7 @@ Ask (or infer from context):
 - **Problem count**: default 10 if not specified
 - **Format preference**: timed quiz, homework practice, mixed difficulty, or topic drill
 
-**Photo input shortcut**: If the user sends a photo of homework or a textbook page, use the `image` tool to extract problem types, format, and difficulty — then mirror that style exactly.
+**Photo input shortcut**: If the user sends a photo of homework or a textbook page, read the image with whatever vision capability the platform provides (e.g. OpenClaw's `image` tool, or reading the image file directly in Claude Code / Gemini / Codex) to extract problem types, format, and difficulty — then mirror that style exactly.
 
 ### 2. Design problems
 
@@ -155,18 +161,21 @@ Use `manual` for: graph sketches, sign charts, word problem setups, proofs.
 ### 5. Compile
 
 ```bash
-SKILL_DIR="$(dirname "$0")"
 bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Worksheets/
 bash "$SKILL_DIR/scripts/compile.sh" /tmp/ak_TOPIC_DATE.tex ~/Documents/Worksheets/
 bash "$SKILL_DIR/scripts/compile.sh" /tmp/ss_TOPIC_DATE.tex ~/Documents/Worksheets/
 ```
 
-### 5. Deliver
+### 6. Deliver
 
-Send all three PDFs via the same channel the request came from:
-- **Telegram** → `message` tool with `filePath` (copy to `~/.openclaw/media/outbound/` first)
-- **iMessage/SMS** → `imsg` skill
-- **Email** → `gog` skill (send all three as attachments)
+Deliver all three PDFs however the current platform delivers files, matching the channel the request came from:
+
+- **Chat-connected agents (e.g. OpenClaw)** — send back on the originating channel:
+  - Telegram → `message` tool with `filePath` (copy to the outbound media dir, e.g. `~/.openclaw/media/outbound/`, first)
+  - iMessage/SMS → `imsg` skill
+  - Email → `gog` skill (all three as attachments)
+- **CLI / IDE agents (Claude Code, Gemini, Codex)** — the PDFs are already on the user's machine: report the three output paths clearly. If the harness has a file-sending or preview tool, use it.
+- **Sandboxed / remote agents** — commit or export the PDFs so the user can actually retrieve them, and report where they are.
 
 Suggested send order: skills summary first (study guide), then worksheet, then answer key.
 

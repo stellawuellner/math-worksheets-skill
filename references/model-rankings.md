@@ -1,11 +1,10 @@
 # Math Model Rankings
 
-This file is the **bundled fallback** used when the hosted model config cannot be fetched.
-The live version is maintained at:
-  https://raw.githubusercontent.com/stellawuellner/math-worksheets-skill/main/references/model-rankings.json
+Human-readable companion to `model-rankings.json`. Both files ship bundled with
+the skill and are updated with each release — the skill makes no network
+requests at runtime. Keep the two files in sync when updating.
 
 Last updated: 2026-02-22
-Update this file when the hosted JSON is also updated.
 
 ## Current Rankings (K-12 Math Generation)
 
@@ -43,10 +42,10 @@ Capable but not recommended for complex algebra. SymPy verification is essential
 
 When new models ship that should be Tier 1 or Tier 2:
 
-1. Update the hosted `models.json` at the GitHub URL above
-2. Update this file (bundled fallback)
-3. Bump `last_updated` in `models.json`
-4. Submit a skill update to ClawhHub
+1. Update `model-rankings.json` (patterns + `last_updated`)
+2. Update this file to match
+3. Add matching patterns to `scripts/check_reasoning_model.sh`
+4. Ship a skill release (ClawhHub for OpenClaw; tag the git repo for direct installs)
 
 Key signals a model deserves Tier 1 promotion:
 - Scores >80% on MATH benchmark or AIME

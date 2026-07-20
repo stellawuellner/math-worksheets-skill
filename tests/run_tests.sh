@@ -38,6 +38,8 @@ CASES=(
   "reject_injection.json:1"
   "reject_bad_schema.json:1"
   "reject_coverage_gap.json:1"
+  "pass_coverage_types.json:0"
+  "fail_coverage_types.json:1"
 )
 
 failures=0

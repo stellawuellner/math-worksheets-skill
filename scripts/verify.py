@@ -89,7 +89,7 @@ _FUNCS = {name: getattr(sympy, name) for name in [
     "sin", "cos", "tan", "asin", "acos", "atan",
     "sec", "csc", "cot",
     "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-    "log", "ln", "exp", "sqrt", "Abs", "floor", "ceiling",
+    "log", "ln", "exp", "sqrt", "Abs", "floor", "ceiling", "factorial",
 ]}
 _FUNCS["abs"] = sympy.Abs
 
@@ -334,6 +334,29 @@ def parse_points(raw, exactly=None, at_least=None):
     return points
 
 
+def parse_interval_spec(spec):
+    """Build a SymPy real set from a JSON interval spec (allowlist-safe).
+
+    spec is a list of intervals, each [lo, hi, openness] where openness is one
+    of "open", "closed", "loopen" (lo open, hi closed), "hiopen". lo/hi may be
+    numbers or the strings "oo"/"-oo". A single interval may be given unwrapped.
+    """
+    if spec and not isinstance(spec[0], list):
+        spec = [spec]
+    result = sympy.S.EmptySet
+    for iv in spec:
+        if len(iv) != 3:
+            raise VerifyInputError("each interval must be [lo, hi, openness]")
+        lo = parse_value(iv[0]) if iv[0] not in ("-oo", "oo") else \
+            (-sympy.oo if iv[0] == "-oo" else sympy.oo)
+        hi = parse_value(iv[1]) if iv[1] not in ("-oo", "oo") else \
+            (-sympy.oo if iv[1] == "-oo" else sympy.oo)
+        lopen = iv[2] in ("open", "loopen")
+        hopen = iv[2] in ("open", "hiopen")
+        result = result.union(sympy.Interval(lo, hi, left_open=lopen, right_open=hopen))
+    return result
+
+
 def get_unit(p, default):
     unit = p.get("unit", default)
     if unit not in ("deg", "rad"):
@@ -451,8 +474,14 @@ SCHEMAS = {
     "slope":          ({"points", "expected"}, {"tol"}),
     "polygon_area":   ({"points", "expected"}, {"tol"}),
     "triangle":       ({"given", "solve_for", "expected"}, {"tol", "unit"}),
+    "system":         ({"equations", "vars", "expected"}, set()),
+    "series":         ({"term", "from", "to", "expected"}, {"var"}),
+    "inequality":     ({"expr", "relation", "expected"}, {"var"}),
     "manual":         ({"desc"}, set()),
 }
+
+_RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
+              ">": sympy.StrictGreaterThan, ">=": sympy.GreaterThan}
 
 
 def check_schema(p):
@@ -581,6 +610,37 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"triangle {given} → {solve_for} ∈ [{shown}] "
                 f"(expected {p['expected']}, tol {tol}{ambiguous})")
+
+    if ptype == "system":
+        eqs_raw, vars_raw = p["equations"], p["vars"]
+        if not isinstance(eqs_raw, list) or not isinstance(vars_raw, list):
+            raise VerifyInputError("'equations' and 'vars' must be lists")
+        for v in vars_raw:
+            if v not in _VARS:
+                raise VerifyInputError(f"variable {v!r} is not allowed")
+        syms = [_VARS[v] for v in vars_raw]
+        eqs = [safe_parse(e) for e in eqs_raw]   # each expr is treated as =0
+        sols = sympy.solve(eqs, syms, dict=True)
+        if not isinstance(p["expected"], dict):
+            raise VerifyInputError("system 'expected' must be an object {var: value}")
+        want = {_VARS[k]: parse_value(v) for k, v in p["expected"].items()
+                if k in _VARS}
+        ok = any(all(s in sol and sym_equal(sol[s], want[s]) for s in want)
+                 for sol in sols)
+        return ("PASS" if ok else "FAIL",
+                f"system{eqs_raw} → {sols} (expected {p['expected']})")
+
+    if ptype == "series":
+        var = get_var(p)
+        term = safe_parse(p["term"])
+        lo = parse_value(p["from"])
+        hi = parse_value(p["to"])
+        total = sympy.summation(term, (var, lo, hi))
+        expected = parse_value(p["expected"])
+        ok = sym_equal(total, expected)
+        return ("PASS" if ok else "FAIL",
+                f"sum({p['term']}, {var}={p['from']}..{p['to']}) → {total} "
+                f"(expected {p['expected']})")
 
     expr = safe_parse(p["expr"])
 
@@ -742,6 +802,21 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
                 f"→ {in_unit(computed)} (expected {in_unit(expected)})")
+
+    if ptype == "inequality":
+        var = get_var(p)
+        lhs = safe_parse(p["expr"])   # expr already moved to LHS, compared to 0
+        rel = p["relation"]
+        if rel not in _RELATIONS:
+            raise VerifyInputError(f"'relation' must be one of {sorted(_RELATIONS)}")
+        computed = sympy.solveset(_RELATIONS[rel](lhs, 0), var,
+                                  domain=sympy.S.Reals)
+        # expected: a set expression over the allowlist, e.g. "Interval.open(4, oo)"
+        # is not allowlist-safe, so accept an interval spec [[lo, hi, openness], ...]
+        expected_set = parse_interval_spec(p["expected"])
+        ok = computed == expected_set
+        return ("PASS" if ok else "FAIL",
+                f"solve {p['expr']} {rel} 0 → {computed} (expected {expected_set})")
 
     raise VerifyInputError(f"unhandled type {ptype!r}")  # unreachable
 

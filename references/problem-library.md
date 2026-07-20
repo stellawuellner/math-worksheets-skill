@@ -197,4 +197,10 @@ Map each problem to its verify-JSON type as you design it. Geometry rule of thum
 | Indefinite integrals | `integrate` | Expected antiderivative without `+C` |
 | Definite integrals, Riemann sum values | `approx` or `eval` | Compute the exact value as expr |
 | Limits (including one-sided, at infinity) | `limit` | `"to": "oo"`, `"dir": "+"` as needed |
+| Systems of equations (2–3 var) | `system` | Raw equations + vars; linear or nonlinear |
+| Inequalities (linear/quadratic) | `inequality` | Solution set vs interval spec |
+| Complex-number arithmetic | `eval` with `I` | e.g. `(3+2*I)*(1-4*I)` |
+| Find ALL roots incl. complex | `solve`/`zeros` + `"domain":"complex"` | non-real roots no longer dropped |
+| Series & partial sums (incl. Taylor) | `series` | `summation`, finite or `"to":"oo"` |
 | Proofs, constructions, sketches, graphs | `manual` | Answer key still shows a full model answer |
+| Matrices, vectors, probability/statistics | `manual` (for now) | No dedicated type yet — verify by hand |

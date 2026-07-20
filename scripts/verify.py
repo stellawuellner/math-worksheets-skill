@@ -70,6 +70,10 @@ import re
 import sys
 
 import sympy
+
+# Behavior is version-specific; the corpus baselines were established on this
+# major version. A mismatch prints a warning but does not block.
+_SYMPY_MIN = "1.12"
 from sympy import Symbol, simplify, trigsimp, nsimplify
 
 
@@ -89,7 +93,7 @@ _FUNCS = {name: getattr(sympy, name) for name in [
 ]}
 _FUNCS["abs"] = sympy.Abs
 
-_CONSTS = {"pi": sympy.pi, "E": sympy.E, "oo": sympy.oo}
+_CONSTS = {"pi": sympy.pi, "E": sympy.E, "oo": sympy.oo, "I": sympy.I}
 
 # real=True matches the K-12/AP domain and lets Abs/ln/sqrt derivatives
 # simplify (complex-root problems are out of allowlist scope — use manual)
@@ -164,29 +168,41 @@ def parse_value_list(value):
 
 
 # ── Equivalence checking ──────────────────────────────────────────────────────
+# A broad, irrational sample grid. Points are transcendental multiples so an
+# adversary cannot precompute a low-degree polynomial that vanishes at all of
+# them (see CASE-19 / the audit's 7-fixed-point false positive).
 
-_SAMPLES = [-2.31, -1.17, -0.53, 0.47, 1.23, 2.11, 3.07]
+_SAMPLES = [round(math.pi * k / 7 - 1.5, 6) for k in range(1, 12)] + \
+           [round(math.e * k / 5 - 2.0, 6) for k in range(1, 8)]
+_MIN_VALID_VOTES = 8   # require many agreeing evaluations, not 3
 
 
 def _sample_points(free):
     if not free:
         return [()]
-    if len(free) <= 2:
-        return list(itertools.product(_SAMPLES, repeat=len(free)))
-    return [tuple(_SAMPLES[(i + 2 * j) % len(_SAMPLES)]
+    if len(free) == 1:
+        return [(s,) for s in _SAMPLES]
+    if len(free) == 2:
+        return list(itertools.product(_SAMPLES[:9], repeat=2))
+    return [tuple(_SAMPLES[(i + 3 * j) % len(_SAMPLES)]
                   for j in range(len(free)))
             for i in range(len(_SAMPLES))]
 
 
 def numeric_equal(a, b, tol=1e-9):
-    """Deterministic numeric spot-check at fixed sample points."""
+    """Deterministic numeric spot-check over a broad irrational grid.
+
+    Only reached when the symbolic layer cannot resolve a-b (transcendental
+    cases). Requires many agreeing evaluations; a handful of coincidental
+    agreements is not enough.
+    """
     free = sorted(set(a.free_symbols) | set(b.free_symbols), key=str)
     valid = 0
     for point in _sample_points(free):
         subs = dict(zip(free, point))
         try:
-            av = complex(sympy.N(a.subs(subs), 15))
-            bv = complex(sympy.N(b.subs(subs), 15))
+            av = complex(sympy.N(a.subs(subs), 20))
+            bv = complex(sympy.N(b.subs(subs), 20))
         except (TypeError, ValueError, ZeroDivisionError):
             continue
         if not (cmath.isfinite(av) and cmath.isfinite(bv)):
@@ -194,21 +210,44 @@ def numeric_equal(a, b, tol=1e-9):
         if abs(av - bv) > tol * max(1.0, abs(av), abs(bv)):
             return False
         valid += 1
-        if valid >= 6:
-            return True
-    return valid >= 3
+    return valid >= _MIN_VALID_VOTES
+
+
+_TRANSCENDENTAL = (sympy.sin, sympy.cos, sympy.tan, sympy.asin, sympy.acos,
+                   sympy.atan, sympy.sec, sympy.csc, sympy.cot, sympy.exp,
+                   sympy.log, sympy.sinh, sympy.cosh, sympy.tanh)
 
 
 def sym_equal(a, b):
-    """True if a and b are the same function: symbolic first, numeric fallback."""
-    if a == b:  # structural equality — also covers infinities, where a-b is nan
+    """True iff a and b are the same function.
+
+    Structural, then simplify/trigsimp. If the difference is a NON-transcendental
+    (polynomial/rational/algebraic) expression that did not reduce to zero, that
+    is a definitive inequality — return False rather than fall through to numeric
+    sampling, which is what let a crafted vanishing polynomial produce a false
+    positive (audit 1c). Numeric sampling is a last resort only for genuinely
+    transcendental differences SymPy could not close.
+    """
+    if a == b:  # structural — also covers infinities, where a-b is nan
         return True
     try:
         d = simplify(a - b)
-        if d == 0:
+        if d == 0 or trigsimp(d) == 0:
             return True
-        if trigsimp(d) == 0:
+        de = sympy.expand(a - b)
+        if de == 0:
             return True
+        # A nonzero POLYNOMIAL/RATIONAL difference is a definitive inequality —
+        # do not sample (this is what killed the crafted-vanishing-poly false
+        # positive). Differences involving Abs/sign/sqrt/transcendentals are NOT
+        # decided here (simplify may miss real-domain identities like
+        # sign(x)/Abs(x) == 1/x), so they fall through to numeric sampling.
+        try:
+            fs = de.free_symbols
+            if fs and de.is_rational_function(*fs):
+                return False
+        except (TypeError, ValueError):
+            pass
     except Exception:
         pass
     return numeric_equal(a, b)
@@ -246,13 +285,31 @@ def approx_equal(computed, expected, tol):
 
 
 def get_tol(p, default=None):
-    """Validated tolerance; None means exact comparison is required."""
+    """Validated EXPLICIT tolerance; None means fall back to default logic."""
     tol = p.get("tol", default)
     if tol is None:
         return None
     if isinstance(tol, bool) or not isinstance(tol, (int, float)) or tol <= 0:
         raise VerifyInputError("'tol' must be a positive number")
     return float(tol)
+
+
+def default_tol(expected_raw):
+    """Scale-appropriate tolerance when no explicit 'tol' is given.
+
+    A fixed absolute 0.01 is scale-blind (0.004 vs 0.01 wrongly passed — audit
+    1f/B2). Instead: for a value written with decimals, accept anything that
+    rounds to it (half a unit in the last place); for an integer-valued answer,
+    use a tight relative tolerance.
+    """
+    s = repr(expected_raw) if isinstance(expected_raw, float) else str(expected_raw)
+    if "." in s and s.replace(".", "").replace("-", "").isdigit():
+        decimals = len(s.split(".")[-1])
+        return 0.5 * 10 ** (-decimals)
+    try:
+        return max(5e-4 * abs(float(expected_raw)), 1e-9)
+    except (TypeError, ValueError):
+        return 1e-6
 
 
 def compare_value(computed, expected, tol):
@@ -403,6 +460,10 @@ def check_schema(p):
         raise VerifyInputError("each problem must be a JSON object")
     if "id" not in p:
         raise VerifyInputError("problem is missing required field 'id'")
+    # id must be an integer — the coverage gate and the difficulty-ramp report
+    # both assume it; a string id silently broke the ramp report (audit §4).
+    if not isinstance(p["id"], int) or isinstance(p["id"], bool):
+        raise VerifyInputError(f"problem 'id' must be an integer, got {p['id']!r}")
     ptype = p.get("type")
     if ptype not in SCHEMAS:
         raise VerifyInputError(
@@ -511,7 +572,7 @@ def check_problem(p, ptype):
         candidates = [sol[solve_for] for sol in solutions]
         if solve_for in ("A", "B", "C") and unit == "deg":
             candidates = [math.degrees(v) for v in candidates]
-        tol = get_tol(p, default=0.01)
+        tol = get_tol(p) or default_tol(p["expected"])
         expected = float(sympy.N(parse_value(p["expected"])))
         ok = any(abs(c - expected) <= tol for c in candidates)
         shown = ", ".join(f"{c:.4f}" for c in candidates)
@@ -528,23 +589,40 @@ def check_problem(p, ptype):
             raise VerifyInputError(
                 "approx 'expr' must be fully numeric (no variables) — "
                 f"found {sorted(map(str, expr.free_symbols))}")
-        tol = get_tol(p, default=0.01)
+        tol = get_tol(p) or default_tol(p["expected"])
         expected = parse_value(p["expected"])
         ok = approx_equal(expr, expected, tol)
         return ("PASS" if ok else "FAIL",
                 f"approx({p['expr']}) → {float(sympy.N(expr, 15)):.6g} "
-                f"(expected {p['expected']}, tol {tol})")
+                f"(expected {p['expected']}, tol {tol:g})")
 
     if ptype in ("solve", "zeros"):
         var = get_var(p)
-        roots = sympy.solve(expr, var)
+        # Solve over ℂ with an unrestricted symbol so non-real roots are not
+        # silently dropped (audit 1a: x**4-1 keyed [1,-1] must not pass).
+        z = sympy.Dummy("z")
+        all_roots = sympy.solve(expr.subs(var, z), z)
+        real_roots = [r for r in all_roots if r.is_real]
+        nonreal = [r for r in all_roots if r.is_real is False]
+        domain = p.get("domain", "real")
+        if domain not in ("real", "complex"):
+            raise VerifyInputError("'domain' must be 'real' or 'complex'")
+        # When non-real roots exist the intent is ambiguous — force an explicit
+        # decision instead of quietly comparing against reals only.
+        if nonreal and "domain" not in p:
+            return ("FAIL",
+                    f"{ptype}({p['expr']}) has non-real roots {nonreal}; set "
+                    f'"domain":"complex" to require all roots or "domain":"real" '
+                    "to restrict — refusing to guess intent")
+        roots = all_roots if domain == "complex" else real_roots
         expected = parse_value_list(p["expected"])
         if ptype == "zeros":
             roots = dedupe(roots)
             expected = dedupe(expected)
         ok = multiset_equal(roots, expected)
         return ("PASS" if ok else "FAIL",
-                f"{ptype}({p['expr']}) → {roots} (expected {expected})")
+                f"{ptype}({p['expr']}, domain={domain}) → {roots} "
+                f"(expected {expected})")
 
     if ptype in ("factor", "expand", "equiv"):
         expected = parse_value(p["expected"])
@@ -585,8 +663,26 @@ def check_problem(p, ptype):
         expected = parse_value(p["expected"])
         back = sympy.diff(expected, var)
         ok = sym_equal(back, expr)
+        # Domain guard (audit 1b): ln(x) is NOT a valid antiderivative of 1/x
+        # over the reals — it is undefined where 1/x is fine (x<0). Reject an
+        # antiderivative that is non-real at a point where the integrand is real.
+        domain_note = ""
+        if ok:
+            for s in (-1.3, -0.6, -2.1):
+                try:
+                    iv = complex(sympy.N(expr.subs(var, s), 15))
+                    ev = complex(sympy.N(expected.subs(var, s), 15))
+                except (TypeError, ValueError, ZeroDivisionError):
+                    continue
+                if cmath.isfinite(iv) and abs(iv.imag) < 1e-9:  # integrand real here
+                    if not cmath.isfinite(ev) or abs(ev.imag) > 1e-9:
+                        ok = False
+                        domain_note = (f" — antiderivative undefined/non-real at "
+                                       f"{var}={s} where integrand is real; "
+                                       "use Abs() form")
+                        break
         return ("PASS" if ok else "FAIL",
-                f"d/d{var}({p['expected']}) → {back} (integrand {p['expr']})")
+                f"d/d{var}({p['expected']}) → {back} (integrand {p['expr']}){domain_note}")
 
     if ptype == "limit":
         var = get_var(p)
@@ -627,16 +723,21 @@ def check_problem(p, ptype):
         elif isinstance(solset, sympy.FiniteSet):
             computed = list(solset)
         else:
-            # Solver couldn't enumerate — fall back to checking each expected
-            # value is a genuine root inside the interval. Completeness (no
-            # missed solutions) is NOT verified in this branch.
-            ok = all(bool(domain.contains(e)) and sym_equal(expr.subs(var, e),
-                                                            sympy.Integer(0))
-                     for e in expected)
-            return ("PASS" if ok else "FAIL",
+            # Solver couldn't enumerate. Each listed root must be genuine (a
+            # bogus one still FAILs), but completeness cannot be established —
+            # so this is MANUAL (exit 2, flag for review), never a silent PASS
+            # (audit 1e: an incomplete trig-equation key must not pass).
+            genuine = all(bool(domain.contains(e)) and
+                          sym_equal(expr.subs(var, e), sympy.Integer(0))
+                          for e in expected)
+            if not genuine:
+                return ("FAIL",
+                        f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
+                        f"a listed value is not a genuine root")
+            return ("MANUAL",
                     f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
-                    f"checked {in_unit(expected)} as roots "
-                    f"(completeness not verified — solver returned {solset})")
+                    f"listed {in_unit(expected)} are genuine roots but "
+                    "completeness could not be machine-verified — review by hand")
         ok = multiset_equal(computed, expected)
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
@@ -663,25 +764,28 @@ def run_verification(json_path):
     problems = data["problems"]
     topic = data.get("topic", "unknown")
 
-    # Coverage gate: with "problem_count": N declared, every worksheet problem
-    # id 1..N must have at least one check — otherwise a generator could verify
-    # a subset of the worksheet and still pass.
+    # Coverage gate is MANDATORY (audit 3b: it was optional, so a partial key
+    # could pass with the field simply omitted). Every worksheet problem id
+    # 1..N must have at least one check.
     problem_count = data.get("problem_count")
-    if problem_count is not None:
-        if not isinstance(problem_count, int) or problem_count < 1:
-            print("❌ 'problem_count' must be a positive integer.", file=sys.stderr)
-            return 1
-        ids = {p.get("id") for p in problems if isinstance(p, dict)}
-        missing = [i for i in range(1, problem_count + 1)
-                   if i not in ids and str(i) not in ids]
-        if missing:
-            print(f"❌ Coverage gap: problem_count={problem_count} but no checks "
-                  f"for problem id(s) {missing}. Every worksheet problem needs "
-                  "at least one check (use type 'manual' if unverifiable).",
-                  file=sys.stderr)
-            return 1
+    if problem_count is None:
+        print("❌ 'problem_count' is required — set it to the number of problems "
+              "on the worksheet so coverage can be enforced.", file=sys.stderr)
+        return 1
+    if not isinstance(problem_count, int) or problem_count < 1:
+        print("❌ 'problem_count' must be a positive integer.", file=sys.stderr)
+        return 1
+    ids = {p["id"] for p in problems if isinstance(p, dict) and isinstance(p.get("id"), int)}
+    missing = [i for i in range(1, problem_count + 1) if i not in ids]
+    if missing:
+        print(f"❌ Coverage gap: problem_count={problem_count} but no checks "
+              f"for problem id(s) {missing}. Every worksheet problem needs "
+              "at least one check (use type 'manual' if unverifiable).",
+              file=sys.stderr)
+        return 1
 
-    print(f"Verifying: {topic} ({len(problems)} problems)\n")
+    print(f"Verifying: {topic} ({len(problems)} problems) · "
+          f"SymPy {sympy.__version__}\n")
 
     results = []
     for p in problems:
@@ -724,16 +828,27 @@ def run_verification(json_path):
     if stds:
         print("standards: " + ", ".join(f"{k}×{v}" for k, v in sorted(stds.items())))
     if diffs:
-        ramp = [d for _, d in sorted(diffs, key=lambda x: (x[0] if isinstance(x[0], int) else 0))]
+        ramp = [d for _, d in sorted(diffs, key=lambda x: x[0])]  # ids are ints
         drops = sum(1 for a, b in zip(ramp, ramp[1:]) if b < a - 1)
         note = " ⚠ ramp drops >1 level mid-sheet" if drops else ""
         print(f"difficulty ramp: {ramp}{note}")
 
+    machine_checked = len(passes) + len(failures)
+
     if failures:
         print("\n❌ Fix the answer key before compiling.")
         return 1
+    # Machine-check floor (audit §2): a sheet where NOTHING was CAS-verified
+    # must not report "safe" on the strength of manual flags alone, unless the
+    # author explicitly acknowledges it.
+    if machine_checked == 0 and not data.get("allow_all_manual"):
+        print(f"\n❌ 0 of {len(problems)} problems were machine-verified — every "
+              "check is 'manual'. Add real checks, or set \"allow_all_manual\": "
+              "true to acknowledge an entirely hand-checked sheet.", file=sys.stderr)
+        return 1
     if manuals:
-        print("\n👁  Manual review needed for some problems — safe to compile.")
+        print(f"\n👁  {len(manuals)} problem(s) need manual review "
+              f"({machine_checked} machine-verified) — safe to compile.")
         return 2
     print("\n✅ All checks passed — safe to compile.")
     return 0

@@ -1,11 +1,11 @@
 ---
 name: math-worksheets
-description: Generate professional math practice worksheets and full answer keys as PDFs. Compiles LaTeX to PDF using tectonic (free, no account needed). Supports any math topic from elementary through high school (Pre-Algebra, Algebra 1/2, Geometry, Pre-Calc). Handles coordinate plane grids, geometric figures, tables, and multi-part problems. Use when a user asks for a math worksheet, practice problems, homework help sheet, or answer key for any K-12 math topic.
+description: Generate professional math practice worksheets and full answer keys as PDFs. Compiles LaTeX to PDF using tectonic (free, no account needed). Supports any math topic from elementary through AP Calculus BC (Pre-Algebra, Algebra 1/2, Geometry, Pre-Calc, Calculus AB/BC — limits, derivatives, integrals, series). Handles coordinate plane grids, geometric figures, tables, and multi-part problems. Use when a user asks for a math worksheet, practice problems, homework help sheet, or answer key for any K-12 math topic including calculus.
 ---
 
 # Math Worksheet Generator
 
-Generate a student worksheet PDF + full step-by-step answer key PDF for any K-12 math topic. Compiles LaTeX with `tectonic` (no TeX installation required — it auto-downloads packages).
+Generate a student worksheet PDF + full step-by-step answer key PDF for any math topic from elementary through AP Calculus BC. Compiles LaTeX with `tectonic` (no TeX installation required — it auto-downloads packages).
 
 This skill is **agent-agnostic**: it works in any agent harness that can read files and run shell commands (OpenClaw, Claude Code, Gemini, Codex, etc.). Platform-specific steps below are always optional with a portable fallback.
 
@@ -131,14 +131,20 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 **JSON format:**
 ```json
 {
-  "topic": "graphing polynomials",
+  "topic": "derivatives and trig",
   "problems": [
     {"id": 1, "type": "solve",  "expr": "x**2 - 5*x + 6",      "expected": [2, 3]},
     {"id": 2, "type": "factor", "expr": "x**2 - 7*x + 12",     "expected": "(x-3)*(x-4)"},
     {"id": 3, "type": "eval",   "expr": "(x-1)*(x+2)", "at": {"x": 0}, "expected": -2},
     {"id": 4, "type": "zeros",  "expr": "x*(x-3)**2",           "expected": [0, 3]},
     {"id": 5, "type": "expand", "expr": "(x+2)**2",             "expected": "x**2 + 4*x + 4"},
-    {"id": 6, "type": "manual", "desc": "Graph sketch — verify visually"}
+    {"id": 6, "type": "diff",   "expr": "x**3 - 4*x",           "expected": "3*x**2 - 4"},
+    {"id": 7, "type": "integrate", "expr": "6*x**2",            "expected": "2*x**3"},
+    {"id": 8, "type": "limit",  "expr": "sin(x)/x", "to": 0,    "expected": 1},
+    {"id": 9, "type": "equiv",  "expr": "sin(2*x)",             "expected": "2*sin(x)*cos(x)"},
+    {"id": 10, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
+               "interval": [0, "2*pi"], "expected": ["pi/6", "5*pi/6"]},
+    {"id": 11, "type": "manual", "desc": "Graph sketch — verify visually"}
   ]
 }
 ```
@@ -147,14 +153,27 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 
 | Type | Verifiable? | What it checks |
 |---|---|---|
-| `solve` | ✅ | Roots of expr=0 match expected list |
-| `factor` | ✅ | Factored form matches expected |
-| `expand` | ✅ | Expanded form matches expected |
+| `solve` | ✅ | Roots of expr=0 match expected list (optional `var`, default `x`) |
+| `zeros` | ✅ | Zeros of expr match expected list (duplicates collapse) |
+| `factor` | ✅ | Factored form is equivalent to expr |
+| `expand` | ✅ | Expanded form is equivalent to expr |
 | `eval` | ✅ | expr evaluated at given values matches expected |
-| `zeros` | ✅ | Zeros of expr match expected list |
+| `diff` | ✅ | Derivative of expr matches expected (optional `order`) |
+| `integrate` | ✅ | Expected antiderivative differentiates back to expr — omit the `+C` |
+| `limit` | ✅ | Limit of expr as var → `to`; optional `dir`: `"+"`, `"-"`, `"+-"` (default) |
+| `equiv` | ✅ | expr and expected are the same function (trig identities, simplification) |
+| `solve_interval` | ✅ | Roots of expr=0 on `[a, b)` given as `"interval": [a, b]` (trig equations) |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
 
-Use `manual` for: graph sketches, sign charts, word problem setups, proofs.
+Use `manual` for: graph sketches, sign charts, word problem setups, proofs, Riemann sum tables, series convergence arguments.
+
+**Expression syntax** — enforced by a strict allowlist in `verify.py`; anything outside it is rejected as a failure, never executed:
+- Explicit operators only: `3*x` (not `3x`), `x**2` or `x^2` for powers
+- Functions: `sin cos tan asin acos atan sec csc cot sinh cosh tanh log ln exp sqrt Abs floor ceiling`
+- Constants: `pi`, `E` (Euler's number), `oo` (infinity)
+- Variables: `x y z t u v w a b c h k m n r s theta phi` (pick from these when writing problems)
+
+**Strict schema:** an unknown `type`, a misspelled field, or a missing required field is a hard failure (exit 1) — never a silent skip. If you need an unverifiable problem, declare it `manual` explicitly.
 
 **If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 

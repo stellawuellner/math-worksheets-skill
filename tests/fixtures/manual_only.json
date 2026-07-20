@@ -1,0 +1,7 @@
+{
+  "topic": "manual-only fixture — must exit 2",
+  "problems": [
+    {"id": 1, "type": "solve", "expr": "x - 1", "expected": [1]},
+    {"id": 2, "type": "manual", "desc": "Graph sketch — verify visually"}
+  ]
+}

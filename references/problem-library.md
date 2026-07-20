@@ -97,3 +97,45 @@ Use this as a menu when designing problem sets. Pick types that target the stude
 | Limits (intro) | Evaluate numerically and graphically |
 | Binomial theorem | Expand $(x+y)^n$ |
 | Matrices | Operations, inverse, solve systems |
+
+## Calculus AB (Grades 11–12)
+
+| Type | Example |
+|---|---|
+| Limits: algebraic | $\lim_{x \to 3} \frac{x^2-9}{x-3}$; rationalize, factor |
+| Limits: one-sided & infinite | $\lim_{x \to 0^+} \frac{1}{x}$; limits at infinity |
+| Continuity | Classify discontinuities; find $k$ making $f$ continuous |
+| Derivative by definition | $\lim_{h \to 0} \frac{f(x+h)-f(x)}{h}$ |
+| Power/product/quotient rules | Differentiate polynomials, products, quotients |
+| Chain rule | $\frac{d}{dx}\sin(3x^2)$, nested compositions |
+| Implicit differentiation | $x^2 + xy + y^2 = 7$, find $dy/dx$ |
+| Related rates | Ladder, cone, shadow problems |
+| Tangent lines & linearization | Equation of tangent; approximate $\sqrt{4.1}$ |
+| Extrema & Mean Value Theorem | Critical points, candidates test, MVT application |
+| Curve sketching | $f$, $f'$, $f''$ analysis: increasing/concavity/inflection |
+| Optimization | Max area, min cost word problems |
+| Riemann sums | Left/right/midpoint/trapezoid from table or graph |
+| Definite integrals & FTC | Evaluate; derivative of accumulation function |
+| u-substitution | $\int 2x\cos(x^2)\,dx$ |
+| Area between curves | Setup and evaluate |
+| Volumes | Disks, washers, known cross-sections |
+| Differential equations | Separation of variables; slope fields |
+| Motion problems | Position/velocity/acceleration; total distance |
+
+## Calculus BC (additional topics)
+
+| Type | Example |
+|---|---|
+| Integration by parts | $\int x e^x\,dx$, $\int \ln x\,dx$ |
+| Partial fractions | $\int \frac{1}{x^2-1}\,dx$ |
+| Improper integrals | $\int_1^{\infty} \frac{1}{x^2}\,dx$; convergence |
+| Euler's method | Approximate $y(x)$ from $y' = f(x,y)$, table of steps |
+| Logistic growth | $\frac{dP}{dt} = kP(1 - P/L)$; carrying capacity |
+| Arc length | $\int \sqrt{1 + (f')^2}\,dx$ |
+| Parametric calculus | $dy/dx$, second derivative, arc length of curves |
+| Polar calculus | Area inside $r = 2\cos\theta$; intersection areas |
+| Vector-valued motion | Velocity/speed/acceleration vectors |
+| Series convergence tests | nth term, geometric, p-series, ratio, alternating |
+| Taylor & Maclaurin series | Construct from derivatives; known series manipulation |
+| Interval of convergence | Ratio test with endpoint checks |
+| Lagrange error bound | Bound the remainder for a Taylor polynomial |

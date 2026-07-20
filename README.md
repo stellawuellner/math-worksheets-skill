@@ -1,6 +1,6 @@
 # math-worksheets — Agent Skill
 
-**v2.1.0** · [Changelog](#changelog)
+**v2.2.0** · [Changelog](#changelog)
 
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
 
@@ -10,10 +10,11 @@ Works with any AI agent that can read files and run shell commands: **OpenClaw**
 
 - **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
 - **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
-- **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students
+- **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students. Eleven check types cover algebra through calculus: `solve`, `zeros`, `factor`, `expand`, `eval`, `diff`, `integrate`, `limit`, `equiv` (trig identities), `solve_interval` (trig equations), and explicit `manual`
+- **Hardened verification input** — every expression passes a strict token allowlist before parsing (numbers, whitelisted functions/variables, arithmetic only), and problem entries are schema-checked: unknown types or misspelled fields are hard failures, never silent skips
 - **Auto reasoning-model detection** — inspects the host agent's config (OpenClaw, Claude Code, Gemini, Codex) and common `*_MODEL` environment variables to find the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none is configured. All detection is local — no network calls.
 - **Platform-appropriate delivery** — chat-connected agents send the PDFs back on the originating channel (Telegram, iMessage, email); CLI/IDE agents report the output paths on disk
-- **K-12 coverage** — Pre-Algebra through Pre-Calculus (see `references/problem-library.md` for full topic menu)
+- **Elementary through AP Calculus BC** — Pre-Algebra, Algebra 1/2, Geometry, Pre-Calc, Calculus AB/BC including limits, derivatives, integrals, differential equations, and series (see `references/problem-library.md` for full topic menu)
 
 ## Install
 
@@ -82,14 +83,32 @@ math-worksheets/
 │   ├── compile.sh                   ← tectonic PDF compiler wrapper
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
 │   └── verify.py                   ← SymPy verification template
-└── references/
-    ├── latex-templates.md           ← LaTeX patterns (coordinate planes, figures, answer key)
-    ├── problem-library.md           ← K-12 problem type menu by course
-    ├── model-rankings.md            ← human-readable model guidance
-    └── model-rankings.json          ← bundled model ranking reference
+├── references/
+│   ├── latex-templates.md           ← LaTeX patterns (coordinate planes, figures, answer key)
+│   ├── problem-library.md           ← problem type menu by course, Pre-Algebra → Calc BC
+│   ├── model-rankings.md            ← human-readable model guidance
+│   └── model-rankings.json          ← bundled model ranking reference
+└── tests/
+    ├── run_tests.sh                 ← regression suite for verify.py
+    └── fixtures/                    ← pass/fail/manual/injection/schema fixtures
 ```
 
+## Testing
+
+```bash
+bash tests/run_tests.sh
+```
+
+Fixtures pin the verifier's contract: correct algebra and calculus answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, and — critically — injection attempts and schema violations (unknown types, misspelled fields) exit 1 without executing anything.
+
 ## Changelog
+
+### v2.2.0 — 2026-07-20
+- **Scope:** Expanded coverage through AP Calculus AB/BC — limits, derivatives, integrals, differential equations, parametric/polar calculus, and series added to the problem library; skill description updated so calculus requests trigger it
+- **Verification:** Five new SymPy check types — `diff` (with optional order), `integrate` (verified by differentiating the expected antiderivative), `limit` (with one-sided support), `equiv` (symbolic equivalence with `trigsimp` and a deterministic numeric fallback for trig identities), and `solve_interval` (trig equations on `[a, b)`); existing types gain an optional `var` field
+- **Security:** Closed an arbitrary-code-execution hole — `sympify` evaluates raw strings via `eval`, so a crafted expression in the verify JSON could execute code despite the v2.0.0 static-data design. Every expression now passes a strict token allowlist (numbers, whitelisted function/variable names, arithmetic operators only) before parsing; disallowed input is a verification failure, never executed
+- **Robustness:** Strict per-type schema validation — unknown problem types, misspelled fields, and missing required fields are hard failures (exit 1) instead of silently downgrading to manual review
+- **Testing:** Added `tests/` regression suite with fixtures for passing algebra/calculus keys, wrong answers, manual review, injection attempts, and schema violations
 
 ### v2.1.0 — 2026-07-20
 - **Portability:** Skill is now agent-agnostic — works in OpenClaw, Claude Code, Gemini, Codex, and any agent that can read files and run shell commands

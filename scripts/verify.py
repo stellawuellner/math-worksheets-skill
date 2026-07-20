@@ -3,9 +3,13 @@
 verify.py — Static SymPy verification for math worksheets.
 
 Reads a structured JSON file of problems and answers. No user-generated
-code is ever executed — only the structured data is evaluated.
+code is ever executed: every expression string is validated against a
+strict token allowlist BEFORE it reaches the parser, so only numbers,
+whitelisted function/variable names, and arithmetic operators are accepted.
+Anything else (attribute access, underscores, quotes, brackets, unknown
+identifiers) is rejected as a hard failure.
 
-Input format: /tmp/verify_TOPIC_DATE.json
+Input format: verify_TOPIC_DATE.json
   {
     "topic": "graphing polynomials",
     "problems": [
@@ -14,17 +18,32 @@ Input format: /tmp/verify_TOPIC_DATE.json
       {"id": 3, "type": "eval",   "expr": "(x-1)*(x+2)", "at": {"x": 0}, "expected": -2},
       {"id": 4, "type": "zeros",  "expr": "x*(x-3)**2",          "expected": [0, 3]},
       {"id": 5, "type": "expand", "expr": "(x+2)**3",            "expected": "x**3 + 6*x**2 + 12*x + 8"},
-      {"id": 6, "type": "manual", "desc": "Graph sketch — verify visually"}
+      {"id": 6, "type": "diff",   "expr": "x**3 - 4*x",          "expected": "3*x**2 - 4"},
+      {"id": 7, "type": "integrate", "expr": "6*x**2",           "expected": "2*x**3"},
+      {"id": 8, "type": "limit",  "expr": "sin(x)/x", "to": 0,   "expected": 1},
+      {"id": 9, "type": "equiv",  "expr": "sin(x)**2 + cos(x)**2", "expected": "1"},
+      {"id": 10, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
+                 "interval": [0, "2*pi"], "expected": ["pi/6", "5*pi/6"]},
+      {"id": 11, "type": "manual", "desc": "Graph sketch — verify visually"}
     ]
   }
 
 Supported types:
-  solve   — solves expr=0 for x, checks roots match expected list
-  factor  — factors expr, checks string form matches expected
-  eval    — evaluates expr at given variable values, checks result
-  zeros   — finds zeros of expr, checks they match expected list
-  expand  — expands expr, checks string form matches expected
-  manual  — flagged for human review, never fails automatically
+  solve          — solves expr=0 for var (default x), checks roots match expected list
+  zeros          — like solve but duplicates collapse (multiplicity ignored)
+  factor         — checks expected is equivalent to expr (form given factored)
+  expand         — checks expected is equivalent to expr (form given expanded)
+  eval           — evaluates expr at given variable values, checks result
+  diff           — differentiates expr (optional "order", default 1), checks match
+  integrate      — checks d/dvar(expected) == expr (omit the +C constant)
+  limit          — limit of expr as var → "to"; optional "dir": "+", "-", "+-" (default)
+  equiv          — checks expr and expected are the same function (trig identities etc.)
+  solve_interval — solves expr=0 on [a, b) given as "interval": [a, b]
+  manual         — flagged for human review, never fails automatically
+
+Optional per-problem fields: "var" (default "x"), "note" (free text, ignored).
+Unknown types or unknown/missing fields are HARD FAILURES — a typo must
+never silently skip verification.
 
 Exit codes:
   0 — all automated checks passed
@@ -32,91 +51,374 @@ Exit codes:
   2 — no failures, but some problems need manual review
 """
 
+import cmath
+import itertools
 import json
-import sys
 import os
-from sympy import (
-    symbols, solve, factor, expand, sympify,
-    Rational, simplify, nsimplify
-)
+import re
+import sys
+
+import sympy
+from sympy import Symbol, simplify, trigsimp, nsimplify
+
+
+class VerifyInputError(Exception):
+    """Raised when the JSON input is malformed or an expression is disallowed."""
+
+
+# ── Expression allowlist ──────────────────────────────────────────────────────
+# Only these names may appear in expressions. Everything maps to a fixed sympy
+# object, so a validated string can only ever build a mathematical expression.
+
+_FUNCS = {name: getattr(sympy, name) for name in [
+    "sin", "cos", "tan", "asin", "acos", "atan",
+    "sec", "csc", "cot",
+    "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+    "log", "ln", "exp", "sqrt", "Abs", "floor", "ceiling",
+]}
+_FUNCS["abs"] = sympy.Abs
+
+_CONSTS = {"pi": sympy.pi, "E": sympy.E, "oo": sympy.oo}
+
+# real=True matches the K-12/AP domain and lets Abs/ln/sqrt derivatives
+# simplify (complex-root problems are out of allowlist scope — use manual)
+_VARS = {v: Symbol(v, real=True) for v in
+         "x y z t u v w a b c h k m n r s theta phi".split()}
+
+_ALLOWED_NAMES = set(_FUNCS) | set(_CONSTS) | set(_VARS)
+_SYMPY_LOCALS = {**_FUNCS, **_CONSTS, **_VARS}
+
+# Tokens: numbers, names, ** or ^, arithmetic operators, parens, commas, space.
+_TOKEN_RE = re.compile(r"\d+(?:\.\d+)?|[A-Za-z]+|\*\*|[+\-*/(),^]|\s+")
+
+_MAX_EXPR_LEN = 500
+
+
+def safe_parse(expr_str):
+    """Validate expr_str against the token allowlist, then parse with sympy.
+
+    Raises VerifyInputError on any disallowed character or name. Because the
+    string is guaranteed to contain only numbers, whitelisted names, and
+    arithmetic tokens, the subsequent sympify cannot execute anything.
+    """
+    if not isinstance(expr_str, str):
+        raise VerifyInputError(
+            f"expression must be a string, got {type(expr_str).__name__}")
+    if len(expr_str) > _MAX_EXPR_LEN:
+        raise VerifyInputError(f"expression longer than {_MAX_EXPR_LEN} chars")
+
+    pos = 0
+    names = []
+    for m in _TOKEN_RE.finditer(expr_str):
+        if m.start() != pos:
+            raise VerifyInputError(
+                f"disallowed character {expr_str[pos]!r} in {expr_str!r}")
+        tok = m.group()
+        if tok[0].isalpha():
+            names.append(tok)
+        pos = m.end()
+    if pos != len(expr_str):
+        raise VerifyInputError(
+            f"disallowed character {expr_str[pos]!r} in {expr_str!r}")
+
+    for name in names:
+        if name not in _ALLOWED_NAMES:
+            raise VerifyInputError(
+                f"name {name!r} is not an allowed function or variable")
+
+    normalized = expr_str.replace("^", "**")
+    try:
+        return sympy.sympify(normalized, locals=_SYMPY_LOCALS)
+    except Exception as e:
+        raise VerifyInputError(f"could not parse {expr_str!r}: {e}")
+
+
+def parse_value(value):
+    """Parse an expected value: JSON number → exact Rational, string → expr."""
+    if isinstance(value, bool):
+        raise VerifyInputError("booleans are not valid expected values")
+    if isinstance(value, (int, float)):
+        return nsimplify(value)
+    if isinstance(value, str):
+        return safe_parse(value)
+    raise VerifyInputError(
+        f"expected value must be a number or string, got {type(value).__name__}")
+
+
+def parse_value_list(value):
+    if not isinstance(value, list):
+        value = [value]
+    return [parse_value(v) for v in value]
+
+
+# ── Equivalence checking ──────────────────────────────────────────────────────
+
+_SAMPLES = [-2.31, -1.17, -0.53, 0.47, 1.23, 2.11, 3.07]
+
+
+def _sample_points(free):
+    if not free:
+        return [()]
+    if len(free) <= 2:
+        return list(itertools.product(_SAMPLES, repeat=len(free)))
+    return [tuple(_SAMPLES[(i + 2 * j) % len(_SAMPLES)]
+                  for j in range(len(free)))
+            for i in range(len(_SAMPLES))]
+
+
+def numeric_equal(a, b, tol=1e-9):
+    """Deterministic numeric spot-check at fixed sample points."""
+    free = sorted(set(a.free_symbols) | set(b.free_symbols), key=str)
+    valid = 0
+    for point in _sample_points(free):
+        subs = dict(zip(free, point))
+        try:
+            av = complex(sympy.N(a.subs(subs), 15))
+            bv = complex(sympy.N(b.subs(subs), 15))
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+        if not (cmath.isfinite(av) and cmath.isfinite(bv)):
+            continue
+        if abs(av - bv) > tol * max(1.0, abs(av), abs(bv)):
+            return False
+        valid += 1
+        if valid >= 6:
+            return True
+    return valid >= 3
+
+
+def sym_equal(a, b):
+    """True if a and b are the same function: symbolic first, numeric fallback."""
+    if a == b:  # structural equality — also covers infinities, where a-b is nan
+        return True
+    try:
+        d = simplify(a - b)
+        if d == 0:
+            return True
+        if trigsimp(d) == 0:
+            return True
+    except Exception:
+        pass
+    return numeric_equal(a, b)
+
+
+def multiset_equal(computed, expected):
+    if len(computed) != len(expected):
+        return False
+    remaining = list(computed)
+    for e in expected:
+        for i, c in enumerate(remaining):
+            if sym_equal(c, e):
+                remaining.pop(i)
+                break
+        else:
+            return False
+    return True
+
+
+def dedupe(values):
+    unique = []
+    for v in values:
+        if not any(sym_equal(v, u) for u in unique):
+            unique.append(v)
+    return unique
+
+
+# ── Schema validation ─────────────────────────────────────────────────────────
+# type → (required fields, optional fields). "id", "type", "note" always allowed.
+
+SCHEMAS = {
+    "solve":          ({"expr", "expected"}, {"var"}),
+    "zeros":          ({"expr", "expected"}, {"var"}),
+    "factor":         ({"expr", "expected"}, set()),
+    "expand":         ({"expr", "expected"}, set()),
+    "eval":           ({"expr", "at", "expected"}, set()),
+    "diff":           ({"expr", "expected"}, {"var", "order"}),
+    "integrate":      ({"expr", "expected"}, {"var"}),
+    "limit":          ({"expr", "to", "expected"}, {"var", "dir"}),
+    "equiv":          ({"expr", "expected"}, set()),
+    "solve_interval": ({"expr", "interval", "expected"}, {"var"}),
+    "manual":         ({"desc"}, set()),
+}
+
+
+def check_schema(p):
+    if not isinstance(p, dict):
+        raise VerifyInputError("each problem must be a JSON object")
+    if "id" not in p:
+        raise VerifyInputError("problem is missing required field 'id'")
+    ptype = p.get("type")
+    if ptype not in SCHEMAS:
+        raise VerifyInputError(
+            f"unknown problem type {ptype!r} — allowed types: {sorted(SCHEMAS)}")
+    required, optional = SCHEMAS[ptype]
+    fields = set(p) - {"id", "type", "note"}
+    missing = required - fields
+    if missing:
+        raise VerifyInputError(
+            f"type {ptype!r} is missing required field(s): {sorted(missing)}")
+    unknown = fields - required - optional
+    if unknown:
+        raise VerifyInputError(
+            f"type {ptype!r} has unknown field(s): {sorted(unknown)}")
+    return ptype
+
+
+def get_var(p):
+    v = p.get("var", "x")
+    if v not in _VARS:
+        raise VerifyInputError(
+            f"variable {v!r} is not allowed — use one of: {sorted(_VARS)}")
+    return _VARS[v]
+
+
+# ── Per-type checks ───────────────────────────────────────────────────────────
+
+def check_problem(p, ptype):
+    """Returns (status, detail) where status is PASS/FAIL/MANUAL."""
+
+    if ptype == "manual":
+        return ("MANUAL", p["desc"])
+
+    expr = safe_parse(p["expr"])
+
+    if ptype in ("solve", "zeros"):
+        var = get_var(p)
+        roots = sympy.solve(expr, var)
+        expected = parse_value_list(p["expected"])
+        if ptype == "zeros":
+            roots = dedupe(roots)
+            expected = dedupe(expected)
+        ok = multiset_equal(roots, expected)
+        return ("PASS" if ok else "FAIL",
+                f"{ptype}({p['expr']}) → {roots} (expected {expected})")
+
+    if ptype in ("factor", "expand", "equiv"):
+        expected = parse_value(p["expected"])
+        ok = sym_equal(expr, expected)
+        return ("PASS" if ok else "FAIL",
+                f"{ptype}({p['expr']}) ≟ {p['expected']}")
+
+    if ptype == "eval":
+        if not isinstance(p["at"], dict) or not p["at"]:
+            raise VerifyInputError("'at' must be a non-empty object of var: value")
+        subs = {}
+        for name, val in p["at"].items():
+            if name not in _VARS:
+                raise VerifyInputError(f"variable {name!r} in 'at' is not allowed")
+            subs[_VARS[name]] = parse_value(val)
+        result = expr.subs(subs)
+        expected = parse_value(p["expected"])
+        ok = sym_equal(result, expected)
+        return ("PASS" if ok else "FAIL",
+                f"eval({p['expr']} at {p['at']}) → {result} (expected {expected})")
+
+    if ptype == "diff":
+        var = get_var(p)
+        order = p.get("order", 1)
+        if not isinstance(order, int) or not 1 <= order <= 6:
+            raise VerifyInputError("'order' must be an integer between 1 and 6")
+        derivative = sympy.diff(expr, var, order)
+        expected = parse_value(p["expected"])
+        ok = sym_equal(derivative, expected)
+        return ("PASS" if ok else "FAIL",
+                f"d^{order}/d{var}^{order}({p['expr']}) → {derivative} "
+                f"(expected {expected})")
+
+    if ptype == "integrate":
+        # Verified in reverse: d/dvar(expected antiderivative) must equal the
+        # integrand. Robust to form differences; omit the +C constant.
+        var = get_var(p)
+        expected = parse_value(p["expected"])
+        back = sympy.diff(expected, var)
+        ok = sym_equal(back, expr)
+        return ("PASS" if ok else "FAIL",
+                f"d/d{var}({p['expected']}) → {back} (integrand {p['expr']})")
+
+    if ptype == "limit":
+        var = get_var(p)
+        to = parse_value(p["to"])
+        direction = p.get("dir", "+-")
+        if direction not in ("+", "-", "+-"):
+            raise VerifyInputError("'dir' must be '+', '-', or '+-'")
+        value = sympy.limit(expr, var, to, dir=direction)
+        expected = parse_value(p["expected"])
+        ok = sym_equal(value, expected)
+        return ("PASS" if ok else "FAIL",
+                f"limit({p['expr']}, {var}→{p['to']}, dir={direction}) → {value} "
+                f"(expected {expected})")
+
+    if ptype == "solve_interval":
+        var = get_var(p)
+        interval = p["interval"]
+        if not isinstance(interval, list) or len(interval) != 2:
+            raise VerifyInputError("'interval' must be a two-element list [a, b]")
+        lo, hi = parse_value(interval[0]), parse_value(interval[1])
+        domain = sympy.Interval(lo, hi, left_open=False, right_open=True)
+        expected = parse_value_list(p["expected"])
+        solset = sympy.solveset(expr, var, domain=domain)
+        if solset is sympy.S.EmptySet:
+            computed = []
+        elif isinstance(solset, sympy.FiniteSet):
+            computed = list(solset)
+        else:
+            # Solver couldn't enumerate — fall back to checking each expected
+            # value is a genuine root inside the interval. Completeness (no
+            # missed solutions) is NOT verified in this branch.
+            ok = all(bool(domain.contains(e)) and sym_equal(expr.subs(var, e),
+                                                            sympy.Integer(0))
+                     for e in expected)
+            return ("PASS" if ok else "FAIL",
+                    f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
+                    f"checked {expected} as roots "
+                    f"(completeness not verified — solver returned {solset})")
+        ok = multiset_equal(computed, expected)
+        return ("PASS" if ok else "FAIL",
+                f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
+                f"→ {computed} (expected {expected})")
+
+    raise VerifyInputError(f"unhandled type {ptype!r}")  # unreachable
+
+
+# ── Driver ────────────────────────────────────────────────────────────────────
 
 def run_verification(json_path):
-    with open(json_path) as f:
-        data = json.load(f)
+    try:
+        with open(json_path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"❌ Could not read verification file: {e}", file=sys.stderr)
+        return 1
 
-    problems = data.get("problems", [])
+    if not isinstance(data, dict) or not isinstance(data.get("problems"), list):
+        print("❌ Verification file must be an object with a 'problems' list.",
+              file=sys.stderr)
+        return 1
+
+    problems = data["problems"]
     topic = data.get("topic", "unknown")
 
     print(f"Verifying: {topic} ({len(problems)} problems)\n")
 
     results = []
     for p in problems:
-        pid = p.get("id", "?")
-        ptype = p.get("type", "manual")
-
+        pid = p.get("id", "?") if isinstance(p, dict) else "?"
         try:
-            if ptype == "manual":
-                results.append((pid, "MANUAL", p.get("desc", "manual review")))
-
-            elif ptype == "solve":
-                x = symbols('x')
-                expr = sympify(p["expr"])
-                roots = sorted([nsimplify(r) for r in solve(expr, x)])
-                expected = sorted([nsimplify(e) for e in p["expected"]])
-                ok = roots == expected
-                results.append((pid, "PASS" if ok else "FAIL",
-                    f"solve({p['expr']}) → {roots} (expected {expected})"))
-
-            elif ptype == "zeros":
-                x = symbols('x')
-                expr = sympify(p["expr"])
-                roots = sorted(set([nsimplify(r) for r in solve(expr, x)]))
-                expected = sorted(set([nsimplify(e) for e in p["expected"]]))
-                ok = roots == expected
-                results.append((pid, "PASS" if ok else "FAIL",
-                    f"zeros({p['expr']}) → {roots} (expected {expected})"))
-
-            elif ptype == "factor":
-                x = symbols('x')
-                expr = sympify(p["expr"])
-                factored = str(factor(expr))
-                expected = str(sympify(p["expected"]))
-                ok = simplify(sympify(factored) - sympify(expected)) == 0
-                results.append((pid, "PASS" if ok else "FAIL",
-                    f"factor({p['expr']}) → {factored} (expected {p['expected']})"))
-
-            elif ptype == "expand":
-                x = symbols('x')
-                expr = sympify(p["expr"])
-                expanded = str(expand(expr))
-                expected = str(sympify(p["expected"]))
-                ok = simplify(sympify(expanded) - sympify(expected)) == 0
-                results.append((pid, "PASS" if ok else "FAIL",
-                    f"expand({p['expr']}) → {expanded} (expected {p['expected']})"))
-
-            elif ptype == "eval":
-                subs = {symbols(k): nsimplify(v) for k, v in p["at"].items()}
-                expr = sympify(p["expr"])
-                result = expr.subs(subs)
-                expected = nsimplify(p["expected"])
-                ok = simplify(result - expected) == 0
-                results.append((pid, "PASS" if ok else "FAIL",
-                    f"eval({p['expr']} at {p['at']}) → {result} (expected {expected})"))
-
-            else:
-                results.append((pid, "MANUAL", f"unknown type '{ptype}' — manual review"))
-
+            ptype = check_schema(p)
+            status, detail = check_problem(p, ptype)
+            results.append((pid, status, detail))
+        except VerifyInputError as e:
+            results.append((pid, "FAIL", f"invalid input: {e}"))
         except Exception as e:
-            results.append((pid, "FAIL", f"Error evaluating problem {pid}: {e}"))
+            results.append((pid, "FAIL", f"error evaluating problem {pid}: {e}"))
 
-    # Print results
-    for pid, status, desc in results:
+    for pid, status, detail in results:
         icon = {"PASS": "✅", "FAIL": "❌", "MANUAL": "👁 "}.get(status, "?")
-        print(f"  {icon} [{status}] Problem {pid}: {desc}")
+        print(f"  {icon} [{status}] Problem {pid}: {detail}")
 
     failures = [r for r in results if r[1] == "FAIL"]
-    manuals  = [r for r in results if r[1] == "MANUAL"]
-    passes   = [r for r in results if r[1] == "PASS"]
+    manuals = [r for r in results if r[1] == "MANUAL"]
+    passes = [r for r in results if r[1] == "PASS"]
 
     print(f"\n{len(passes)} passed · {len(failures)} failed · {len(manuals)} manual")
 

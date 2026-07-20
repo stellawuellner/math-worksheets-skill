@@ -1,0 +1,10 @@
+{
+  "topic": "wrong answers fixture — must exit 1",
+  "problems": [
+    {"id": 1, "type": "solve", "expr": "x**2 - 5*x + 6", "expected": [2, 4]},
+    {"id": 2, "type": "diff", "expr": "x**3", "expected": "x**2"},
+    {"id": 3, "type": "integrate", "expr": "2*x", "expected": "x**2 + x"},
+    {"id": 4, "type": "limit", "expr": "sin(x)/x", "to": 0, "expected": 0},
+    {"id": 5, "type": "equiv", "expr": "sin(x)**2", "expected": "cos(x)**2"}
+  ]
+}

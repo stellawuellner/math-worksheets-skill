@@ -17,7 +17,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Proportional relationships | 7.RP.A.2 |
 | Exponents & scientific notation | 8.EE.A.1, 8.EE.A.4 |
 | Linear equations & slope | 8.EE.B.5, 8.EE.B.6 |
-| Systems of equations | 8.EE.C.8 |
+| Systems of equations | 8.EE.C.8 (sub-codes 8.EE.C.8a–c for graphical/algebraic/word-problem emphasis) |
 | Functions | 8.F.A.1–8.F.B.5 |
 | Pythagorean theorem | 8.G.B.7, 8.G.B.8 |
 | Volume | 8.G.C.9 |

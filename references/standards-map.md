@@ -40,6 +40,17 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Pythagorean theorem | 8.G.B.7, 8.G.B.8 |
 | Volume | 8.G.C.9 |
 
+## Statistics & Probability (grades 6–8)
+
+| Topic | Code |
+|---|---|
+| Mean/median/mode/range, data distributions | 6.SP.B.5 |
+| Statistical questions & variability | 6.SP.A |
+| Simple/theoretical probability | 7.SP.C.5, 7.SP.C.7 |
+| Compound events, tree diagrams | 7.SP.C.8 |
+| Sampling & inference | 7.SP.A |
+| Bivariate data, scatter plots | 8.SP.A.1 |
+
 ## High school (CCSS-HS)
 
 | Topic | Code |

@@ -66,7 +66,7 @@ LATEX_REPLACEMENTS = [
     (re.compile(r"\\dfrac"), r"\\frac"),
     (re.compile(r"\\tfrac"), r"\\frac"),
     (re.compile(r"\\frac\{([^{}]+)\}\{([^{}]+)\}"), r"((\1)/(\2))"),
-    (re.compile(r"\\frac(\d)(\d)"), r"((\1)/(\2))"),
+    (re.compile(r"\\frac\s*(\d)\s*(\d)"), r"((\1)/(\2))"),
     (re.compile(r"\\sqrt\{([^{}]+)\}"), r"sqrt(\1)"),
     (re.compile(r"\\sqrt(\d)"), r"sqrt(\1)"),
     (re.compile(r"\\pi"), "pi"),
@@ -85,22 +85,35 @@ LATEX_REPLACEMENTS = [
 def latex_to_expr(ans):
     """Best-effort translation of a boxed LaTeX answer to allowlist syntax.
     Returns None for answers that clearly aren't a single closed-form value
-    (intervals, tuples, text, matrices, units)."""
+    (intervals, tuples, text, matrices)."""
     ans = ans.strip()
+    # CASE-8 normalizations before the reject-check:
+    ans = re.sub(r",\s*\\!\s*(?=\d)", "", ans)          # 30,\!240 → 30240
+    ans = re.sub(r"\^\s*\{?\\circ\}?", "", ans)          # 60^\circ → 60
+    ans = re.sub(r"^\s*[a-z]\s*=\s*", "", ans)           # x = 4 → 4
+    m = re.match(r"^(.+?)\\text\{[^{}]*\}$", ans)        # 12\text{ degrees} → 12
+    if m and m.group(1).strip():
+        ans = m.group(1).strip()
     if any(tok in ans for tok in ("\\text", "\\begin", "\\end", "\\mbox", ",",
                                   "\\pm", "\\infty", "\\cup", "=", "<", ">",
-                                  "^\\circ", "\\circ")):
+                                  "\\circ")):
         return None
-    for pattern, repl in LATEX_REPLACEMENTS:
-        prev = None
-        while prev != ans:
-            prev = ans
+    # fixpoint over ALL replacements — nested constructs (frac around sqrt)
+    # need later rules to unlock earlier ones
+    prev = None
+    while prev != ans:
+        prev = ans
+        for pattern, repl in LATEX_REPLACEMENTS:
             ans = pattern.sub(repl, ans)
     if "\\" in ans:  # anything still un-translated
         return None
-    # insert explicit multiplication: 2sqrt(3) → 2*sqrt(3), 3pi → 3*pi
+    # insert explicit multiplication: 2sqrt(3), 3pi, 5x, 2(x+1), )(, )x
     ans = re.sub(r"(\d)\s*(sqrt|pi)\b", r"\1*\2", ans)
     ans = re.sub(r"\)\s*(sqrt|pi)\b", r")*\1", ans)
+    ans = re.sub(r"(\d)\s*([a-z])", r"\1*\2", ans)
+    ans = re.sub(r"(\d)\s*\(", r"\1*(", ans)
+    ans = re.sub(r"\)\s*(\d)", r")*\1", ans)
+    ans = re.sub(r"\)\s*\(", r")*(", ans)
     return ans
 
 

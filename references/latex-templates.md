@@ -11,8 +11,8 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-% Keep the left title SHORT (≤ ~28 chars, e.g. "Triangle Trig Practice", not the
-% full course name) — it shares the header line with the Name/Date blanks and a
+% Keep the left title SHORT ($\leq$ ~28 chars, e.g. "Triangle Trig Practice", not the
+% full course name) --- it shares the header line with the Name/Date blanks and a
 % long title overlaps them. \small buys extra margin.
 \fancyhead[L]{\textbf{\small TOPIC Practice}}
 \fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}
@@ -60,7 +60,7 @@
 \begin{enumerate}[label=(\alph*), itemsep=3cm, leftmargin=1.5cm]
   \item $f(0)$
   \item $f(-2)$
-  \item $f(x+1)$ — expand and simplify
+  \item $f(x+1)$ --- expand and simplify
   \vspace{2cm}
 \end{enumerate}
 ```
@@ -140,6 +140,8 @@ $3$  & \\[0.5cm]\hline
 - In thin or small triangles (any angle < 25° or any side rendered < 2cm), move that side's label fully outside with an explicit shift, e.g. `\node[below=2pt] at ...`, and prefer `font=\small` for all labels in the figure.
 - Vertex labels take anchors pointing *away* from the triangle interior (e.g. `below left` for a bottom-left vertex).
 - After composing a figure, mentally trace each label's bounding box against every drawn line; if in doubt, add a 2pt shift. A worksheet with an unreadable figure fails the student even when the math is right.
+- **Keep a problem and its figure on the same page**: wrap the statement + figure in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Leave the work-space `\vspace` *outside* the minipage so pages can still fill naturally.
+- **ASCII only in templates**: pdflatex (the fallback engine) cannot typeset literal Unicode symbols like ⚠ or →. Use LaTeX macros or ASCII markers — `(!)`, `$\rightarrow$`, `$^\circ$` — so documents compile identically under both engines.
 
 ### Right triangle
 ```latex
@@ -167,7 +169,7 @@ Place $A$ at the origin, $B$ on the x-axis at distance $c$, and compute $C$ from
 \begin{tikzpicture}[scale=0.6]
   \coordinate (A) at (0,0);
   \coordinate (B) at (7,0);                        % c = AB = 7
-  \coordinate (C) at ({5*cos(34)},{5*sin(34)});    % b = AC = 5, angle A = 34°
+  \coordinate (C) at ({5*cos(34)},{5*sin(34)});    % b = AC = 5, angle A = 34$^\circ$
   \draw[thick] (A) -- (B) -- (C) -- cycle;
   \node[below left]  at (A) {$A$};
   \node[below right] at (B) {$B$};
@@ -249,11 +251,11 @@ Both possible triangles from the same SSA data (here $a=6$, $b=8$, $A=40^\circ$)
 \begin{center}
 \begin{tikzpicture}[scale=0.55]
   \coordinate (A) at (0,0);
-  % B1 = 58.99°, B2 = 121.01°, C = 180 − 40 − B. Place base along x-axis:
+  % B1 = 58.99$^\circ$, B2 = 121.01$^\circ$, C = 180 - 40 - B. Place base along x-axis:
   % c1 = a·sin(C1)/sin(A) ≈ 9.24, c2 = a·sin(C2)/sin(A) ≈ 3.05
   \coordinate (B1) at (9.24,0);
   \coordinate (B2) at (3.05,0);
-  \coordinate (C)  at ({8*cos(40)},{8*sin(40)});   % b = 8 from A at 40°
+  \coordinate (C)  at ({8*cos(40)},{8*sin(40)});   % b = 8 from A at 40$^\circ$
   \draw[thick] (A) -- (B1) -- (C) -- cycle;
   \draw[thick, dashed] (C) -- (B2);
   \node[below left]  at (A)  {$A$};
@@ -371,7 +373,7 @@ Sphere:
 
 ### Answer key document header
 ```latex
-\fancyhead[L]{\textbf{TOPIC — Answer Key}}
+\fancyhead[L]{\textbf{TOPIC --- Answer Key}}
 \fancyhead[R]{\textit{For instructor/parent use}}
 ```
 
@@ -382,7 +384,7 @@ Sphere:
 \textbf{Solution:}
 \begin{align*}
   2x^2 - 5x - 3 &= 0 \\
-  \intertext{Factor — find factors of $2(-3)=-6$ summing to $-5$: use $-6,+1$:}
+  \intertext{Factor --- find factors of $2(-3)=-6$ summing to $-5$: use $-6,+1$:}
   2x^2 - 6x + x - 3 &= 0 \\
   2x(x - 3) + 1(x - 3) &= 0 \\
   (2x + 1)(x - 3) &= 0 \\
@@ -493,7 +495,7 @@ This is the **third document** generated alongside every worksheet. It's a one-t
 \vspace{0.3cm}
 
 % =================== SKILL 1 ===================
-\skillheading{Skill 1 Name — e.g. Factoring Trinomials (a = 1)}
+\skillheading{Skill 1 Name --- e.g. Factoring Trinomials (a = 1)}
 
 \begin{formulabox}
 \textbf{Rule / Formula:}\\[4pt]
@@ -504,19 +506,21 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 
 \begin{examplebox}
 \textbf{Example:} \quad Factor $x^2 - 7x + 12$\\[4pt]
-Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ ✓\\[2pt]
+Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ $\checkmark$\\[2pt]
 $\Rightarrow\quad x^2 - 7x + 12 = \boldsymbol{(x-3)(x-4)}$
 \end{examplebox}
 
 \vspace{0.2cm}
 
 \begin{watchoutbox}
-\textbf{⚠ Watch out:} Signs matter! If $c > 0$, both factors have the \textit{same sign} as $b$.\par
+% Engine-neutral warning marker: pdflatex cannot typeset a literal Unicode (!),
+% so use a bold exclamation badge that works under both tectonic and pdflatex.
+\textbf{(!) Watch out:} Signs matter! If $c > 0$, both factors have the \textit{same sign} as $b$.\par
 If $c < 0$, the factors have \textit{opposite signs}.
 \end{watchoutbox}
 
 % =================== SKILL 2 ===================
-\skillheading{Skill 2 Name — e.g. Quadratic Formula}
+\skillheading{Skill 2 Name --- e.g. Quadratic Formula}
 
 \begin{formulabox}
 \textbf{Formula:}\\[4pt]

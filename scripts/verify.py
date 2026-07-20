@@ -60,6 +60,7 @@ needed (safe to compile).
 """
 
 import cmath
+import collections
 import itertools
 import json
 import math
@@ -452,8 +453,8 @@ def solve_triangle(sides, angles):
 # type → (required fields, optional fields). "id", "type", "note" always allowed.
 
 SCHEMAS = {
-    "solve":          ({"expr", "expected"}, {"var"}),
-    "zeros":          ({"expr", "expected"}, {"var"}),
+    "solve":          ({"expr", "expected"}, {"var", "domain"}),
+    "zeros":          ({"expr", "expected"}, {"var", "domain"}),
     "factor":         ({"expr", "expected"}, set()),
     "expand":         ({"expr", "expected"}, set()),
     "eval":           ({"expr", "at", "expected"}, set()),
@@ -471,6 +472,8 @@ SCHEMAS = {
     "system":         ({"equations", "vars", "expected"}, set()),
     "series":         ({"term", "from", "to", "expected"}, {"var"}),
     "inequality":     ({"expr", "relation", "expected"}, {"var"}),
+    "stats":          ({"data", "measure", "expected"}, {"tol"}),
+    "probability":    ({"favorable", "total", "expected"}, set()),
     "manual":         ({"desc"}, set()),
 }
 
@@ -623,6 +626,49 @@ def check_problem(p, ptype):
                  for sol in sols)
         return ("PASS" if ok else "FAIL",
                 f"system{eqs_raw} → {sols} (expected {p['expected']})")
+
+    if ptype == "stats":
+        data = p["data"]
+        if not isinstance(data, list) or not data:
+            raise VerifyInputError("stats 'data' must be a non-empty list")
+        vals = [parse_value(v) for v in data]
+        measure = p["measure"]
+        if measure == "mean":
+            result = sum(vals) / len(vals)
+        elif measure == "sum":
+            result = sum(vals)
+        elif measure == "median":
+            s = sorted(vals, key=lambda e: float(sympy.N(e)))
+            n = len(s)
+            result = s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+        elif measure == "range":
+            fs = [float(sympy.N(v)) for v in vals]
+            result = parse_value(max(fs)) - parse_value(min(fs))
+        elif measure == "mode":
+            counts = collections.Counter(float(sympy.N(v)) for v in vals)
+            top = max(counts.values())
+            modes = sorted(k for k, c in counts.items() if c == top)
+            if len(modes) != 1:
+                return ("MANUAL", f"mode is not unique ({modes}) — review by hand")
+            result = parse_value(modes[0])
+        else:
+            raise VerifyInputError("'measure' must be mean/median/mode/range/sum")
+        expected = parse_value(p["expected"])
+        ok = compare_value(result, expected, get_tol(p))
+        return ("PASS" if ok else "FAIL",
+                f"{measure}({data}) → {result} (expected {p['expected']})")
+
+    if ptype == "probability":
+        fav, tot = parse_value(p["favorable"]), parse_value(p["total"])
+        if sym_equal(tot, sympy.Integer(0)):
+            raise VerifyInputError("probability 'total' must be nonzero")
+        result = sympy.Rational(fav, tot) if fav.is_integer and tot.is_integer \
+            else fav / tot
+        expected = parse_value(p["expected"])
+        ok = sym_equal(result, expected)
+        return ("PASS" if ok else "FAIL",
+                f"P = {p['favorable']}/{p['total']} → {result} "
+                f"(expected {p['expected']})")
 
     if ptype == "series":
         var = get_var(p)

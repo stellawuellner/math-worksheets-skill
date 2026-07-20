@@ -40,6 +40,8 @@ CASES=(
   "reject_coverage_gap.json:1"
   "pass_coverage_types.json:0"
   "fail_coverage_types.json:1"
+  "pass_stats_prob.json:0"
+  "fail_stats_prob.json:1"
 )
 
 failures=0

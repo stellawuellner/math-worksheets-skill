@@ -99,8 +99,9 @@ _VARS = {v: Symbol(v, real=True) for v in
 _ALLOWED_NAMES = set(_FUNCS) | set(_CONSTS) | set(_VARS)
 _SYMPY_LOCALS = {**_FUNCS, **_CONSTS, **_VARS}
 
-# Tokens: numbers, names, ** or ^, arithmetic operators, parens, commas, space.
-_TOKEN_RE = re.compile(r"\d+(?:\.\d+)?|[A-Za-z]+|\*\*|[+\-*/(),^]|\s+")
+# Tokens: numbers (including leading-decimal like .5), names, ** or ^,
+# arithmetic operators, parens, commas, space.
+_TOKEN_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+|[A-Za-z]+|\*\*|[+\-*/(),^]|\s+")
 
 _MAX_EXPR_LEN = 500
 

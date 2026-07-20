@@ -1,5 +1,11 @@
 # math-worksheets — Agent Skill
 
+[![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
+[![coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)](tests/coverage.sh)
+[![verifier](https://img.shields.io/badge/false%20accepts-0%2F7400%20corpus-brightgreen)](tests/eval_gsm8k.py)
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 **v3.0.0** · [Changelog](#changelog)
 
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
@@ -114,10 +120,12 @@ math-worksheets/
 
 ```bash
 bash tests/run_tests.sh          # verifier contract (18 fixtures)
-python3 tests/test_audit_fixes.py # soundness-regression pins (21 assertions)
+bash tests/coverage.sh           # all suites under coverage, floor 90%
 ```
 
-Fixtures pin the verifier's contract: correct answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, and — critically — injection attempts and schema violations exit 1 without executing anything. CI runs both suites on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset (0 false accepts on ~7,400 checks).
+`coverage.sh` runs the fixture suite plus three Python suites — `test_audit_fixes.py` (soundness-regression pins from two adversarial audits, 33 assertions), `test_error_paths.py` (input-validation for every type), and `test_branches.py` (numeric fallbacks and verdict variants) — under `coverage`, and fails below **90%** (currently **91%**). Fixtures pin the contract: correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection/schema violations exit 1 without executing anything. CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on ~7,400 checks**.
+
+> The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
 

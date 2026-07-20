@@ -191,14 +191,14 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 | `slope` | ✅ | Slope through two `points`; expected value or `"undefined"` for vertical |
 | `polygon_area` | ✅ | Shoelace area of the ordered `points` (3+) — triangles, quads, composite grid figures |
 | `triangle` | ✅ | Solves the triangle from 3 `given` values (sides `a/b/c`, angles `A/B/C`), checks `solve_for` within `tol`; degrees by default; accepts either triangle in the ambiguous SSA case |
-| `system` | ✅ | Solves a system: `equations` (each expr `=0`), `vars`, `expected` `{var: value}` — 2 or 3 variables, linear or nonlinear |
+| `system` | ✅ | `equations` (each `=0`), `vars`, `expected` `{var: value}` (all vars) or a list of solution dicts. Each listed solution must satisfy every equation; PASS only when the count matches SymPy's full solution set — MANUAL for infinite families |
 | `series` | ✅ | `summation(term, var, from..to)` vs `expected`; finite or infinite (`"to": "oo"`), incl. geometric and Taylor (`factorial` allowed) |
 | `inequality` | ✅ | Solution set of `expr relation 0` (`relation`: `<`, `<=`, `>`, `>=`) vs an interval spec `[lo, hi, openness]` (`openness`: `open`/`closed`/`loopen`/`hiopen`; `lo`/`hi` may be `"oo"`/`"-oo"`) |
 | `stats` | ✅ | `measure` of a `data` list: `mean`/`median`/`mode`/`range`/`sum`/`variance`/`stdev`/`q1`/`q3`/`iqr` (school median-of-halves quartiles; non-unique mode → manual) |
 | `probability` | ✅ | `favorable`/`total` as an exact fraction |
 | `read_data` | ✅ | Read/compute from a chart or table whose `data` is in the JSON. Object data → `query` `value`/`total`/`max_value`/`min_value`/`max_key`/`min_key`/`difference` (with `key`); list data → `total`/`count`/`max_value`/`min_value`. The SAME `data` feeds the pgfplots chart, so figure and check share one source |
-| `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`, by independent mpmath quadrature (doesn't trust a symbolic antiderivative) |
-| `estimate` | ✅ | Round each number in `expr` to `place` (`ten`/`hundred`/`thousand`/`whole`/`tenth`/`hundredth`), then evaluate — "estimate by rounding" |
+| `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`. Uses SymPy's exact integral when available, else convergence-checked mpmath quadrature; returns MANUAL if numerics don't converge rather than trust a wrong value |
+| `estimate` | ✅ | Rounds each numeric **operand** in `expr` (half-up) to `place` (`ten`/`hundred`/`thousand`/`whole`/`tenth`/`hundredth`), then evaluates — front-end "estimate by rounding". `probability` favorable/total is range-validated (0 ≤ fav ≤ total) |
 | `compare` | ✅ | Order `values` (`order`: `asc`/`desc`) or state a `relation` (`<`/`>`/`=`) between the first two |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
 

@@ -74,6 +74,7 @@ import os
 import re
 import statistics
 import sys
+from decimal import Decimal, ROUND_HALF_UP
 
 import sympy
 import mpmath
@@ -297,6 +298,35 @@ def get_tol(p, default=None):
     return float(tol)
 
 
+def _decimals_of(expected_raw):
+    s = repr(expected_raw) if isinstance(expected_raw, float) else str(expected_raw)
+    if "." in s and s.replace(".", "").replace("-", "").isdigit():
+        return len(s.split(".")[-1])
+    return 0
+
+
+def round_half_up(value, decimals):
+    """Decimal round-half-up (the school convention), not banker's rounding."""
+    q = Decimal(1).scaleb(-decimals)
+    return Decimal(str(float(sympy.N(value, 25)))).quantize(q, rounding=ROUND_HALF_UP)
+
+
+def rounds_to(computed, expected_raw):
+    """True iff `computed`, rounded (half-up) to the precision `expected_raw` is
+    written with, equals `expected_raw`. Precise 'does it round to the stated
+    value' — avoids the half-ulp band that let an exact midpoint pass either way
+    (audit #6). For an integer-valued expected, compares within a tight tol."""
+    decimals = _decimals_of(expected_raw)
+    if decimals == 0 and float(sympy.N(expected_raw)) == int(sympy.N(expected_raw)):
+        # integer answer: exact-ish
+        return abs(float(sympy.N(computed)) - float(sympy.N(expected_raw))) < 1e-9
+    try:
+        return round_half_up(computed, decimals) == Decimal(str(expected_raw))
+    except Exception:
+        return abs(float(sympy.N(computed)) - float(sympy.N(expected_raw))) \
+            <= 0.5 * 10 ** (-decimals)
+
+
 def default_tol(expected_raw):
     """Scale-appropriate tolerance when no explicit 'tol' is given.
 
@@ -354,24 +384,32 @@ def count_real_roots(expr, var, lo, hi, n=2000):
     except Exception:
         return None
     roots = []
-    for i in range(n):
-        y0, y1 = ys[i], ys[i + 1]
-        if not (mpmath.isfinite(y0) and mpmath.isfinite(y1)):
-            continue
-        bracket = (mpmath.re(y0) == 0 or (mpmath.re(y0) * mpmath.re(y1) < 0))
-        if not bracket:
-            continue
+
+    def refine(guess):
         try:
-            r = mpmath.findroot(f, (xs[i] + xs[i + 1]) / 2)
+            r = mpmath.findroot(f, guess)
         except Exception:
-            continue
+            return
         rr = float(mpmath.re(r))
-        if not (a - 1e-9 <= rr < b):            # right-open interval
-            continue
-        if abs(mpmath.re(f(rr))) > 1e-6:         # asymptote, not a zero
-            continue
+        if not (a - 1e-9 <= rr < b):             # right-open interval
+            return
+        if abs(mpmath.re(f(rr))) > 1e-6:          # asymptote, not a zero
+            return
         if all(abs(rr - e) > 1e-6 for e in roots):
             roots.append(rr)
+
+    absy = [abs(mpmath.re(y)) if mpmath.isfinite(y) else None for y in ys]
+    for i in range(n):
+        y0, y1 = ys[i], ys[i + 1]
+        if mpmath.isfinite(y0) and mpmath.isfinite(y1):
+            if mpmath.re(y0) == 0 or (mpmath.re(y0) * mpmath.re(y1) < 0):  # sign change
+                refine((xs[i] + xs[i + 1]) / 2)
+        # Tangent (even-multiplicity) roots don't change sign — detect a local
+        # minimum of |f| that dips near zero and refine there (audit #2).
+        if 0 < i < n and absy[i] is not None and absy[i - 1] is not None \
+                and absy[i + 1] is not None:
+            if absy[i] <= absy[i - 1] and absy[i] <= absy[i + 1] and absy[i] < 1e-3:
+                refine(xs[i])
     return sorted(roots)
 
 
@@ -667,15 +705,38 @@ def check_problem(p, ptype):
                 raise VerifyInputError(f"variable {v!r} is not allowed")
         syms = [_VARS[v] for v in vars_raw]
         eqs = [safe_parse(e) for e in eqs_raw]   # each expr is treated as =0
+        # expected: a dict (one solution) or a list of dicts (all solutions).
+        # Every solution must assign ALL vars (audit #3: a key listing only x
+        # must not pass on an unchecked y).
+        exp_raw = p["expected"]
+        exp_list = exp_raw if isinstance(exp_raw, list) else [exp_raw]
+        want_list = []
+        for sol in exp_list:
+            if not isinstance(sol, dict) or set(sol) != set(vars_raw):
+                raise VerifyInputError(
+                    f"each system solution must assign exactly {vars_raw}")
+            want_list.append({_VARS[k]: parse_value(v) for k, v in sol.items()})
+        # VALIDITY: each claimed solution must satisfy every equation (handles
+        # infinite families correctly — a valid particular point substitutes to 0).
+        def satisfies(assign):
+            return all(sym_equal(e.subs(assign), sympy.Integer(0)) for e in eqs)
+        if not all(satisfies(a) for a in want_list):
+            return ("FAIL", f"system{eqs_raw}: a listed solution does not satisfy "
+                    f"all equations (expected {exp_raw})")
+        # COMPLETENESS: compare against SymPy's full solution set when it is a
+        # finite list; parametric/infinite families can't be counted → MANUAL.
         sols = sympy.solve(eqs, syms, dict=True)
-        if not isinstance(p["expected"], dict):
-            raise VerifyInputError("system 'expected' must be an object {var: value}")
-        want = {_VARS[k]: parse_value(v) for k, v in p["expected"].items()
-                if k in _VARS}
-        ok = any(all(s in sol and sym_equal(sol[s], want[s]) for s in want)
-                 for sol in sols)
-        return ("PASS" if ok else "FAIL",
-                f"system{eqs_raw} → {sols} (expected {p['expected']})")
+        finite = sols and all(
+            all(not v.free_symbols for v in sol.values()) for sol in sols)
+        if finite:
+            if len(sols) != len(want_list):
+                return ("MANUAL",
+                        f"system{eqs_raw}: {len(sols)} solution(s) exist but key "
+                        f"lists {len(want_list)} — verify completeness by hand")
+            return ("PASS", f"system{eqs_raw} → all {len(sols)} solution(s) verified")
+        return ("MANUAL",
+                f"system{eqs_raw}: listed solution(s) valid but the system has a "
+                "parametric/infinite family — verify completeness by hand")
 
     if ptype == "stats":
         data = p["data"]
@@ -723,50 +784,61 @@ def check_problem(p, ptype):
         expected = parse_value(p["expected"])
         # stdev/variance/quartiles are usually rounded → scale-aware default tol
         tol = get_tol(p)
-        if tol is None and measure in ("mean", "variance", "stdev", "q1", "q3", "iqr"):
-            tol = default_tol(p["expected"])
-        ok = compare_value(result, expected, tol)
+        if tol is not None:
+            ok = compare_value(result, expected, tol)
+        elif measure in ("mean", "variance", "stdev", "q1", "q3", "iqr"):
+            ok = rounds_to(result, p["expected"])   # precise rounds-to (audit #6)
+        else:
+            ok = compare_value(result, expected, None)
         return ("PASS" if ok else "FAIL",
                 f"{measure}({data}) → {result} (expected {p['expected']})")
 
     if ptype == "probability":
         fav, tot = parse_value(p["favorable"]), parse_value(p["total"])
-        if sym_equal(tot, sympy.Integer(0)):
-            raise VerifyInputError("probability 'total' must be nonzero")
+        # Validity: 0 <= favorable <= total, total > 0 (audit #4 — an impossible
+        # probability like 7/6 or a negative one must be rejected).
+        if not (tot.is_positive):
+            raise VerifyInputError("probability 'total' must be positive")
+        if fav.is_negative or (fav - tot).is_positive:
+            return ("FAIL", f"P = {p['favorable']}/{p['total']} is not a valid "
+                    "probability (need 0 ≤ favorable ≤ total)")
         result = sympy.Rational(fav, tot) if fav.is_integer and tot.is_integer \
             else fav / tot
         expected = parse_value(p["expected"])
-        ok = sym_equal(result, expected)
+        # accept the exact fraction OR a correctly-rounded decimal (1/3 vs 0.333)
+        ok = sym_equal(result, expected) or (
+            not isinstance(p["expected"], str) and rounds_to(result, p["expected"]))
         return ("PASS" if ok else "FAIL",
                 f"P = {p['favorable']}/{p['total']} → {result} "
                 f"(expected {p['expected']})")
 
     if ptype == "estimate":
-        # Round each numeric operand in expr to "place", then evaluate — the
-        # standard "estimate by rounding" task. place: "ten"/"hundred"/
-        # "thousand"/"whole"/"tenth"/"hundredth" or an integer power of 10.
+        # Round each numeric OPERAND in the expression to "place", THEN evaluate —
+        # front-end estimation. Rounding the string literals (not the folded
+        # result) and using round-half-up is what the school task means (audit #7).
         places = {"thousand": 1000, "hundred": 100, "ten": 10, "whole": 1,
                   "tenth": sympy.Rational(1, 10), "hundredth": sympy.Rational(1, 100)}
         place = p["place"]
         step = places.get(place)
         if step is None:
-            if isinstance(place, (int, float)) and place > 0:
-                step = sympy.Rational(place).limit_denominator()
+            if isinstance(place, (int, float)) and not isinstance(place, bool) and place > 0:
+                step = sympy.Rational(str(place))
             else:
                 raise VerifyInputError(
                     f"'place' must be one of {sorted(places)} or a positive number")
 
-        def round_to(v):
-            return sympy.Rational(round(sympy.Rational(v) / step)) * step
+        def round_literal(m):
+            v = sympy.Rational(m.group(0))
+            q = round_half_up(v / step, 0)
+            return str(sympy.Rational(int(q)) * step)
 
-        expr = safe_parse(p["expr"])
-        rounded = expr.replace(
-            lambda e: e.is_Number, lambda e: round_to(e))
-        result = sympy.nsimplify(sympy.N(rounded))
+        rounded_str = re.sub(r"\d+(?:\.\d+)?", round_literal, p["expr"])
+        result = sympy.nsimplify(sympy.N(safe_parse(rounded_str)))
         expected = parse_value(p["expected"])
         ok = sym_equal(result, expected)
         return ("PASS" if ok else "FAIL",
-                f"estimate({p['expr']} @ {place}) → {result} (expected {p['expected']})")
+                f"estimate({p['expr']} @ {place} → {rounded_str}) → {result} "
+                f"(expected {p['expected']})")
 
     if ptype == "compare":
         vals_raw = p["values"]
@@ -786,9 +858,14 @@ def check_problem(p, ptype):
             return ("PASS" if ok else "FAIL",
                     f"compare({vals_raw}, {order}) → {got} (expected {p['expected']})")
         elif order == "relation":
-            # expected is one of "<", ">", "=" describing values[0] vs values[1]
-            a, b = float(sympy.N(vals[0])), float(sympy.N(vals[1]))
-            rel = "=" if abs(a - b) < 1e-12 else ("<" if a < b else ">")
+            # expected is "<", ">", or "=" for values[0] vs values[1]. Compare
+            # EXACTLY (audit #5 — a float tol conflated 1/7 with a truncated
+            # decimal); values were parsed to exact SymPy numbers.
+            a, b = vals[0], vals[1]
+            if sym_equal(a, b):
+                rel = "="
+            else:
+                rel = "<" if (a - b).is_negative else ">"
             ok = rel == str(p["expected"]).strip()
             return ("PASS" if ok else "FAIL",
                     f"compare({vals_raw[0]} vs {vals_raw[1]}) → {rel} "
@@ -812,11 +889,16 @@ def check_problem(p, ptype):
                 result = (max if query == "max_value" else min)(
                     table.values(), key=lambda e: float(sympy.N(e)))
             elif query in ("max_key", "min_key"):
-                pick = max if query == "max_key" else min
-                key = pick(table, key=lambda k: float(sympy.N(table[k])))
-                ok = str(key) == str(p["expected"])
+                # Ties: ANY key holding the extreme value is a valid answer
+                # (audit #8 — don't reject B when A and B are both maxima).
+                target = (max if query == "max_key" else min)(
+                    float(sympy.N(v)) for v in table.values())
+                winners = {k for k, v in table.items()
+                           if abs(float(sympy.N(v)) - target) < 1e-12}
+                ok = str(p["expected"]) in winners
                 return ("PASS" if ok else "FAIL",
-                        f"{query}({data}) → {key} (expected {p['expected']})")
+                        f"{query}({data}) → {sorted(winners)} "
+                        f"(expected {p['expected']})")
             elif query == "difference":
                 a, b = p["key"]
                 result = table[a] - table[b]
@@ -848,16 +930,39 @@ def check_problem(p, ptype):
         integrand = safe_parse(p["expr"])
         lo, hi = parse_value(p["from"]), parse_value(p["to"])
         expected = parse_value(p["expected"])
-        # Independent numerical quadrature (mpmath) — does not trust sympy's
-        # symbolic antiderivative. Cross-check with the exact value when sympy
-        # can produce one.
-        f = sympy.lambdify(var, integrand, modules="mpmath")
-        numeric = mpmath.quad(f, [float(sympy.N(lo)), float(sympy.N(hi))])
-        exp_num = mpmath.mpf(str(float(sympy.N(expected))))
         tol = get_tol(p) or max(default_tol(p["expected"]), 1e-6)
-        ok = abs(numeric - exp_num) <= tol
+        # Prefer SymPy's EXACT definite integral as the authority. Only fall
+        # back to numerics if it can't, and then require the quadrature to
+        # CONVERGE (two panel counts agree) — a single mpmath.quad call is
+        # unreliable for oscillatory integrands (audit #1). If numerics don't
+        # converge, return MANUAL rather than trust a wrong number.
+        exact = None
+        try:
+            val = sympy.integrate(integrand, (var, lo, hi))
+            if val.is_finite and not val.has(sympy.Integral):
+                exact = val
+        except Exception:
+            exact = None
+        if exact is not None:
+            ok = abs(float(sympy.N(exact)) - float(sympy.N(expected))) <= tol
+            return ("PASS" if ok else "FAIL",
+                    f"∫[{p['from']},{p['to']}] {p['expr']} d{var} = {exact} "
+                    f"(expected {p['expected']})")
+        f = sympy.lambdify(var, integrand, modules="mpmath")
+        a, b = float(sympy.N(lo)), float(sympy.N(hi))
+        try:
+            coarse = mpmath.quad(f, [a, (a + b) / 2, b])
+            mid = (2 * a + b) / 3, (a + 2 * b) / 3
+            fine = mpmath.quad(f, [a, mid[0], (a + b) / 2, mid[1], b])
+        except Exception:
+            return ("MANUAL", f"∫ {p['expr']}: numeric integration failed — verify by hand")
+        if abs(coarse - fine) > max(tol, 1e-6):
+            return ("MANUAL",
+                    f"∫[{p['from']},{p['to']}] {p['expr']}: quadrature did not "
+                    f"converge ({float(coarse):.5g} vs {float(fine):.5g}) — verify by hand")
+        ok = abs(fine - float(sympy.N(expected))) <= tol
         return ("PASS" if ok else "FAIL",
-                f"∫[{p['from']},{p['to']}] {p['expr']} d{var} ≈ {float(numeric):.6g} "
+                f"∫[{p['from']},{p['to']}] {p['expr']} d{var} ≈ {float(fine):.6g} "
                 f"(expected {p['expected']}, tol {tol:g})")
 
     if ptype == "series":

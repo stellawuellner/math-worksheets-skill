@@ -14,8 +14,16 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install "sympy>=1.12"
+        run: pip install "sympy>=1.12" coverage
+
       - name: Regression suite (verify.py contract)
         run: bash tests/run_tests.sh
-      - name: Audit-fix suite (soundness regression pins)
-        run: python3 tests/test_audit_fixes.py
+
+      - name: Soundness + branch test suites
+        run: bash tests/coverage.sh
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          echo "### Coverage" >> "$GITHUB_STEP_SUMMARY"
+          python3 -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"

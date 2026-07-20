@@ -106,6 +106,32 @@ rc, _ = run_json({"topic": "t", "problem_count": 2, "allow_all_manual": True, "p
     {"id": 1, "type": "manual", "desc": "a"}, {"id": 2, "type": "manual", "desc": "b"}]})
 check("all-manual + allow_all_manual → exit 2", rc == 2)
 
+print("CASE-42 second adversarial audit (newer types):")
+check("#1 definite_integral rejects wrong oscillatory key",
+      status({"id": 1, "type": "definite_integral", "expr": "sin(x**2)", "from": 0, "to": 40, "expected": -1.1487, "tol": 0.01}) == "FAIL")
+check("#1 definite_integral accepts correct value",
+      status({"id": 1, "type": "definite_integral", "expr": "sin(x**2)", "from": 0, "to": 40, "expected": 0.6341, "tol": 0.01}) == "PASS")
+check("#2 solve_interval finds tangent root (empty key not PASS)",
+      status({"id": 1, "type": "solve_interval", "expr": "exp(x) - 1 - x", "var": "x", "interval": [-1, 2], "expected": []}) != "PASS")
+check("#2 solve_interval accepts the tangent root",
+      status({"id": 1, "type": "solve_interval", "expr": "exp(x) - 1 - x", "var": "x", "interval": [-1, 2], "expected": ["0"]}) == "PASS")
+check("#3 system rejects incomplete multi-solution key",
+      status({"id": 1, "type": "system", "equations": ["y - x**2", "y - x - 2"], "vars": ["x", "y"], "expected": {"x": 2, "y": 4}}) != "PASS")
+check("#3 system accepts a valid point of an infinite family",
+      status({"id": 1, "type": "system", "equations": ["x - y", "2*x - 2*y"], "vars": ["x", "y"], "expected": {"x": 1, "y": 1}}) != "FAIL")
+check("#4 probability rejects p>1",
+      status({"id": 1, "type": "probability", "favorable": 7, "total": 6, "expected": "7/6"}) == "FAIL")
+check("#4 probability accepts rounded decimal (1/3 as 0.333)",
+      status({"id": 1, "type": "probability", "favorable": 1, "total": 3, "expected": 0.333}) == "PASS")
+check("#5 compare(relation) exact (1/7 vs truncated decimal not =)",
+      status({"id": 1, "type": "compare", "values": ["1/7", "0.142857142857"], "order": "relation", "expected": "="}) == "FAIL")
+check("#6 stats mean rounds-to (5.35 → 5.4 not 5.3)",
+      status({"id": 1, "type": "stats", "data": [5.35], "measure": "mean", "expected": 5.3}) == "FAIL")
+check("#7 estimate rounds operands half-up (45 @ ten → 50)",
+      status({"id": 1, "type": "estimate", "expr": "45", "place": "ten", "expected": 50}) == "PASS")
+check("#8 read_data max_key accepts a tied key",
+      status({"id": 1, "type": "read_data", "data": {"A": 5, "B": 5}, "query": "max_key", "expected": "B"}) == "PASS")
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")

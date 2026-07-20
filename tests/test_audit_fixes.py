@@ -47,6 +47,14 @@ check("x^4-1 domain=complex keyed [1,-1,I,-I] → PASS",
 check("x^2-5x+6 (all real) still → PASS",
       status({"id": 1, "type": "solve", "expr": "x**2 - 5*x + 6", "expected": [2, 3]}) == "PASS")
 
+print("CASE-16 domain field through FULL pipeline (schema + check):")
+rc, out = run_json({"topic": "t", "problem_count": 1, "problems": [
+    {"id": 1, "type": "zeros", "expr": "x**4 - 1", "expected": [1, -1, "I", "-I"], "domain": "complex"}]})
+check("domain:complex passes schema + verifies (exit 0)", rc == 0)
+rc, _ = run_json({"topic": "t", "problem_count": 1, "problems": [
+    {"id": 1, "type": "solve", "expr": "x**2 - 2", "expected": ["sqrt(2)", "-sqrt(2)"], "domain": "real"}]})
+check("domain:real passes schema (exit 0)", rc == 0)
+
 print("CASE-17 integrate domain:")
 check("∫1/x = ln(x) → FAIL (undefined for x<0)",
       status({"id": 1, "type": "integrate", "expr": "1/x", "expected": "ln(x)"}) == "FAIL")

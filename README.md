@@ -1,6 +1,6 @@
 # math-worksheets — Agent Skill
 
-**v2.3.0** · [Changelog](#changelog)
+**v3.0.0** · [Changelog](#changelog)
 
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
 
@@ -88,30 +88,47 @@ The skill handles everything: model selection, problem generation, SymPy verific
 ```
 math-worksheets/
 ├── SKILL.md                          ← workflow and instructions
+├── LICENSE                           ← MIT
 ├── scripts/
 │   ├── check_reasoning_model.sh     ← auto-detects best available model (local only)
-│   ├── compile.sh                   ← tectonic PDF compiler wrapper
+│   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
-│   └── verify.py                   ← SymPy verification template
+│   └── verify.py                    ← the fixed, audited verifier (24 check types)
 ├── references/
-│   ├── latex-templates.md           ← LaTeX patterns (coordinate planes, figures, answer key)
-│   ├── problem-library.md           ← problem type menu by course, Pre-Algebra → Calc BC
-│   ├── model-rankings.md            ← human-readable model guidance
-│   └── model-rankings.json          ← bundled model ranking reference
-└── tests/
-    ├── run_tests.sh                 ← regression suite for verify.py
-    └── fixtures/                    ← pass/fail/manual/injection/schema fixtures
+│   ├── latex-templates.md           ← LaTeX patterns (planes, figures, charts, answer key)
+│   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC
+│   ├── standards-map.md             ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
+│   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
+│   ├── model-rankings.md / .json    ← model guidance
+├── tests/
+│   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
+│   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
+│   ├── check_answer_key.py          ← binds printed answer key to verified JSON
+│   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
+│   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
+│   └── fixtures/
+└── .github/workflows/tests.yml       ← CI: runs both suites on every push
 ```
 
 ## Testing
 
 ```bash
-bash tests/run_tests.sh
+bash tests/run_tests.sh          # verifier contract (18 fixtures)
+python3 tests/test_audit_fixes.py # soundness-regression pins (21 assertions)
 ```
 
-Fixtures pin the verifier's contract: correct algebra and calculus answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, and — critically — injection attempts and schema violations (unknown types, misspelled fields) exit 1 without executing anything.
+Fixtures pin the verifier's contract: correct answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, and — critically — injection attempts and schema violations exit 1 without executing anything. CI runs both suites on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset (0 false accepts on ~7,400 checks).
 
 ## Changelog
+
+### v3.0.0 — 2026-07-20
+- **Trust audit + hardening (breaking-adjacent):** an independent adversarial audit found and fixed soundness gaps confirmed by execution — `solve`/`zeros` no longer silently drop complex roots (declare `"domain"`), `integrate` rejects domain-invalid antiderivatives (`ln(x)` for `1/x`), the numeric-equality fallback no longer accepts a crafted vanishing-polynomial, `approx`/`triangle` use scale-aware tolerance, and `solve_interval` confirms completeness via mpmath instead of a blanket manual downgrade. Pinned by `tests/test_audit_fixes.py`.
+- **Mandatory coverage gate + provenance binding:** `problem_count` is now required and an all-manual sheet fails unless acknowledged; `tests/check_answer_key.py` binds the printed answer key to the verified JSON, and `check_prose_consistency.py` now also checks figure-label numbers. The skills summary is verified through its own `verify_ss` JSON.
+- **New verify types:** `system`, `series`, `inequality`, complex via `I`, `stats` (mean/median/mode/range/variance/stdev/quartiles), `probability`, `read_data` (charts/tables), `definite_integral` (mpmath quadrature), `estimate`, and `compare` — plus task-reframing recipes that turn many "understanding" topics into checkable tasks. 24 types total.
+- **Standards, difficulty, Bloom:** per-problem `standard` (K–4 through HS + AP CED, in `references/standards-map.md`), `difficulty` (1–5 ladders, ramp-checked), and `bloom` tags; tiered-differentiation workflow.
+- **Coverage:** elementary → AP Calculus BC; validated against the Marble OS-taxonomy (503 topics) — ~61% machine-verifiable, with an honest `manual` boundary for open reasoning (optional LLM-judge review aid in `references/manual-review-aid.md`).
+- **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy pinned and version-stamped; MIT `LICENSE`; CI runs the test suites on every push.
+- **Testing:** regression suite (18 fixtures incl. injection/schema/coverage) + audit-fix suite (21 assertions); verifier validated on GSM8K (4282/4282) and MATH (2711/2711) with 0 false accepts.
 
 ### v2.3.0 — 2026-07-20
 - **Geometry & trig verification:** Six new check types — `approx` (tolerance-based comparison for rounded answers, the workhorse for measurement problems), `distance`, `midpoint`, `slope` (with `"undefined"` for vertical lines), `polygon_area` (shoelace over raw vertices), and `triangle` (full SSS/SAS/ASA/AAS/SSA solver via law of sines/cosines in fixed code, accepting either triangle in the ambiguous SSA case). Geometry types take raw givens — points, sides, angles — so the model transcribes data and the audited script does the formulas

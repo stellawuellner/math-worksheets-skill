@@ -10,7 +10,7 @@ Works with any AI agent that can read files and run shell commands: **OpenClaw**
 
 - **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
 - **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
-- **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students. Seventeen check types cover algebra, geometry, trig, and calculus: `solve`, `zeros`, `factor`, `expand`, `eval`, `diff`, `integrate`, `limit`, `equiv` (trig identities), `solve_interval` (trig equations, degree or radian mode), `approx` (rounded numeric answers), `distance`/`midpoint`/`slope`/`polygon_area` (coordinate geometry from raw points), `triangle` (law of sines/cosines solver with SSA ambiguity handling), and explicit `manual`
+- **SymPy verification** — each problem's machine-checkable answer is verified by a computer algebra system before compiling, and the delivered PDFs are cross-checked against those verified values (see Trust model below). Twenty check types span algebra, geometry, trig, and calculus: `solve`/`zeros` (with real/complex domain control), `factor`, `expand`, `eval` (incl. complex via `I`), `diff`, `integrate` (domain-aware), `limit`, `equiv` (trig identities), `solve_interval` (trig equations, degree or radian), `approx` (scale-aware tolerance), `distance`/`midpoint`/`slope`/`polygon_area`, `triangle` (law of sines/cosines with SSA handling), `system`, `series`, `inequality`, and explicit `manual`
 - **Geometry figure library** — compile-tested TikZ templates for labeled to-scale triangles, transversals, circle theorems, sectors, the unit circle, trig graphs, 3D solids, and two-column proofs
 - **Hardened verification input** — every expression passes a strict token allowlist before parsing (numbers, whitelisted functions/variables, arithmetic only), and problem entries are schema-checked: unknown types or misspelled fields are hard failures, never silent skips
 - **Auto reasoning-model detection** — inspects the host agent's config (OpenClaw, Claude Code, Gemini, Codex) and common `*_MODEL` environment variables to find the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none is configured. All detection is local — no network calls.
@@ -61,8 +61,15 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 **Python 3** with **sympy** for answer verification:
 
 ```bash
-pip3 install sympy
+pip3 install "sympy>=1.12"
 ```
+
+Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.
+
+### Trust model (what verification does and does not guarantee)
+
+- **Guaranteed:** every problem with a machine-checkable answer is CAS-verified; the coverage gate (mandatory `problem_count`) ensures no worksheet problem is skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values.
+- **Human review still required for:** `manual`-typed problems (proofs, sketches, matrices/vectors/stats), the soft alignment warnings from the binding checkers, and any problem whose *statement* is ambiguous. Verification proves the math and its transcription; it does not prove pedagogical intent.
 
 No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
 

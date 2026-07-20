@@ -29,36 +29,34 @@ Input format: verify_TOPIC_DATE.json
   }
 
 Supported types:
-  solve          — solves expr=0 for var (default x), checks roots match expected list
+  solve          — roots of expr=0 over ℂ; non-real roots are NOT dropped —
+                   if any exist, "domain":"real"/"complex" must be declared
   zeros          — like solve but duplicates collapse (multiplicity ignored)
-  factor         — checks expected is equivalent to expr (form given factored)
-  expand         — checks expected is equivalent to expr (form given expanded)
-  eval           — evaluates expr at given variable values, checks result
-  diff           — differentiates expr (optional "order", default 1), checks match
-  integrate      — checks d/dvar(expected) == expr (omit the +C constant)
-  limit          — limit of expr as var → "to"; optional "dir": "+", "-", "+-" (default)
-  equiv          — checks expr and expected are the same function (trig identities etc.)
-  solve_interval — solves expr=0 on [a, b) given as "interval": [a, b];
-                   optional "unit": "deg" (interval and expected in degrees)
-  approx         — numeric expr recomputed exactly, compared within "tol" (default 0.01)
-  distance       — distance between two "points" [[x1,y1],[x2,y2]]; optional "tol"
-  midpoint       — midpoint of two points; expected is an [x, y] pair
-  slope          — slope through two points; expected value or "undefined"; optional "tol"
-  polygon_area   — shoelace area of ≥3 "points" in order; optional "tol"
-  triangle       — solve a triangle from 3 givens (sides a/b/c, angles A/B/C,
-                   side a opposite angle A); checks "solve_for" against expected
-                   within "tol" (default 0.01); "unit": "deg" (default) or "rad";
-                   handles the ambiguous SSA case (accepts either triangle)
+  factor/expand  — checks expected is equivalent to expr
+  eval           — evaluates expr at given values (complex ok via I)
+  diff           — differentiates expr (optional "order", default 1)
+  integrate      — d/dvar(expected)==expr AND expected defined wherever the
+                   integrand is (rejects ln(x) for 1/x — use ln(Abs(x)))
+  limit          — limit of expr as var → "to"; optional "dir"
+  equiv          — expr and expected are the same function
+  solve_interval — roots of expr=0 on [a, b); optional "unit":"deg". If the
+                   solver cannot enumerate, returns MANUAL (completeness unproven)
+  approx         — numeric expr vs expected within scale-aware default tol
+                   (rounds-to semantics) or explicit "tol"
+  distance/midpoint/slope/polygon_area — coordinate geometry from raw "points"
+  triangle       — solve a triangle from 3 givens; "unit":"deg" default; SSA-aware
+  system         — solve "equations"(each =0) for "vars"; expected {var: value}
+  series         — summation(term, var, from..to) vs expected (finite/infinite)
+  inequality     — solution set of expr <relation> 0 vs an interval spec
   manual         — flagged for human review, never fails automatically
 
-Optional per-problem fields: "var" (default "x"), "note" (free text, ignored).
-Unknown types or unknown/missing fields are HARD FAILURES — a typo must
-never silently skip verification.
+Universal optional fields: "var" (default x), "note", "standard", "difficulty",
+"bloom". Top-level "problem_count" is REQUIRED (coverage gate). Unknown types or
+fields are HARD FAILURES. A sheet with zero machine checks fails unless
+"allow_all_manual": true.
 
-Exit codes:
-  0 — all automated checks passed
-  1 — one or more checks FAILED (fix answer key before compiling)
-  2 — no failures, but some problems need manual review
+Exit codes: 0 all passed · 1 a check FAILED (or gate violation) · 2 manual review
+needed (safe to compile).
 """
 
 import cmath
@@ -70,10 +68,6 @@ import re
 import sys
 
 import sympy
-
-# Behavior is version-specific; the corpus baselines were established on this
-# major version. A mismatch prints a warning but does not block.
-_SYMPY_MIN = "1.12"
 from sympy import Symbol, simplify, trigsimp, nsimplify
 
 

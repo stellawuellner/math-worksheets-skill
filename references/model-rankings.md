@@ -4,7 +4,7 @@ Human-readable companion to `model-rankings.json`. Both files ship bundled with
 the skill and are updated with each release — the skill makes no network
 requests at runtime. Keep the two files in sync when updating.
 
-Last updated: 2026-02-22
+Last updated: 2026-07-20
 
 ## Current Rankings (K-12 Math Generation)
 

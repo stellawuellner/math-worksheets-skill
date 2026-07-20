@@ -113,6 +113,13 @@ The **skills summary** is a 1–2 page reference card the student can use while 
 
 See `references/latex-templates.md` → "Skills Summary / Study Guide Template" for the full shell and box macros.
 
+**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation — and run it through `run_verify.sh` exactly like the worksheet's, then bind its printed answers with `check_answer_key.py`:
+```bash
+bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
+```
+Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does.
+
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
 **Required packages** (include in every document):

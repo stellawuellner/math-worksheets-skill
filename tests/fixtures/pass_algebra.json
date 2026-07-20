@@ -9,13 +9,17 @@
       "expected": [
         2,
         3
-      ]
+      ],
+      "standard": "HSA-REI.B.4",
+      "difficulty": 2
     },
     {
       "id": 2,
       "type": "factor",
       "expr": "x**2 - 7*x + 12",
-      "expected": "(x - 3)*(x - 4)"
+      "expected": "(x - 3)*(x - 4)",
+      "standard": "HSA-SSE.B.3",
+      "difficulty": 2
     },
     {
       "id": 3,
@@ -39,7 +43,9 @@
       "id": 5,
       "type": "expand",
       "expr": "(x+2)**3",
-      "expected": "x**3 + 6*x**2 + 12*x + 8"
+      "expected": "x**3 + 6*x**2 + 12*x + 8",
+      "standard": "HSA-APR.A.1",
+      "difficulty": 3
     },
     {
       "id": 6,

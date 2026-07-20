@@ -408,7 +408,9 @@ def check_schema(p):
         raise VerifyInputError(
             f"unknown problem type {ptype!r} — allowed types: {sorted(SCHEMAS)}")
     required, optional = SCHEMAS[ptype]
-    fields = set(p) - {"id", "type", "note"}
+    # "standard" (e.g. CCSS "8.EE.C.8" / AP "CHA-3.A") and "difficulty" (1-5)
+    # are universal optional tags — reported in the summary, never gating
+    fields = set(p) - {"id", "type", "note", "standard", "difficulty"}
     missing = required - fields
     if missing:
         raise VerifyInputError(
@@ -702,6 +704,23 @@ def run_verification(json_path):
     passes = [r for r in results if r[1] == "PASS"]
 
     print(f"\n{len(passes)} passed · {len(failures)} failed · {len(manuals)} manual")
+
+    # Tag report: standards coverage + difficulty ramp (informational)
+    stds = {}
+    diffs = []
+    for p in problems:
+        if isinstance(p, dict):
+            if p.get("standard"):
+                stds[p["standard"]] = stds.get(p["standard"], 0) + 1
+            if isinstance(p.get("difficulty"), int):
+                diffs.append((p.get("id"), p["difficulty"]))
+    if stds:
+        print("standards: " + ", ".join(f"{k}×{v}" for k, v in sorted(stds.items())))
+    if diffs:
+        ramp = [d for _, d in sorted(diffs, key=lambda x: (x[0] if isinstance(x[0], int) else 0))]
+        drops = sum(1 for a, b in zip(ramp, ramp[1:]) if b < a - 1)
+        note = " ⚠ ramp drops >1 level mid-sheet" if drops else ""
+        print(f"difficulty ramp: {ramp}{note}")
 
     if failures:
         print("\n❌ Fix the answer key before compiling.")

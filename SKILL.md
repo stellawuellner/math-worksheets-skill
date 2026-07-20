@@ -93,6 +93,8 @@ Design problems appropriate to the student's level. Increase difficulty graduall
 
 See `references/problem-library.md` for topic-specific problem type menus.
 
+**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes) and `"difficulty"` (1–5 per that file's ladders) in the verify JSON. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage and flags ramp drops, so a parent can see exactly which standards the sheet exercises.
+
 ### 3. Write LaTeX source
 
 Write **three** `.tex` files to `/tmp/`:

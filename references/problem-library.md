@@ -2,6 +2,8 @@
 
 Use this as a menu when designing problem sets. Pick types that target the student's current unit.
 
+See **Verification recipes** at the bottom for which verify-JSON type to use for each kind of problem — deciding this per problem while writing the worksheet (not after) is what keeps answer keys machine-checked.
+
 ## Elementary / Pre-Algebra (Grades 5–8)
 
 | Type | Example |
@@ -139,3 +141,26 @@ Use this as a menu when designing problem sets. Pick types that target the stude
 | Taylor & Maclaurin series | Construct from derivatives; known series manipulation |
 | Interval of convergence | Ratio test with endpoint checks |
 | Lagrange error bound | Bound the remainder for a Taylor polynomial |
+
+## Verification recipes
+
+Map each problem to its verify-JSON type as you design it. Geometry rule of thumb: **give the script the raw data (points, triangle givens), not your own computation.**
+
+| Problem kind | Verify type | Notes |
+|---|---|---|
+| Equations, quadratics, polynomials | `solve` / `zeros` | Exact roots |
+| Factoring / expanding | `factor` / `expand` | |
+| Function evaluation, unit-circle exact values | `eval` | e.g. `sin(pi/3)` expected `"sqrt(3)/2"` |
+| Simplifying, trig identities | `equiv` | Both sides as expressions |
+| Trig equations on an interval | `solve_interval` | `"unit": "deg"` for Geometry/Pre-Calc in degrees |
+| Right-triangle trig (find a side) | `approx` | e.g. `"9*tan(35*pi/180)"` vs rounded answer |
+| Law of sines / cosines, solve-the-triangle | `triangle` | Raw givens; SSA ambiguity handled |
+| Pythagorean theorem | `approx` (or `eval` if exact) | |
+| Distance / midpoint / slope on coordinates | `distance` / `midpoint` / `slope` | Raw points; `"undefined"` for vertical slope |
+| Areas of grid polygons, coordinate proofs setup | `polygon_area` | Ordered vertices, shoelace |
+| Perimeter, circle/sector area, arc length, volume | `approx` | Write the formula with the given numbers |
+| Derivatives, tangent slopes | `diff` | |
+| Indefinite integrals | `integrate` | Expected antiderivative without `+C` |
+| Definite integrals, Riemann sum values | `approx` or `eval` | Compute the exact value as expr |
+| Limits (including one-sided, at infinity) | `limit` | `"to": "oo"`, `"dir": "+"` as needed |
+| Proofs, constructions, sketches, graphs | `manual` | Answer key still shows a full model answer |

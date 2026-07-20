@@ -7,6 +7,7 @@
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \usepackage{amsmath, amssymb, tikz, pgfplots, enumitem, fancyhdr, multicol, array, booktabs}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure templates
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -124,6 +125,12 @@ $3$  & \\[0.5cm]\hline
 
 ## Geometric Figures
 
+**Figure conventions** (apply to every figure):
+- **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
+- Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
+- **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
+- Wrap each figure in `\begin{center}...\end{center}`.
+
 ### Right triangle
 ```latex
 \begin{center}
@@ -139,6 +146,188 @@ $3$  & \\[0.5cm]\hline
   \node[below] at (2,0) {$8$};
   \node[right] at (4,1.5) {$6$};
   \node[above left] at (2,1.5) {$x$};
+\end{tikzpicture}
+\end{center}
+```
+
+### General triangle, to scale (SAS setup)
+Place $A$ at the origin, $B$ on the x-axis at distance $c$, and compute $C$ from side $b$ and angle $A$ — the figure is automatically to scale. TikZ trig functions take degrees.
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+  \coordinate (A) at (0,0);
+  \coordinate (B) at (7,0);                        % c = AB = 7
+  \coordinate (C) at ({5*cos(34)},{5*sin(34)});    % b = AC = 5, angle A = 34°
+  \draw[thick] (A) -- (B) -- (C) -- cycle;
+  \node[below left]  at (A) {$A$};
+  \node[below right] at (B) {$B$};
+  \node[above]       at (C) {$C$};
+  \node[below]       at ($(A)!0.5!(B)$) {$c = 7$};
+  \node[above left]  at ($(A)!0.5!(C)$) {$b = 5$};
+  \node[above right] at ($(B)!0.5!(C)$) {$a = ?$};
+  \pic [draw, angle radius=7mm, angle eccentricity=1.6, "$34^\circ$"] {angle = B--A--C};
+\end{tikzpicture}
+\end{center}
+```
+
+### Parallel lines cut by a transversal
+Intersections at $(1,1)$ and $(-1,-1)$; angle numbers sit in the four quadrants around each.
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=1.1]
+  \draw[thick, <->] (-3,1) -- (3,1) node[right] {$\ell_1$};
+  \draw[thick, <->] (-3,-1) -- (3,-1) node[right] {$\ell_2$};
+  \draw[thick, <->] (-2.2,-2.2) -- (2.2,2.2) node[above right] {$t$};
+  % arrowhead-style parallel marks
+  \draw (1.9,0.9) -- (2.1,1.1);  \draw (2.1,0.9) -- (2.3,1.1);
+  \draw (1.9,-1.1) -- (2.1,-0.9);  \draw (2.1,-1.1) -- (2.3,-0.9);
+  \node[font=\small] at (1.55,1.3)   {$1$};
+  \node[font=\small] at (0.7,1.3)    {$2$};
+  \node[font=\small] at (0.45,0.7)   {$3$};
+  \node[font=\small] at (1.3,0.7)    {$4$};
+  \node[font=\small] at (-0.45,-0.7) {$5$};
+  \node[font=\small] at (-1.3,-0.7)  {$6$};
+  \node[font=\small] at (-1.55,-1.3) {$7$};
+  \node[font=\small] at (-0.7,-1.3)  {$8$};
+\end{tikzpicture}
+\end{center}
+```
+
+### Circle: central and inscribed angle on the same arc
+Keep the geometry honest: the inscribed angle must be half the central angle (here $120^\circ$ and $60^\circ$).
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+  \draw[thick] (0,0) circle (2);
+  \coordinate (O) at (0,0);
+  \coordinate (P) at (150:2);
+  \coordinate (Q) at (30:2);
+  \coordinate (R) at (270:2);
+  \draw[thick] (P) -- (O) -- (Q);
+  \draw[thick] (P) -- (R) -- (Q);
+  \fill (O) circle (1.2pt);
+  \node[below]      at (O) {$O$};
+  \node[above left] at (P) {$P$};
+  \node[above right] at (Q) {$Q$};
+  \node[below]      at (R) {$R$};
+  \pic [draw, angle radius=5mm, angle eccentricity=1.9, "$120^\circ$"] {angle = Q--O--P};
+  \pic [draw, angle radius=7mm, angle eccentricity=1.6, "$60^\circ$"]  {angle = Q--R--P};
+\end{tikzpicture}
+\end{center}
+```
+
+### Circle: shaded sector
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \coordinate (O) at (0,0);
+  \coordinate (A) at (0:2);
+  \coordinate (B) at (115:2);
+  \draw[thick] (O) circle (2);
+  \draw[thick, fill=blue!12] (O) -- (A) arc (0:115:2) -- cycle;
+  \fill (O) circle (1.2pt);
+  \node[below left] at (O) {$O$};
+  \node[below] at (1,0) {$r = 6$};
+  \pic [draw, angle radius=5mm, angle eccentricity=1.9, "$115^\circ$"] {angle = A--O--B};
+\end{tikzpicture}
+\end{center}
+```
+
+### Unit circle (skills summary)
+Compact version with degree labels; swap the labels for radians ($\frac{\pi}{6}$, …) or exact coordinate pairs depending on the unit being taught.
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=1.8]
+  \draw[->] (-1.3,0) -- (1.3,0) node[right] {$x$};
+  \draw[->] (0,-1.3) -- (0,1.3) node[above] {$y$};
+  \draw[thick] (0,0) circle (1);
+  % cardinal angles use offset anchors so labels clear the axes
+  \foreach \ang/\lab/\pos in {
+      0/{0^\circ}/below right, 30/{30^\circ}/above right, 45/{45^\circ}/above right,
+      60/{60^\circ}/above right, 90/{90^\circ}/above right, 120/{120^\circ}/above left,
+      135/{135^\circ}/above left, 150/{150^\circ}/above left, 180/{180^\circ}/below left,
+      210/{210^\circ}/below left, 225/{225^\circ}/below left, 240/{240^\circ}/below left,
+      270/{270^\circ}/below right, 300/{300^\circ}/below right, 315/{315^\circ}/below right,
+      330/{330^\circ}/below right}{
+    \fill (\ang:1) circle (0.6pt);
+    \node[\pos, font=\tiny] at (\ang:1) {$\lab$};
+  }
+\end{tikzpicture}
+\end{center}
+```
+
+### Trig function graph (radian axis)
+```latex
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[width=12cm, height=5cm,
+  xmin=-0.3, xmax=6.6, ymin=-1.5, ymax=1.5,
+  xtick={0, 1.5708, 3.1416, 4.7124, 6.2832},
+  xticklabels={$0$, $\frac{\pi}{2}$, $\pi$, $\frac{3\pi}{2}$, $2\pi$},
+  ytick={-1, 0, 1}, axis lines=middle, samples=200, domain=0:6.2832]
+  \addplot[thick, blue] {sin(deg(x))};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+```
+For a degree axis (Geometry level): `domain=0:360`, `xtick={0,90,...,360}`, and plot `{sin(x)}` (pgfplots trig defaults to degrees).
+
+### 3D solids (volume & surface area problems)
+Cylinder:
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \draw[thick] (0,3) ellipse (1.4 and 0.4);
+  \draw[thick] (-1.4,3) -- (-1.4,0);
+  \draw[thick] (1.4,3) -- (1.4,0);
+  \draw[thick] (-1.4,0) arc (180:360:1.4 and 0.4);
+  \draw[dashed] (1.4,0) arc (0:180:1.4 and 0.4);
+  \draw[dashed] (0,0) -- (0,3);
+  \node[right] at (0.05,1.5) {$h = 8$};
+  \draw (0,3) -- (1.4,3);
+  \node[above] at (0.7,3.05) {$r = 3$};
+\end{tikzpicture}
+\end{center}
+```
+Cone:
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \draw[thick] (-1.4,0) arc (180:360:1.4 and 0.4);
+  \draw[dashed] (1.4,0) arc (0:180:1.4 and 0.4);
+  \draw[thick] (-1.4,0) -- (0,3) -- (1.4,0);
+  \draw[dashed] (0,0) -- (0,3);
+  \node[left] at (0,1.5) {$h$};
+  \draw (0,0) -- (1.4,0);
+  \node[below] at (0.7,-0.1) {$r$};
+  \node[right] at (0.78,1.5) {$\ell$};
+\end{tikzpicture}
+\end{center}
+```
+Rectangular prism:
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.7]
+  \draw[thick] (0,0) -- (4,0) -- (4,2.5) -- (0,2.5) -- cycle;
+  \draw[thick] (4,0) -- (5.2,0.8) -- (5.2,3.3) -- (4,2.5);
+  \draw[thick] (0,2.5) -- (1.2,3.3) -- (5.2,3.3);
+  \draw[dashed] (0,0) -- (1.2,0.8) -- (5.2,0.8);
+  \draw[dashed] (1.2,0.8) -- (1.2,3.3);
+  \node[below] at (2,0) {$\ell = 8$};
+  \node[right] at (4.65,0.3) {$w = 3$};
+  \node[left] at (0,1.25) {$h = 5$};
+\end{tikzpicture}
+\end{center}
+```
+Sphere:
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+  \draw[thick] (0,0) circle (1.5);
+  \draw[thick] (-1.5,0) arc (180:360:1.5 and 0.45);
+  \draw[dashed] (1.5,0) arc (0:180:1.5 and 0.45);
+  \fill (0,0) circle (1.2pt);
+  \draw (0,0) -- (40:1.5) node[midway, above left] {$r$};
 \end{tikzpicture}
 \end{center}
 ```
@@ -176,6 +365,22 @@ $3$  & \\[0.5cm]\hline
 \underbrace{+}_{x<-2}\ \Bigl|_{-2}\ \underbrace{-}_{-2<x<0}\ \Bigl|_{0}\ \underbrace{-}_{0<x<2}\ \Bigl|_{2}\ \underbrace{+}_{x>2}
 \]
 ```
+
+### Two-column proof (geometry answer keys)
+Proofs are always `manual` in the verify JSON, but the answer key should still show a complete model proof for the student to compare against.
+```latex
+{\renewcommand{\arraystretch}{1.5}
+\noindent
+\begin{tabular}{|p{0.47\textwidth}|p{0.43\textwidth}|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Statements}} & \multicolumn{1}{c|}{\textbf{Reasons}} \\ \hline
+1.\ $\overline{AB} \cong \overline{DE}$;\ $\angle A \cong \angle D$ & 1.\ Given \\
+2.\ $\angle ABC \cong \angle DEF$ & 2.\ Vertical angles are congruent \\
+3.\ $\triangle ABC \cong \triangle DEF$ & 3.\ ASA \\
+4.\ $\overline{BC} \cong \overline{EF}$ & 4.\ CPCTC \\ \hline
+\end{tabular}}
+```
+On the student worksheet, print the same table with empty rows (use `\rule{0pt}{1.1cm}` in the first cell of each blank row for writing space).
 
 ---
 

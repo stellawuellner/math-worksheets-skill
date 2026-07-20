@@ -116,6 +116,7 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 \usepackage{tikz, pgfplots}
 \usepackage{enumitem, fancyhdr, multicol, array, booktabs}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{calc, angles, quotes}
 ```
 
 **Work space defaults**: `\vspace{5cm}` per problem; `8cm` for multi-step; `10cm+` for graphs.
@@ -143,8 +144,15 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
     {"id": 8, "type": "limit",  "expr": "sin(x)/x", "to": 0,    "expected": 1},
     {"id": 9, "type": "equiv",  "expr": "sin(2*x)",             "expected": "2*sin(x)*cos(x)"},
     {"id": 10, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
-               "interval": [0, "2*pi"], "expected": ["pi/6", "5*pi/6"]},
-    {"id": 11, "type": "manual", "desc": "Graph sketch — verify visually"}
+               "interval": [0, 360], "unit": "deg", "expected": [30, 150]},
+    {"id": 11, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01},
+    {"id": 12, "type": "distance", "points": [[1, 2], [4, 6]], "expected": 5},
+    {"id": 13, "type": "midpoint", "points": [[2, -3], [8, 7]], "expected": [5, 2]},
+    {"id": 14, "type": "slope", "points": [[2, 1], [2, 9]], "expected": "undefined"},
+    {"id": 15, "type": "polygon_area", "points": [[0, 0], [5, 0], [6, 4], [1, 3]], "expected": 17},
+    {"id": 16, "type": "triangle", "given": {"a": 7, "b": 11, "C": 34},
+               "solve_for": "c", "expected": 6.51},
+    {"id": 17, "type": "manual", "desc": "Graph sketch — verify visually"}
   ]
 }
 ```
@@ -162,10 +170,18 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 | `integrate` | ✅ | Expected antiderivative differentiates back to expr — omit the `+C` |
 | `limit` | ✅ | Limit of expr as var → `to`; optional `dir`: `"+"`, `"-"`, `"+-"` (default) |
 | `equiv` | ✅ | expr and expected are the same function (trig identities, simplification) |
-| `solve_interval` | ✅ | Roots of expr=0 on `[a, b)` given as `"interval": [a, b]` (trig equations) |
+| `solve_interval` | ✅ | Roots of expr=0 on `[a, b)`; `"unit": "deg"` for degree-mode trig equations |
+| `approx` | ✅ | Numeric expr recomputed exactly, compared within `tol` (default 0.01) — for rounded answers |
+| `distance` | ✅ | Distance between two `points`; exact, or within `tol` if given |
+| `midpoint` | ✅ | Midpoint of two `points`; expected is an `[x, y]` pair |
+| `slope` | ✅ | Slope through two `points`; expected value or `"undefined"` for vertical |
+| `polygon_area` | ✅ | Shoelace area of the ordered `points` (3+) — triangles, quads, composite grid figures |
+| `triangle` | ✅ | Solves the triangle from 3 `given` values (sides `a/b/c`, angles `A/B/C`), checks `solve_for` within `tol`; degrees by default; accepts either triangle in the ambiguous SSA case |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
 
-Use `manual` for: graph sketches, sign charts, word problem setups, proofs, Riemann sum tables, series convergence arguments.
+For geometry, **state the givens and let the script compute**: pass raw coordinates to `distance`/`midpoint`/`slope`/`polygon_area` and raw triangle data to `triangle` rather than doing the formula yourself in `expr`. Angle convention: side `a` is opposite angle `A` (matches the figure templates).
+
+Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments.
 
 **Expression syntax** — enforced by a strict allowlist in `verify.py`; anything outside it is rejected as a failure, never executed:
 - Explicit operators only: `3*x` (not `3x`), `x**2` or `x^2` for powers

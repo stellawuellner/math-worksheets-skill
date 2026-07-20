@@ -31,7 +31,9 @@ fi
 CASES=(
   "pass_algebra.json:0"
   "pass_calculus.json:0"
+  "pass_geometry.json:0"
   "fail_wrong_answers.json:1"
+  "fail_geometry.json:1"
   "manual_only.json:2"
   "reject_injection.json:1"
   "reject_bad_schema.json:1"

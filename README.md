@@ -1,6 +1,6 @@
 # math-worksheets — Agent Skill
 
-**v2.2.0** · [Changelog](#changelog)
+**v2.3.0** · [Changelog](#changelog)
 
 Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
 
@@ -10,7 +10,8 @@ Works with any AI agent that can read files and run shell commands: **OpenClaw**
 
 - **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
 - **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
-- **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students. Eleven check types cover algebra through calculus: `solve`, `zeros`, `factor`, `expand`, `eval`, `diff`, `integrate`, `limit`, `equiv` (trig identities), `solve_interval` (trig equations), and explicit `manual`
+- **SymPy verification** — answers are verified with a computer algebra system before compiling; incorrect answers are caught before reaching students. Seventeen check types cover algebra, geometry, trig, and calculus: `solve`, `zeros`, `factor`, `expand`, `eval`, `diff`, `integrate`, `limit`, `equiv` (trig identities), `solve_interval` (trig equations, degree or radian mode), `approx` (rounded numeric answers), `distance`/`midpoint`/`slope`/`polygon_area` (coordinate geometry from raw points), `triangle` (law of sines/cosines solver with SSA ambiguity handling), and explicit `manual`
+- **Geometry figure library** — compile-tested TikZ templates for labeled to-scale triangles, transversals, circle theorems, sectors, the unit circle, trig graphs, 3D solids, and two-column proofs
 - **Hardened verification input** — every expression passes a strict token allowlist before parsing (numbers, whitelisted functions/variables, arithmetic only), and problem entries are schema-checked: unknown types or misspelled fields are hard failures, never silent skips
 - **Auto reasoning-model detection** — inspects the host agent's config (OpenClaw, Claude Code, Gemini, Codex) and common `*_MODEL` environment variables to find the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none is configured. All detection is local — no network calls.
 - **Platform-appropriate delivery** — chat-connected agents send the PDFs back on the originating channel (Telegram, iMessage, email); CLI/IDE agents report the output paths on disk
@@ -102,6 +103,13 @@ bash tests/run_tests.sh
 Fixtures pin the verifier's contract: correct algebra and calculus answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, and — critically — injection attempts and schema violations (unknown types, misspelled fields) exit 1 without executing anything.
 
 ## Changelog
+
+### v2.3.0 — 2026-07-20
+- **Geometry & trig verification:** Six new check types — `approx` (tolerance-based comparison for rounded answers, the workhorse for measurement problems), `distance`, `midpoint`, `slope` (with `"undefined"` for vertical lines), `polygon_area` (shoelace over raw vertices), and `triangle` (full SSS/SAS/ASA/AAS/SSA solver via law of sines/cosines in fixed code, accepting either triangle in the ambiguous SSA case). Geometry types take raw givens — points, sides, angles — so the model transcribes data and the audited script does the formulas
+- **Degree mode:** `solve_interval` and `triangle` accept `"unit": "deg"` so Geometry/Pre-Calc answer keys verify in the units students actually use
+- **Figure library:** `latex-templates.md` grows from one figure to a full set — to-scale SAS triangle, parallel lines with transversal, central/inscribed angles, shaded sector, unit circle, radian/degree trig graphs, cylinder/cone/prism/sphere, and a two-column proof template. All templates compile-tested; conventions section requires figures drawn to scale from the problem's actual values
+- **Verification recipes:** problem-library.md maps every problem kind to its verify type, so choosing the check is mechanical, not judgment
+- Tests: geometry pass/fail fixtures added to the regression suite (31 new cases)
 
 ### v2.2.0 — 2026-07-20
 - **Scope:** Expanded coverage through AP Calculus AB/BC — limits, derivatives, integrals, differential equations, parametric/polar calculus, and series added to the problem library; skill description updated so calculus requests trigger it

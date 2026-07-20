@@ -38,7 +38,17 @@ Supported types:
   integrate      — checks d/dvar(expected) == expr (omit the +C constant)
   limit          — limit of expr as var → "to"; optional "dir": "+", "-", "+-" (default)
   equiv          — checks expr and expected are the same function (trig identities etc.)
-  solve_interval — solves expr=0 on [a, b) given as "interval": [a, b]
+  solve_interval — solves expr=0 on [a, b) given as "interval": [a, b];
+                   optional "unit": "deg" (interval and expected in degrees)
+  approx         — numeric expr recomputed exactly, compared within "tol" (default 0.01)
+  distance       — distance between two "points" [[x1,y1],[x2,y2]]; optional "tol"
+  midpoint       — midpoint of two points; expected is an [x, y] pair
+  slope          — slope through two points; expected value or "undefined"; optional "tol"
+  polygon_area   — shoelace area of ≥3 "points" in order; optional "tol"
+  triangle       — solve a triangle from 3 givens (sides a/b/c, angles A/B/C,
+                   side a opposite angle A); checks "solve_for" against expected
+                   within "tol" (default 0.01); "unit": "deg" (default) or "rad";
+                   handles the ambiguous SSA case (accepts either triangle)
   manual         — flagged for human review, never fails automatically
 
 Optional per-problem fields: "var" (default "x"), "note" (free text, ignored).
@@ -54,6 +64,7 @@ Exit codes:
 import cmath
 import itertools
 import json
+import math
 import os
 import re
 import sys
@@ -224,6 +235,144 @@ def dedupe(values):
     return unique
 
 
+def approx_equal(computed, expected, tol):
+    try:
+        c = float(sympy.N(computed, 15))
+        e = float(sympy.N(expected, 15))
+    except (TypeError, ValueError):
+        return False
+    return abs(c - e) <= tol
+
+
+def get_tol(p, default=None):
+    """Validated tolerance; None means exact comparison is required."""
+    tol = p.get("tol", default)
+    if tol is None:
+        return None
+    if isinstance(tol, bool) or not isinstance(tol, (int, float)) or tol <= 0:
+        raise VerifyInputError("'tol' must be a positive number")
+    return float(tol)
+
+
+def compare_value(computed, expected, tol):
+    """Exact symbolic comparison, or numeric within tol when tol is given."""
+    if tol is None:
+        return sym_equal(computed, expected)
+    return approx_equal(computed, expected, tol)
+
+
+def parse_points(raw, exactly=None, at_least=None):
+    if not isinstance(raw, list):
+        raise VerifyInputError("'points' must be a list of [x, y] pairs")
+    if exactly is not None and len(raw) != exactly:
+        raise VerifyInputError(f"'points' must contain exactly {exactly} points")
+    if at_least is not None and len(raw) < at_least:
+        raise VerifyInputError(f"'points' must contain at least {at_least} points")
+    points = []
+    for pt in raw:
+        if not isinstance(pt, list) or len(pt) != 2:
+            raise VerifyInputError("each point must be an [x, y] pair")
+        points.append((parse_value(pt[0]), parse_value(pt[1])))
+    return points
+
+
+def get_unit(p, default):
+    unit = p.get("unit", default)
+    if unit not in ("deg", "rad"):
+        raise VerifyInputError("'unit' must be 'deg' or 'rad'")
+    return unit
+
+
+# ── Triangle solver (law of sines / law of cosines, in fixed code) ────────────
+# Convention: sides a, b, c are opposite angles A, B, C. Angles in radians
+# internally. Returns a list of solutions (SSA can yield 0, 1, or 2).
+
+_OPP = {"a": "A", "b": "B", "c": "C"}
+_SIDE_OF = {v: k for k, v in _OPP.items()}
+
+
+def _clamp(x):
+    return max(-1.0, min(1.0, x))
+
+
+def _angles_from_sides(sides):
+    a, b, c = sides["a"], sides["b"], sides["c"]
+    if a + b <= c or a + c <= b or b + c <= a:
+        return None
+    A = math.acos(_clamp((b * b + c * c - a * a) / (2 * b * c)))
+    B = math.acos(_clamp((a * a + c * c - b * b) / (2 * a * c)))
+    return {**sides, "A": A, "B": B, "C": math.pi - A - B}
+
+
+def solve_triangle(sides, angles):
+    """sides/angles: dicts of known values (angles in radians) → solution list."""
+    if len(sides) + len(angles) != 3 or not sides:
+        raise VerifyInputError(
+            "'given' must contain exactly 3 values including at least one side")
+    for k, v in sides.items():
+        if v <= 0:
+            raise VerifyInputError(f"side {k!r} must be positive")
+    for k, v in angles.items():
+        if not 0 < v < math.pi:
+            raise VerifyInputError(f"angle {k!r} must be strictly between 0° and 180°")
+
+    if len(sides) == 3:  # SSS
+        sol = _angles_from_sides(sides)
+        return [sol] if sol else []
+
+    if len(sides) == 2:
+        (ang_name, ang_val), = angles.items()
+        missing = ({"a", "b", "c"} - set(sides)).pop()
+        if _OPP[missing] == ang_name:  # SAS — angle included between known sides
+            p_, q_ = sides.values()
+            third = math.sqrt(p_ * p_ + q_ * q_ - 2 * p_ * q_ * math.cos(ang_val))
+            sol = _angles_from_sides({**sides, missing: third})
+            return [sol] if sol else []
+        # SSA — known angle is opposite one of the known sides; may be ambiguous
+        opp_side = _SIDE_OF[ang_name]
+        if opp_side not in sides:
+            raise VerifyInputError(
+                f"angle {ang_name!r} must be opposite a given side or the missing side")
+        other = (set(sides) - {opp_side}).pop()
+        sin2 = sides[other] * math.sin(ang_val) / sides[opp_side]
+        if sin2 > 1 + 1e-12:
+            return []
+        sin2 = min(sin2, 1.0)
+        candidates = [math.asin(sin2)]
+        if 1.0 - sin2 > 1e-12:
+            candidates.append(math.pi - candidates[0])
+        solutions = []
+        for ang2 in candidates:
+            third_ang = math.pi - ang_val - ang2
+            if third_ang <= 1e-12:
+                continue
+            ratio = sides[opp_side] / math.sin(ang_val)
+            third_ang_name = ({"A", "B", "C"} - {ang_name, _OPP[other]}).pop()
+            solutions.append({
+                **sides,
+                _SIDE_OF[third_ang_name]: ratio * math.sin(third_ang),
+                ang_name: ang_val,
+                _OPP[other]: ang2,
+                third_ang_name: third_ang,
+            })
+        return solutions
+
+    # one side, two angles (ASA / AAS)
+    (side_name, side_val), = sides.items()
+    third_ang = math.pi - sum(angles.values())
+    if third_ang <= 1e-12:
+        return []
+    missing_ang = ({"A", "B", "C"} - set(angles)).pop()
+    all_angles = {**angles, missing_ang: third_ang}
+    ratio = side_val / math.sin(all_angles[_OPP[side_name]])
+    return [{
+        "A": all_angles["A"], "B": all_angles["B"], "C": all_angles["C"],
+        "a": ratio * math.sin(all_angles["A"]),
+        "b": ratio * math.sin(all_angles["B"]),
+        "c": ratio * math.sin(all_angles["C"]),
+    }]
+
+
 # ── Schema validation ─────────────────────────────────────────────────────────
 # type → (required fields, optional fields). "id", "type", "note" always allowed.
 
@@ -237,7 +386,13 @@ SCHEMAS = {
     "integrate":      ({"expr", "expected"}, {"var"}),
     "limit":          ({"expr", "to", "expected"}, {"var", "dir"}),
     "equiv":          ({"expr", "expected"}, set()),
-    "solve_interval": ({"expr", "interval", "expected"}, {"var"}),
+    "solve_interval": ({"expr", "interval", "expected"}, {"var", "unit"}),
+    "approx":         ({"expr", "expected"}, {"tol"}),
+    "distance":       ({"points", "expected"}, {"tol"}),
+    "midpoint":       ({"points", "expected"}, set()),
+    "slope":          ({"points", "expected"}, {"tol"}),
+    "polygon_area":   ({"points", "expected"}, {"tol"}),
+    "triangle":       ({"given", "solve_for", "expected"}, {"tol", "unit"}),
     "manual":         ({"desc"}, set()),
 }
 
@@ -280,7 +435,102 @@ def check_problem(p, ptype):
     if ptype == "manual":
         return ("MANUAL", p["desc"])
 
+    if ptype == "distance":
+        (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
+        computed = sympy.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        expected = parse_value(p["expected"])
+        ok = compare_value(computed, expected, get_tol(p))
+        return ("PASS" if ok else "FAIL",
+                f"distance{tuple(p['points'])} → {computed} (expected {p['expected']})")
+
+    if ptype == "midpoint":
+        (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
+        if not isinstance(p["expected"], list) or len(p["expected"]) != 2:
+            raise VerifyInputError("midpoint 'expected' must be an [x, y] pair")
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        ex, ey = parse_value(p["expected"][0]), parse_value(p["expected"][1])
+        ok = sym_equal(mx, ex) and sym_equal(my, ey)
+        return ("PASS" if ok else "FAIL",
+                f"midpoint{tuple(p['points'])} → ({mx}, {my}) (expected {p['expected']})")
+
+    if ptype == "slope":
+        (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
+        expected_raw = p["expected"]
+        vertical = sym_equal(x1, x2)
+        wants_undefined = (isinstance(expected_raw, str)
+                           and expected_raw.strip().lower() == "undefined")
+        if vertical or wants_undefined:
+            ok = vertical and wants_undefined
+            return ("PASS" if ok else "FAIL",
+                    f"slope{tuple(p['points'])} → "
+                    f"{'undefined' if vertical else (y2 - y1) / (x2 - x1)} "
+                    f"(expected {expected_raw})")
+        computed = (y2 - y1) / (x2 - x1)
+        ok = compare_value(computed, parse_value(expected_raw), get_tol(p))
+        return ("PASS" if ok else "FAIL",
+                f"slope{tuple(p['points'])} → {computed} (expected {expected_raw})")
+
+    if ptype == "polygon_area":
+        pts = parse_points(p["points"], at_least=3)
+        shoelace = sum(pts[i][0] * pts[(i + 1) % len(pts)][1]
+                       - pts[(i + 1) % len(pts)][0] * pts[i][1]
+                       for i in range(len(pts)))
+        computed = sympy.Abs(shoelace) / 2
+        expected = parse_value(p["expected"])
+        ok = compare_value(computed, expected, get_tol(p))
+        return ("PASS" if ok else "FAIL",
+                f"polygon_area({len(pts)} points) → {computed} "
+                f"(expected {p['expected']})")
+
+    if ptype == "triangle":
+        given = p["given"]
+        if not isinstance(given, dict):
+            raise VerifyInputError("'given' must be an object like {\"a\": 7, \"C\": 34}")
+        unknown_keys = set(given) - {"a", "b", "c", "A", "B", "C"}
+        if unknown_keys:
+            raise VerifyInputError(
+                f"unknown 'given' key(s) {sorted(unknown_keys)} — use sides a/b/c "
+                "and angles A/B/C (side a is opposite angle A)")
+        unit = get_unit(p, default="deg")
+        to_rad = (math.radians if unit == "deg" else float)
+        sides = {k: float(sympy.N(parse_value(given[k])))
+                 for k in ("a", "b", "c") if k in given}
+        angles = {k: to_rad(float(sympy.N(parse_value(given[k]))))
+                  for k in ("A", "B", "C") if k in given}
+        solve_for = p["solve_for"]
+        if solve_for not in ("a", "b", "c", "A", "B", "C"):
+            raise VerifyInputError("'solve_for' must be one of a, b, c, A, B, C")
+        if solve_for in given:
+            raise VerifyInputError(f"'solve_for' {solve_for!r} is already given")
+        solutions = solve_triangle(sides, angles)
+        if not solutions:
+            return ("FAIL", f"givens {given} do not form a valid triangle")
+        candidates = [sol[solve_for] for sol in solutions]
+        if solve_for in ("A", "B", "C") and unit == "deg":
+            candidates = [math.degrees(v) for v in candidates]
+        tol = get_tol(p, default=0.01)
+        expected = float(sympy.N(parse_value(p["expected"])))
+        ok = any(abs(c - expected) <= tol for c in candidates)
+        shown = ", ".join(f"{c:.4f}" for c in candidates)
+        ambiguous = (" — ambiguous SSA case, two triangles exist"
+                     if len(solutions) > 1 else "")
+        return ("PASS" if ok else "FAIL",
+                f"triangle {given} → {solve_for} ∈ [{shown}] "
+                f"(expected {p['expected']}, tol {tol}{ambiguous})")
+
     expr = safe_parse(p["expr"])
+
+    if ptype == "approx":
+        if expr.free_symbols:
+            raise VerifyInputError(
+                "approx 'expr' must be fully numeric (no variables) — "
+                f"found {sorted(map(str, expr.free_symbols))}")
+        tol = get_tol(p, default=0.01)
+        expected = parse_value(p["expected"])
+        ok = approx_equal(expr, expected, tol)
+        return ("PASS" if ok else "FAIL",
+                f"approx({p['expr']}) → {float(sympy.N(expr, 15)):.6g} "
+                f"(expected {p['expected']}, tol {tol})")
 
     if ptype in ("solve", "zeros"):
         var = get_var(p)
@@ -354,8 +604,20 @@ def check_problem(p, ptype):
         if not isinstance(interval, list) or len(interval) != 2:
             raise VerifyInputError("'interval' must be a two-element list [a, b]")
         lo, hi = parse_value(interval[0]), parse_value(interval[1])
-        domain = sympy.Interval(lo, hi, left_open=False, right_open=True)
         expected = parse_value_list(p["expected"])
+        # In degree mode the interval and expected roots are degrees; solve in
+        # radians and convert, so pi/6 compares exactly against 30.
+        unit = get_unit(p, default="rad")
+        if unit == "deg":
+            scale = sympy.pi / 180
+            lo, hi = lo * scale, hi * scale
+            expected = [e * scale for e in expected]
+        domain = sympy.Interval(lo, hi, left_open=False, right_open=True)
+        def in_unit(values):  # display roots in the unit the problem uses
+            if unit == "deg":
+                return [sympy.nsimplify(v * 180 / sympy.pi) for v in values]
+            return values
+
         solset = sympy.solveset(expr, var, domain=domain)
         if solset is sympy.S.EmptySet:
             computed = []
@@ -370,12 +632,12 @@ def check_problem(p, ptype):
                      for e in expected)
             return ("PASS" if ok else "FAIL",
                     f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
-                    f"checked {expected} as roots "
+                    f"checked {in_unit(expected)} as roots "
                     f"(completeness not verified — solver returned {solset})")
         ok = multiset_equal(computed, expected)
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
-                f"→ {computed} (expected {expected})")
+                f"→ {in_unit(computed)} (expected {in_unit(expected)})")
 
     raise VerifyInputError(f"unhandled type {ptype!r}")  # unreachable
 

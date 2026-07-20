@@ -36,7 +36,13 @@ flowchart LR
     style E fill:#e8f5e9,stroke:#2e7d32
 ```
 
-The guarantee is enforced, not aspirational: a **mandatory coverage gate** means no problem can be skipped, the verifier's expression parser is a strict **allowlist** (no code execution), and the whole thing is validated against the **GSM8K** and **MATH** datasets with **0 false accepts on ~7,400 checks**. Where a task genuinely can't be machine-checked (proofs, "explain why"), it's honestly marked `manual` rather than faked. See the [Trust model](#trust-model-what-verification-does-and-does-not-guarantee).
+The guarantee is enforced, not aspirational: a **mandatory coverage gate** means no problem can be skipped, the verifier's expression parser is a strict **allowlist** (no code execution), and the whole thing is validated against the **GSM8K** and **MATH** datasets with **0 false accepts on ~7,400 checks**. Where a task genuinely can't be machine-checked (proofs, "explain why"), it's honestly marked `manual` rather than faked. See the [Trust model](#trust-model) for the exact boundary.
+
+## Trust model
+
+**Guaranteed** — every problem with a machine-checkable answer is CAS-verified; the mandatory coverage gate (`problem_count`) means no worksheet problem is silently skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values. Validated on GSM8K and MATH — **0 false accepts on ~7,400 checks**.
+
+**Human review still required** — `manual`-typed problems (proofs, constructions, "explain why", matrices/vectors), the soft alignment warnings from the binding checkers, and any problem whose *statement* is ambiguous. An optional [LLM-judge review aid](references/manual-review-aid.md) flags likely errors in that content first, but does not gate it. Verification proves the math and its transcription — it does not prove pedagogical intent.
 
 ## Features
 
@@ -48,11 +54,22 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 - **Auto model detection** — finds the best available reasoning model from the host agent's config; fully local, no network calls.
 - **Portable delivery** — chat agents send PDFs back on the originating channel; CLI/IDE agents report the paths.
 
-## Example
+## Examples
 
 > **You:** *"Leo's studying the law of sines and cosines — make him an 8-problem worksheet with a figure on each, plus an answer key."*
 
 The skill designs 8 ramped problems, writes a `verify.json`, runs it through SymPy (all 8 pass), compiles three PDFs, and confirms every boxed answer in the key matches the verified value — producing exactly the documents shown above, ready to print.
+
+**More you can ask for** — one skill, from counting to Calc BC:
+
+- *"Make Lucy, my 3rd grader, a times-tables worksheet — 12 problems with a study guide."*
+- *"Factoring trinomials for an 8th grader, 15 problems, mixed difficulty."*
+- *"A data-handling sheet: read values off a bar chart, then mean / median / mode / range — 8 problems."*
+- *"AP Calc chain-rule practice, 10 problems, full worked answer key."*
+- *"Systems of equations aligned to 8.EE.C.8, with a scaffolded support tier and a challenge tier."*
+- *"Leo needs graphing-polynomials practice — use his homework photo as the style guide."*
+
+The skill handles the rest: model selection, problem design, SymPy verification, answer-key and figure binding, compile, and delivery on whatever channel the request came from.
 
 ## Install
 
@@ -103,22 +120,7 @@ pip3 install "sympy>=1.12"   # bundles mpmath, used for numerical checks
 
 Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.
 
-### Trust model (what verification does and does not guarantee)
-
-- **Guaranteed:** every problem with a machine-checkable answer is CAS-verified; the coverage gate (mandatory `problem_count`) ensures no worksheet problem is skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values.
-- **Human review still required for:** `manual`-typed problems (proofs, sketches, matrices/vectors/stats), the soft alignment warnings from the binding checkers, and any problem whose *statement* is ambiguous. Verification proves the math and its transcription; it does not prove pedagogical intent.
-
 No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
-
-## Usage
-
-Just ask naturally:
-
-> *"Make Lucy a 20-problem worksheet on exponents and roots"*
-> *"Leo needs practice on graphing polynomials — use his homework photo as a guide"*
-> *"Factoring trinomials worksheet for an 8th grader, 15 problems"*
-
-The skill handles everything: model selection, problem generation, SymPy verification, compile, and delivery.
 
 ## Skill Contents
 

@@ -309,6 +309,23 @@ Compact version with degree labels; swap the labels for radians ($\frac{\pi}{6}$
 ```
 For a degree axis (Geometry level): `domain=0:360`, `xtick={0,90,...,360}`, and plot `{sin(x)}` (pgfplots trig defaults to degrees).
 
+### Data charts (bar / line) — data-driven, matches `read_data`
+Source the plotted values from the SAME array the `read_data` verify check uses, so the chart and the answer can't disagree.
+```latex
+% Bar chart of category counts (Mon..Thu = 12,8,15,6)
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[ybar, width=10cm, height=5cm, bar width=18pt,
+  ymin=0, enlarge x limits=0.15, ylabel={Count},
+  symbolic x coords={Mon,Tue,Wed,Thu}, xtick=data,
+  nodes near coords, axis lines=left]
+  \addplot coordinates {(Mon,12) (Tue,8) (Wed,15) (Thu,6)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+```
+For a line plot swap `ybar`→(remove) and use `\addplot[mark=*] coordinates {(1,3)(2,7)(3,2)(4,8)}`. For a pictogram, print a row of repeated symbols per category (e.g. `\faStar`×count) instead of an axis.
+
 ### 3D solids (volume & surface area problems)
 Cylinder:
 ```latex

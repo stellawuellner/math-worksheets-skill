@@ -194,13 +194,21 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 | `system` | ✅ | Solves a system: `equations` (each expr `=0`), `vars`, `expected` `{var: value}` — 2 or 3 variables, linear or nonlinear |
 | `series` | ✅ | `summation(term, var, from..to)` vs `expected`; finite or infinite (`"to": "oo"`), incl. geometric and Taylor (`factorial` allowed) |
 | `inequality` | ✅ | Solution set of `expr relation 0` (`relation`: `<`, `<=`, `>`, `>=`) vs an interval spec `[lo, hi, openness]` (`openness`: `open`/`closed`/`loopen`/`hiopen`; `lo`/`hi` may be `"oo"`/`"-oo"`) |
+| `stats` | ✅ | `measure` of a `data` list: `mean`/`median`/`mode`/`range`/`sum`/`variance`/`stdev`/`q1`/`q3`/`iqr` (school median-of-halves quartiles; non-unique mode → manual) |
+| `probability` | ✅ | `favorable`/`total` as an exact fraction |
+| `read_data` | ✅ | Read/compute from a chart or table whose `data` is in the JSON. Object data → `query` `value`/`total`/`max_value`/`min_value`/`max_key`/`min_key`/`difference` (with `key`); list data → `total`/`count`/`max_value`/`min_value`. The SAME `data` feeds the pgfplots chart, so figure and check share one source |
+| `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`, by independent mpmath quadrature (doesn't trust a symbolic antiderivative) |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
+
+**Data charts:** render bar/line/pictogram charts with pgfplots (see `references/latex-templates.md`), sourcing the plotted values from the same `data` array the `read_data` check uses — never retype them. `solve_interval` on a transcendental equation now confirms *completeness* by mpmath root-enumeration (PASS when the key's roots match all numerically-found roots; MANUAL if counts differ)."
 
 **Complex numbers:** `I` is available in expressions, so `eval` handles complex arithmetic (e.g. `(3+2*I)*(1-4*I)` expected `"11 - 10*I"`). For `solve`/`zeros`, non-real roots are no longer dropped silently — set `"domain": "complex"` to require the full root set (e.g. `x**4-1` → `[1, -1, "I", "-I"]`) or `"domain": "real"` to restrict to real roots.
 
 For geometry, **state the givens and let the script compute**: pass raw coordinates to `distance`/`midpoint`/`slope`/`polygon_area` and raw triangle data to `triangle` rather than doing the formula yourself in `expr`. Angle convention: side `a` is opposite angle `A` (matches the figure templates).
 
-Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments.
+Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments, and any explanation/reasoning answer.
+
+**Optional review aid for `manual` content:** proofs and explanations can't be CAS-verified, but an independent LLM-judge pass can flag likely errors before a human reviews them. See `references/manual-review-aid.md`. This is a review aid, NOT a gate — a `manual` problem stays `manual`; never mark it verified on a judge's say-so.
 
 **Expression syntax** — enforced by a strict allowlist in `verify.py`; anything outside it is rejected as a failure, never executed:
 - Explicit operators only: `3*x` (not `3x`), `x**2` or `x^2` for powers

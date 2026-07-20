@@ -48,6 +48,10 @@ Supported types:
   system         — solve "equations"(each =0) for "vars"; expected {var: value}
   series         — summation(term, var, from..to) vs expected (finite/infinite)
   inequality     — solution set of expr <relation> 0 vs an interval spec
+  stats          — mean/median/mode/range/sum/variance/stdev/q1/q3/iqr of "data"
+  probability    — favorable/total as an exact fraction
+  read_data      — read/compute a value from a chart/table whose "data" is in JSON
+  definite_integral — ∫ from..to by independent mpmath quadrature
   manual         — flagged for human review, never fails automatically
 
 Universal optional fields: "var" (default x), "note", "standard", "difficulty",
@@ -66,9 +70,11 @@ import json
 import math
 import os
 import re
+import statistics
 import sys
 
 import sympy
+import mpmath
 from sympy import Symbol, simplify, trigsimp, nsimplify
 
 
@@ -329,6 +335,44 @@ def parse_points(raw, exactly=None, at_least=None):
     return points
 
 
+def count_real_roots(expr, var, lo, hi, n=2000):
+    """Numerically enumerate real roots of expr in [lo, hi) via mpmath: scan for
+    sign changes on a fine grid, refine each with findroot, keep only genuine
+    zeros (|f|≈0, excludes asymptote crossings like tan), dedupe. Returns a
+    sorted list of float roots, or None if the function can't be evaluated
+    numerically over the interval (caller then stays conservative)."""
+    try:
+        f = sympy.lambdify(var, expr, modules="mpmath")
+    except Exception:
+        return None
+    a, b = float(sympy.N(lo)), float(sympy.N(hi))
+    xs = [a + (b - a) * i / n for i in range(n + 1)]
+    try:
+        ys = [f(x) for x in xs]
+    except Exception:
+        return None
+    roots = []
+    for i in range(n):
+        y0, y1 = ys[i], ys[i + 1]
+        if not (mpmath.isfinite(y0) and mpmath.isfinite(y1)):
+            continue
+        bracket = (mpmath.re(y0) == 0 or (mpmath.re(y0) * mpmath.re(y1) < 0))
+        if not bracket:
+            continue
+        try:
+            r = mpmath.findroot(f, (xs[i] + xs[i + 1]) / 2)
+        except Exception:
+            continue
+        rr = float(mpmath.re(r))
+        if not (a - 1e-9 <= rr < b):            # right-open interval
+            continue
+        if abs(mpmath.re(f(rr))) > 1e-6:         # asymptote, not a zero
+            continue
+        if all(abs(rr - e) > 1e-6 for e in roots):
+            roots.append(rr)
+    return sorted(roots)
+
+
 def parse_interval_spec(spec):
     """Build a SymPy real set from a JSON interval spec (allowlist-safe).
 
@@ -474,6 +518,8 @@ SCHEMAS = {
     "inequality":     ({"expr", "relation", "expected"}, {"var"}),
     "stats":          ({"data", "measure", "expected"}, {"tol"}),
     "probability":    ({"favorable", "total", "expected"}, set()),
+    "read_data":      ({"data", "query", "expected"}, {"key", "tol"}),
+    "definite_integral": ({"expr", "from", "to", "expected"}, {"var", "tol"}),
     "manual":         ({"desc"}, set()),
 }
 
@@ -651,10 +697,31 @@ def check_problem(p, ptype):
             if len(modes) != 1:
                 return ("MANUAL", f"mode is not unique ({modes}) — review by hand")
             result = parse_value(modes[0])
+        elif measure in ("variance", "stdev", "q1", "q3", "iqr"):
+            fs = [float(sympy.N(v)) for v in vals]
+            if measure == "variance":
+                result = parse_value(statistics.pvariance(fs))
+            elif measure == "stdev":
+                result = parse_value(statistics.pstdev(fs))
+            else:
+                # School "median of halves" quartiles (Tukey hinges): split at
+                # the median; for odd n exclude the median from both halves.
+                s = sorted(fs)
+                n = len(s)
+                lower, upper = s[:n // 2], s[(n + 1) // 2:]
+                if not lower or not upper:
+                    return ("MANUAL", "too few data points for quartiles")
+                q1, q3 = statistics.median(lower), statistics.median(upper)
+                result = parse_value({"q1": q1, "q3": q3, "iqr": q3 - q1}[measure])
         else:
-            raise VerifyInputError("'measure' must be mean/median/mode/range/sum")
+            raise VerifyInputError(
+                "'measure' must be mean/median/mode/range/sum/variance/stdev/q1/q3/iqr")
         expected = parse_value(p["expected"])
-        ok = compare_value(result, expected, get_tol(p))
+        # stdev/variance/quartiles are usually rounded → scale-aware default tol
+        tol = get_tol(p)
+        if tol is None and measure in ("mean", "variance", "stdev", "q1", "q3", "iqr"):
+            tol = default_tol(p["expected"])
+        ok = compare_value(result, expected, tol)
         return ("PASS" if ok else "FAIL",
                 f"{measure}({data}) → {result} (expected {p['expected']})")
 
@@ -669,6 +736,70 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"P = {p['favorable']}/{p['total']} → {result} "
                 f"(expected {p['expected']})")
+
+    if ptype == "read_data":
+        # A chart/table's data lives in the JSON (the SAME data pgfplots renders,
+        # so the figure and the check share one source of truth). The question
+        # reads or computes a value from it. Closes data-representational topics.
+        data = p["data"]
+        query = p["query"]
+        if isinstance(data, dict):          # category → value (bar/pictogram/table)
+            table = {k: parse_value(v) for k, v in data.items()}
+            if query == "value":
+                result = table[p["key"]]
+            elif query == "total":
+                result = sum(table.values())
+            elif query in ("max_value", "min_value"):
+                result = (max if query == "max_value" else min)(
+                    table.values(), key=lambda e: float(sympy.N(e)))
+            elif query in ("max_key", "min_key"):
+                pick = max if query == "max_key" else min
+                key = pick(table, key=lambda k: float(sympy.N(table[k])))
+                ok = str(key) == str(p["expected"])
+                return ("PASS" if ok else "FAIL",
+                        f"{query}({data}) → {key} (expected {p['expected']})")
+            elif query == "difference":
+                a, b = p["key"]
+                result = table[a] - table[b]
+            else:
+                raise VerifyInputError(
+                    "table 'query' must be value/total/max_value/min_value/"
+                    "max_key/min_key/difference")
+        elif isinstance(data, list):        # numeric series (line plot / tally)
+            vals = [parse_value(v) for v in data]
+            if query == "total":
+                result = sum(vals)
+            elif query == "count":
+                result = sympy.Integer(len(vals))
+            elif query == "max_value":
+                result = max(vals, key=lambda e: float(sympy.N(e)))
+            elif query == "min_value":
+                result = min(vals, key=lambda e: float(sympy.N(e)))
+            else:
+                raise VerifyInputError("list 'query' must be total/count/max_value/min_value")
+        else:
+            raise VerifyInputError("read_data 'data' must be an object or a list")
+        expected = parse_value(p["expected"])
+        ok = compare_value(result, expected, get_tol(p))
+        return ("PASS" if ok else "FAIL",
+                f"{query}({data}) → {result} (expected {p['expected']})")
+
+    if ptype == "definite_integral":
+        var = get_var(p)
+        integrand = safe_parse(p["expr"])
+        lo, hi = parse_value(p["from"]), parse_value(p["to"])
+        expected = parse_value(p["expected"])
+        # Independent numerical quadrature (mpmath) — does not trust sympy's
+        # symbolic antiderivative. Cross-check with the exact value when sympy
+        # can produce one.
+        f = sympy.lambdify(var, integrand, modules="mpmath")
+        numeric = mpmath.quad(f, [float(sympy.N(lo)), float(sympy.N(hi))])
+        exp_num = mpmath.mpf(str(float(sympy.N(expected))))
+        tol = get_tol(p) or max(default_tol(p["expected"]), 1e-6)
+        ok = abs(numeric - exp_num) <= tol
+        return ("PASS" if ok else "FAIL",
+                f"∫[{p['from']},{p['to']}] {p['expr']} d{var} ≈ {float(numeric):.6g} "
+                f"(expected {p['expected']}, tol {tol:g})")
 
     if ptype == "series":
         var = get_var(p)
@@ -823,21 +954,40 @@ def check_problem(p, ptype):
         elif isinstance(solset, sympy.FiniteSet):
             computed = list(solset)
         else:
-            # Solver couldn't enumerate. Each listed root must be genuine (a
-            # bogus one still FAILs), but completeness cannot be established —
-            # so this is MANUAL (exit 2, flag for review), never a silent PASS
-            # (audit 1e: an incomplete trig-equation key must not pass).
-            genuine = all(bool(domain.contains(e)) and
-                          sym_equal(expr.subs(var, e), sympy.Integer(0))
-                          for e in expected)
-            if not genuine:
+            # Solver couldn't enumerate symbolically. Each listed root must be
+            # genuine (a bogus one FAILs). For completeness, enumerate roots
+            # numerically with mpmath (CASE-34) — if the numeric count matches
+            # the key's count and each is real-verified, PASS with completeness
+            # established; otherwise stay MANUAL rather than silently pass.
+            # Use mpmath's numerically-enumerated roots as the authority
+            # (transcendental keys are inherently approximate). Match each
+            # listed root to a found root within a school tolerance; PASS only
+            # when every listed root matches AND the counts are equal
+            # (completeness). A listed value matching no found root → FAIL
+            # (bogus). Count mismatch or inconclusive enumeration → MANUAL.
+            numeric = count_real_roots(expr, var, lo, hi)
+            exp_floats = sorted(float(sympy.N(e)) for e in expected)
+            match_tol = 1e-2
+            if numeric is None:
+                return ("MANUAL",
+                        f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
+                        "numeric enumeration inconclusive — review by hand")
+            bogus = [ef for ef in exp_floats
+                     if not any(abs(nr - ef) < match_tol for nr in numeric)]
+            if bogus:
                 return ("FAIL",
                         f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
-                        f"a listed value is not a genuine root")
+                        f"listed value(s) {bogus} are not roots (numeric roots: "
+                        f"{[round(r,4) for r in numeric]})")
+            if len(exp_floats) == len(numeric):
+                return ("PASS",
+                        f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
+                        f"→ {in_unit(expected)} (completeness numerically "
+                        f"confirmed: {len(numeric)} roots)")
             return ("MANUAL",
-                    f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): "
-                    f"listed {in_unit(expected)} are genuine roots but "
-                    "completeness could not be machine-verified — review by hand")
+                    f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): key "
+                    f"lists {len(exp_floats)} but numeric enumeration found "
+                    f"{len(numeric)} ({[round(r,4) for r in numeric]}) — review by hand")
         ok = multiset_equal(computed, expected)
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "

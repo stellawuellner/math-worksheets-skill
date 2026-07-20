@@ -61,7 +61,7 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 **Python 3** with **sympy** for answer verification:
 
 ```bash
-pip3 install "sympy>=1.12"
+pip3 install "sympy>=1.12"   # bundles mpmath, used for numerical checks
 ```
 
 Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.

@@ -68,14 +68,18 @@ def main():
     tex = open(tex_path).read()
     data = json.load(open(json_path))
     blocks = problem_blocks(tex)
-    entries = data.get("problems", [])
+    # group JSON entries by id — one worksheet problem may have several checks
+    by_id = {}
+    for e in data.get("problems", []):
+        by_id.setdefault(int(e.get("id", 0)), []).append(e)
 
     total_nums = matched = 0
     report = []
     for i, block in enumerate(blocks):
-        entry = entries[i] if i < len(entries) else {}
         prose = prose_numbers(block)
-        given = json_numbers(entry)
+        given = set()
+        for entry in by_id.get(i + 1, []):
+            given |= json_numbers(entry)
         # 100·x style: a prose "20%" is 20 in prose but 0.2 or 20/100 in JSON
         given |= {g * 100 for g in given} | {g / 100 for g in given if g}
         missing = sorted(p for p in prose if p not in given)

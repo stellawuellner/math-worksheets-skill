@@ -4,6 +4,24 @@ Tag every verify-JSON problem with `"standard"` (a code from THIS file — never
 invent codes) and `"difficulty"` (1–5 per the ladders below). Ramp difficulty
 across the worksheet; `verify.py` reports coverage and flags ramp drops.
 
+## Common Core codes by topic (grades K–4, early elementary)
+
+| Topic | Code |
+|---|---|
+| Counting & cardinality | K.CC.A.1–K.CC.C.7 |
+| Add/subtract within 20 | K.OA.A / 1.OA.C.6 / 2.OA.B.2 |
+| Add/subtract word problems | 1.OA.A.1 / 2.OA.A.1 |
+| Place value (tens/ones, to 1000) | 1.NBT / 2.NBT.A |
+| Multi-digit add/subtract | 2.NBT.B.5 / 3.NBT.A.2 / 4.NBT.B.4 |
+| Times tables / multiply & divide facts | 3.OA.C.7 |
+| Multiplication/division word problems | 3.OA.A.3 / 4.OA.A.2 |
+| Multi-digit multiplication & division | 4.NBT.B.5 / 4.NBT.B.6 |
+| Fractions: understand & equivalence | 3.NF.A / 4.NF.A |
+| Fractions: add/subtract like denominators | 4.NF.B.3 |
+| Measurement & data (length, mass, time) | 2.MD / 3.MD |
+| Area & perimeter | 3.MD.C.7 / 3.MD.D.8 |
+| Shapes & attributes | K.G / 1.G / 2.G / 3.G.A |
+
 ## Common Core codes by topic (grades 5–8)
 
 | Topic | Code |

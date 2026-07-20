@@ -93,7 +93,9 @@ Design problems appropriate to the student's level. Increase difficulty graduall
 
 See `references/problem-library.md` for topic-specific problem type menus.
 
-**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes) and `"difficulty"` (1–5 per that file's ladders) in the verify JSON. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage and flags ramp drops, so a parent can see exactly which standards the sheet exercises.
+**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes), `"difficulty"` (1–5 per that file's ladders), and `"bloom"` (recall/apply/analyze/justify, same file). Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
+
+**Tiered worksheets (differentiation, on request):** when asked for tiers (support/on-level/challenge), build ONE set of problem skeletons, then re-parameterize per tier — same structure and standards, different givens and difficulty band (support: 1–2 with a hints box and a worked first step; core: 2–3; challenge: 3–5). Each tier gets its OWN verify JSON (the gate re-checks every tier) and file prefix: `wsS_`/`wsC_`/`wsX_` + matching keys. Because construction is JSON-first, a tier is a data change, not a rewrite.
 
 ### 3. Write LaTeX source
 

@@ -410,7 +410,7 @@ def check_schema(p):
     required, optional = SCHEMAS[ptype]
     # "standard" (e.g. CCSS "8.EE.C.8" / AP "CHA-3.A") and "difficulty" (1-5)
     # are universal optional tags — reported in the summary, never gating
-    fields = set(p) - {"id", "type", "note", "standard", "difficulty"}
+    fields = set(p) - {"id", "type", "note", "standard", "difficulty", "bloom"}
     missing = required - fields
     if missing:
         raise VerifyInputError(
@@ -714,6 +714,13 @@ def run_verification(json_path):
                 stds[p["standard"]] = stds.get(p["standard"], 0) + 1
             if isinstance(p.get("difficulty"), int):
                 diffs.append((p.get("id"), p["difficulty"]))
+    blooms = {}
+    for p in problems:
+        if isinstance(p, dict) and p.get("bloom"):
+            blooms[p["bloom"]] = blooms.get(p["bloom"], 0) + 1
+    if blooms:
+        order = ["recall", "apply", "analyze", "justify"]
+        print("bloom mix: " + ", ".join(f"{k}×{blooms[k]}" for k in order if k in blooms))
     if stds:
         print("standards: " + ", ".join(f"{k}×{v}" for k, v in sorted(stds.items())))
     if diffs:

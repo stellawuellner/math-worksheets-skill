@@ -73,3 +73,12 @@ Anchored to MATH-dataset level conventions: 1–2 routine single-step,
 
 Worksheet default mix: start at 1–2, majority at 2–3, finish with one or two
 4–5 challenge problems. A drill sheet may stay flat; say so in the header.
+
+## Bloom tags (cognitive level)
+
+Tag each problem `"bloom"`: **recall** (state/evaluate directly) · **apply**
+(routine procedure) · **analyze** (multi-step, method selection, error-analysis
+"find and fix the mistake" — still machine-verifiable: check the planted
+conclusion is wrong AND the correction is right) · **justify** (explain/prove —
+usually `manual`). Default mixes: drill = mostly apply; test-prep ≈ 20% recall,
+50% apply, 20% analyze, 10% justify. Verification reports the mix.

@@ -198,7 +198,11 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 | `probability` | ✅ | `favorable`/`total` as an exact fraction |
 | `read_data` | ✅ | Read/compute from a chart or table whose `data` is in the JSON. Object data → `query` `value`/`total`/`max_value`/`min_value`/`max_key`/`min_key`/`difference` (with `key`); list data → `total`/`count`/`max_value`/`min_value`. The SAME `data` feeds the pgfplots chart, so figure and check share one source |
 | `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`, by independent mpmath quadrature (doesn't trust a symbolic antiderivative) |
+| `estimate` | ✅ | Round each number in `expr` to `place` (`ten`/`hundred`/`thousand`/`whole`/`tenth`/`hundredth`), then evaluate — "estimate by rounding" |
+| `compare` | ✅ | Order `values` (`order`: `asc`/`desc`) or state a `relation` (`<`/`>`/`=`) between the first two |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
+
+**Reframe "understanding" topics as checkable tasks** (see `references/problem-library.md` → "Reframing…"): missing-number → `solve`, fact-family → `eval`, estimation → `estimate`, ordering → `compare`, and **error-analysis** ("find and fix the mistake") via the ordinary types — the planted wrong result is checkably wrong and the correction checkably right. Reserve `manual` for genuinely open reasoning (proofs, "explain why", construction).
 
 **Data charts:** render bar/line/pictogram charts with pgfplots (see `references/latex-templates.md`), sourcing the plotted values from the same `data` array the `read_data` check uses — never retype them. `solve_interval` on a transcendental equation now confirms *completeness* by mpmath root-enumeration (PASS when the key's roots match all numerically-found roots; MANUAL if counts differ)."
 

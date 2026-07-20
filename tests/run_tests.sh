@@ -44,6 +44,8 @@ CASES=(
   "fail_stats_prob.json:1"
   "pass_data_calc.json:0"
   "fail_data_calc.json:1"
+  "pass_reclaimed.json:0"
+  "fail_reclaimed.json:1"
 )
 
 failures=0

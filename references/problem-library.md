@@ -202,5 +202,27 @@ Map each problem to its verify-JSON type as you design it. Geometry rule of thum
 | Complex-number arithmetic | `eval` with `I` | e.g. `(3+2*I)*(1-4*I)` |
 | Find ALL roots incl. complex | `solve`/`zeros` + `"domain":"complex"` | non-real roots no longer dropped |
 | Series & partial sums (incl. Taylor) | `series` | `summation`, finite or `"to":"oo"` |
+| Estimation / rounding | `estimate` | round operands to a place, then evaluate |
+| Ordering / comparing numbers | `compare` | `order`: asc/desc, or `relation` (`<`/`>`/`=`) |
 | Proofs, constructions, sketches, graphs | `manual` | Answer key still shows a full model answer |
-| Matrices, vectors, probability/statistics | `manual` (for now) | No dedicated type yet — verify by hand |
+| Matrices, vectors | `manual` (for now) | No dedicated type yet — verify by hand |
+
+## Reframing "understanding" topics as checkable tasks
+
+Many topics a taxonomy labels *conceptual* or *meta* (about understanding, not
+computing) are still assessed on a worksheet through a **task with a checkable
+answer**. Generate them that way and verify them — no pedagogy is lost, because
+the task is exactly how these are normally practiced:
+
+| "Understanding" topic | Checkable task | Verify with |
+|---|---|---|
+| Missing number / number bond (7 + _ = 12) | solve `7 + x - 12` | `solve` |
+| Fact family / inverse (7+5=12 ⇒ 12−7=?) | evaluate `12 - 7` | `eval` |
+| "In any order" / commutativity | compute both `3+5` and `5+3` | `eval` ×2 |
+| Estimating & checking by rounding | round then evaluate | `estimate` |
+| Comparing / ordering | order the list, or state the relation | `compare` |
+| **Error analysis** ("find and fix the mistake") | present a wrong worked answer; the task's correct result is checkable | `solve`/`eval`/etc. — the planted mistake's stated result is wrong, the fix is verified |
+
+Reserve `manual` for what is genuinely open: "explain why…", proofs, strategy
+justification, open construction, and vocabulary used in context (see
+`references/manual-review-aid.md` for the optional LLM-judge pass on those).

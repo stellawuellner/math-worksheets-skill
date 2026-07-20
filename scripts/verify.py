@@ -52,6 +52,8 @@ Supported types:
   probability    — favorable/total as an exact fraction
   read_data      — read/compute a value from a chart/table whose "data" is in JSON
   definite_integral — ∫ from..to by independent mpmath quadrature
+  estimate       — round numbers in expr to "place", then evaluate
+  compare        — order "values" (asc/desc) or a relation (<,>,=)
   manual         — flagged for human review, never fails automatically
 
 Universal optional fields: "var" (default x), "note", "standard", "difficulty",
@@ -520,6 +522,8 @@ SCHEMAS = {
     "probability":    ({"favorable", "total", "expected"}, set()),
     "read_data":      ({"data", "query", "expected"}, {"key", "tol"}),
     "definite_integral": ({"expr", "from", "to", "expected"}, {"var", "tol"}),
+    "estimate":       ({"expr", "place", "expected"}, set()),
+    "compare":        ({"values", "expected"}, {"order"}),
     "manual":         ({"desc"}, set()),
 }
 
@@ -736,6 +740,61 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"P = {p['favorable']}/{p['total']} → {result} "
                 f"(expected {p['expected']})")
+
+    if ptype == "estimate":
+        # Round each numeric operand in expr to "place", then evaluate — the
+        # standard "estimate by rounding" task. place: "ten"/"hundred"/
+        # "thousand"/"whole"/"tenth"/"hundredth" or an integer power of 10.
+        places = {"thousand": 1000, "hundred": 100, "ten": 10, "whole": 1,
+                  "tenth": sympy.Rational(1, 10), "hundredth": sympy.Rational(1, 100)}
+        place = p["place"]
+        step = places.get(place)
+        if step is None:
+            if isinstance(place, (int, float)) and place > 0:
+                step = sympy.Rational(place).limit_denominator()
+            else:
+                raise VerifyInputError(
+                    f"'place' must be one of {sorted(places)} or a positive number")
+
+        def round_to(v):
+            return sympy.Rational(round(sympy.Rational(v) / step)) * step
+
+        expr = safe_parse(p["expr"])
+        rounded = expr.replace(
+            lambda e: e.is_Number, lambda e: round_to(e))
+        result = sympy.nsimplify(sympy.N(rounded))
+        expected = parse_value(p["expected"])
+        ok = sym_equal(result, expected)
+        return ("PASS" if ok else "FAIL",
+                f"estimate({p['expr']} @ {place}) → {result} (expected {p['expected']})")
+
+    if ptype == "compare":
+        vals_raw = p["values"]
+        if not isinstance(vals_raw, list) or len(vals_raw) < 2:
+            raise VerifyInputError("'values' must be a list of at least two items")
+        vals = [parse_value(v) for v in vals_raw]
+        order = p.get("order", "asc")
+        if order in ("asc", "desc"):
+            keyed = sorted(range(len(vals)),
+                           key=lambda i: float(sympy.N(vals[i])),
+                           reverse=(order == "desc"))
+            # expected: the values in sorted order (as given tokens)
+            want = parse_value_list(p["expected"])
+            got = [vals[i] for i in keyed]
+            ok = len(want) == len(got) and all(sym_equal(a, b)
+                                               for a, b in zip(got, want))
+            return ("PASS" if ok else "FAIL",
+                    f"compare({vals_raw}, {order}) → {got} (expected {p['expected']})")
+        elif order == "relation":
+            # expected is one of "<", ">", "=" describing values[0] vs values[1]
+            a, b = float(sympy.N(vals[0])), float(sympy.N(vals[1]))
+            rel = "=" if abs(a - b) < 1e-12 else ("<" if a < b else ">")
+            ok = rel == str(p["expected"]).strip()
+            return ("PASS" if ok else "FAIL",
+                    f"compare({vals_raw[0]} vs {vals_raw[1]}) → {rel} "
+                    f"(expected {p['expected']})")
+        else:
+            raise VerifyInputError("'order' must be 'asc', 'desc', or 'relation'")
 
     if ptype == "read_data":
         # A chart/table's data lives in the JSON (the SAME data pgfplots renders,

@@ -6,22 +6,53 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.0.0** · [Changelog](#changelog)
+**v3.0.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
-Generate professional math practice worksheets, answer keys, and study guides for K-12 students. Three PDFs every time: worksheet → answer key → skills summary cheat sheet.
+> Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
-Works with any AI agent that can read files and run shell commands: **OpenClaw**, **Claude Code**, **Gemini**, **Codex**, and others. The skill follows the standard `SKILL.md` format (YAML frontmatter + instructions), and all platform-specific steps have portable fallbacks.
+| Worksheet | Answer key | Skills summary |
+|:---:|:---:|:---:|
+| [<img src="docs/samples/worksheet_geometry-1.png" width="250">](docs/samples/worksheet_geometry-1.png) | [<img src="docs/samples/answerkey_geometry-1.png" width="250">](docs/samples/answerkey_geometry-1.png) | [<img src="docs/samples/skills_summary-1.png" width="250">](docs/samples/skills_summary-1.png) |
+| To-scale figures, work space, ramped difficulty | Step-by-step solutions, boxed answers | Formula boxes + worked mini-examples |
+
+*Real, unretouched output. The `read_data` type even renders data charts from the same numbers it verifies:* [data-handling worksheet →](docs/samples/worksheet_data-1.png)
+
+Works with any AI agent that can read files and run shell commands — **OpenClaw**, **Claude Code**, **Gemini**, **Codex** — via the standard `SKILL.md` format, with portable fallbacks for every platform-specific step.
+
+## Why it's different: nothing ships unverified
+
+Most worksheet generators ask a language model for the answers and trust them. This one doesn't. The model proposes problems as **structured data**; a fixed, audited SymPy script decides what's correct; and the printed PDFs are then bound back to those verified values — so a transcription slip in the answer key can't slip through.
+
+```mermaid
+flowchart LR
+    A[Natural-language<br/>request] --> B[Model designs<br/>problems as JSON]
+    B --> C{{"verify.py — SymPy<br/>24 check types"}}
+    C -->|any wrong answer| B
+    C -->|all pass| D[Compile LaTeX → 3 PDFs]
+    D --> E{{"check_answer_key.py<br/>check_prose_consistency.py"}}
+    E -->|PDF ≠ verified value| D
+    E -->|bound| F[Deliver:<br/>worksheet · key · guide]
+    style C fill:#e8f5e9,stroke:#2e7d32
+    style E fill:#e8f5e9,stroke:#2e7d32
+```
+
+The guarantee is enforced, not aspirational: a **mandatory coverage gate** means no problem can be skipped, the verifier's expression parser is a strict **allowlist** (no code execution), and the whole thing is validated against the **GSM8K** and **MATH** datasets with **0 false accepts on ~7,400 checks**. Where a task genuinely can't be machine-checked (proofs, "explain why"), it's honestly marked `manual` rather than faked. See the [Trust model](#trust-model-what-verification-does-and-does-not-guarantee).
 
 ## Features
 
-- **Three documents per request** — worksheet, step-by-step answer key, skills summary with formula boxes and mini examples
-- **LaTeX quality** — coordinate planes, geometric figures, tables, multi-part problems via tectonic (no TeX installation required)
-- **SymPy verification** — each problem's machine-checkable answer is verified by a computer algebra system before compiling, and the delivered PDFs are cross-checked against those verified values (see Trust model below). 24 check types span elementary through calculus: `solve`/`zeros` (real/complex domain control), `factor`, `expand`, `eval` (complex via `I`), `diff`, `integrate` (domain-aware), `definite_integral` (mpmath quadrature), `limit`, `equiv`, `solve_interval` (with mpmath completeness), `approx` (scale-aware tol), `distance`/`midpoint`/`slope`/`polygon_area`, `triangle` (SSA-aware), `system`, `series`, `inequality`, `stats` (mean/median/mode/range/variance/stdev/quartiles), `probability`, `read_data` (charts/tables), and explicit `manual`
-- **Geometry figure library** — compile-tested TikZ templates for labeled to-scale triangles, transversals, circle theorems, sectors, the unit circle, trig graphs, 3D solids, and two-column proofs
-- **Hardened verification input** — every expression passes a strict token allowlist before parsing (numbers, whitelisted functions/variables, arithmetic only), and problem entries are schema-checked: unknown types or misspelled fields are hard failures, never silent skips
-- **Auto reasoning-model detection** — inspects the host agent's config (OpenClaw, Claude Code, Gemini, Codex) and common `*_MODEL` environment variables to find the best available model (DeepThink, o1/o3, DeepSeek R1, Claude Opus) for math generation; shows setup guidance if none is configured. All detection is local — no network calls.
-- **Platform-appropriate delivery** — chat-connected agents send the PDFs back on the originating channel (Telegram, iMessage, email); CLI/IDE agents report the output paths on disk
-- **Elementary through AP Calculus BC** — Pre-Algebra, Algebra 1/2, Geometry, Pre-Calc, Calculus AB/BC including limits, derivatives, integrals, differential equations, and series (see `references/problem-library.md` for full topic menu)
+- **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary cheat sheet with formula boxes and worked mini-examples (all three verified).
+- **24 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
+- **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON.
+- **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
+- **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
+- **Auto model detection** — finds the best available reasoning model from the host agent's config; fully local, no network calls.
+- **Portable delivery** — chat agents send PDFs back on the originating channel; CLI/IDE agents report the paths.
+
+## Example
+
+> **You:** *"Leo's studying the law of sines and cosines — make him an 8-problem worksheet with a figure on each, plus an answer key."*
+
+The skill designs 8 ramped problems, writes a `verify.json`, runs it through SymPy (all 8 pass), compiles three PDFs, and confirms every boxed answer in the key matches the verified value — producing exactly the documents shown above, ready to print.
 
 ## Install
 

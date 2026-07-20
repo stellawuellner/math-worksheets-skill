@@ -22,9 +22,18 @@
 \newcounter{prob}
 \newcommand{\problem}[1]{\stepcounter{prob}\vspace{0.4cm}\noindent\textbf{\large\theprob.}\quad #1\vspace{0.3cm}}
 
+% Shrink-to-fit title: use \LARGE when it fits on one line, otherwise scale
+% down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
+% comes from graphicx, which tikz already loads.)
+\newlength{\fittedw}
+\newcommand{\fittedtitle}[1]{%
+  \settowidth{\fittedw}{\LARGE\bfseries #1}%
+  \ifdim\fittedw>\linewidth\resizebox{\linewidth}{!}{\bfseries #1}%
+  \else{\LARGE\bfseries #1}\fi}
+
 \begin{document}
 \begin{center}
-  {\LARGE\textbf{TOPIC Practice Worksheet}}\\[0.3cm]
+  \fittedtitle{TOPIC Practice Worksheet}\\[0.3cm]
   {\large COURSE \quad $\bullet$ \quad DATE}
 \end{center}
 \noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}
@@ -390,9 +399,20 @@ Sphere:
 
 ### Answer key document header
 ```latex
-\fancyhead[L]{\textbf{TOPIC --- Answer Key}}
-\fancyhead[R]{\textit{For instructor/parent use}}
+\fancyhead[L]{\textbf{\small TOPIC --- Answer Key}}   % keep TOPIC short (≤28 chars)
+\fancyhead[R]{\textit{\small For instructor/parent use}}
 ```
+
+### Answer key title block
+Put the topic on its own line (shrink-to-fit) and **"Answer Key" as a subtitle beneath it** — never append "--- Answer Key" to the big title, or a long topic wraps mid-phrase.
+```latex
+\begin{center}
+  \fittedtitle{TOPIC}\\[0.15cm]
+  {\Large\bfseries Answer Key}\\[0.25cm]
+  {\large COURSE \quad $\bullet$ \quad DATE}
+\end{center}
+```
+The skills-summary title uses the same pattern with `Study Guide` as the subtitle.
 
 ### Step-by-step solution
 ```latex

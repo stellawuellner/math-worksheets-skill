@@ -33,12 +33,28 @@ def problem_blocks(tex):
 
 
 def prose_numbers(block):
-    # drop TikZ (figure numbers are covered by the figure rule)
+    # drop TikZ coordinates (not human-visible), but keep figure LABELS —
+    # see figure_label_numbers, which is checked separately (CASE-21)
     block = re.sub(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", "", block,
                    flags=re.S)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
     return {float(n) for n in NUM_RE.findall(block)}
+
+
+def figure_label_numbers(block):
+    """Numbers printed in figure LABELS — \\node[...]{...} text and pic "..."
+    quotes. These are the human-visible figure values that must come from the
+    JSON (audit 3d: previously the whole tikzpicture was stripped, so a figure
+    labeled with a wrong side length was never checked). Excludes coordinates."""
+    nums = set()
+    for m in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", block):
+        label = m.group(1)
+        label = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2", label)
+        nums |= {float(n) for n in NUM_RE.findall(label)}
+    for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):  # pic "$34^\circ$"
+        nums |= {float(n) for n in NUM_RE.findall(m.group(1))}
+    return nums
 
 
 def json_numbers(entry):
@@ -75,6 +91,7 @@ def main():
 
     total_nums = matched = 0
     report = []
+    fig_flags = []
     for i, block in enumerate(blocks):
         prose = prose_numbers(block)
         given = set()
@@ -86,6 +103,11 @@ def main():
         total_nums += len(prose)
         matched += len(prose) - len(missing)
         report.append((i + 1, sorted(prose), missing))
+        # figure-label consistency (CASE-21): visible figure numbers must be givens
+        fig = figure_label_numbers(block)
+        fig_missing = sorted(f for f in fig if f not in given and f not in prose)
+        if fig_missing:
+            fig_flags.append((i + 1, fig_missing))
 
     print(f"Prose-consistency report: {tex_path}")
     for pid, prose, missing in report:
@@ -93,6 +115,12 @@ def main():
         print(f"  problem {pid}: {len(prose)} prose numbers{flag}")
     rate = matched / total_nums if total_nums else 1.0
     print(f"\nMatch rate: {matched}/{total_nums} ({100*rate:.1f}%)")
+    if fig_flags:
+        print("Figure-label numbers not found in JSON givens (audit 3d):")
+        for pid, miss in fig_flags:
+            print(f"  ⚠ problem {pid}: figure shows {miss}")
+    else:
+        print("Figure labels: all consistent with JSON givens.")
     print("(heuristic — investigate misses; derived/rounded prose values and "
           "dates are expected false flags)")
 

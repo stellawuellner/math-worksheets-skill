@@ -200,6 +200,21 @@ Use `manual` for: graph sketches, sign charts, word problem setups, two-column p
 
 **If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 
+**Trust boundary of `approx`:** it confirms the *arithmetic of the formula you wrote* matches `expected` — it cannot confirm the formula is the right one for the stated problem. Keep the `approx` `expr` a faithful transcription of the problem's givens, and rely on the prose/figure/answer-key checkers below to bind the story to the math.
+
+### 4b. Bind the printed documents to the verified JSON
+
+Verification proves the JSON is correct; these checkers prove the **PDFs the student receives** match it. Run all three before compiling and resolve every hard flag:
+
+```bash
+python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # worksheet prose + figure labels ↔ JSON givens
+python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
+```
+
+- `check_answer_key.py` exits 1 if a verified answer value is printed **nowhere** in the key (transcription drift) — fix the `.tex` and re-run. Soft `⚠` alignment notes are heuristic; eyeball them.
+- **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
+- `check_prose_consistency.py` also now checks **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
+
 ### 5. Compile
 
 ```bash

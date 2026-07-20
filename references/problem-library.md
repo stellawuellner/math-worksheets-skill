@@ -142,6 +142,40 @@ See **Verification recipes** at the bottom for which verify-JSON type to use for
 | Interval of convergence | Ratio test with endpoint checks |
 | Lagrange error bound | Bound the remainder for a Taylor polynomial |
 
+## Word Problems (all levels)
+
+Word problems are prose wrapped around a computation the verifier can usually
+still check — never let the wrapper cost you the verification.
+
+**Construction rules:**
+1. **Every number in the prose must appear as a given in that problem's verify
+   JSON entry** (same rule as figures). Write the JSON entry first from chosen
+   givens, then write the story from the JSON — not the other way around.
+2. **The answer gets a real check whenever the computation is expressible:**
+   rates/percents/money → `approx` or `eval`; triangle applications → `triangle`;
+   coordinate stories → `distance`/`polygon_area`; related rates & optimization →
+   `diff`/`approx` on the resulting derivative/value. Reserve `manual` for
+   set-up-only questions ("write the equation, don't solve").
+3. **Sanity-check the scenario:** quantities positive where reality demands,
+   speeds/ages/prices plausible, units stated in the question and expected in
+   the answer, no leftover unused numbers unless intentionally distractors
+   (and then say "you may not need every number").
+4. **One question per problem**, stated in the final sentence, with the target
+   quantity and units explicit ("How far is the tree from point A, in meters?").
+
+**Per-level menu:**
+
+| Level | Word-problem staples | Verify with |
+|---|---|---|
+| Elementary / Pre-Algebra | unit rates, unit conversion, percent (tax/tip/discount), fraction of a group, ratio tables | `approx` / `eval` |
+| Algebra 1/2 | coin/ticket systems, mixture, distance=rate·time meeting problems, projectile height, break-even | `solve` / `eval` / `approx` |
+| Geometry | fencing/area, similar-triangle shadows, ladder against wall | `approx` / `triangle` / `polygon_area` |
+| Trig / Pre-Calc | angle of elevation, surveying, bearings, two ships/planes | `triangle` / `approx` |
+| Calculus | related rates (cone, ladder, shadow), optimization (min fence, max box), motion from v(t) | `diff` + `approx` |
+
+Use `tests/check_prose_consistency.py <worksheet.tex> <verify.json>` after
+writing both files — it flags prose numbers that never appear in the JSON givens.
+
 ## Verification recipes
 
 Map each problem to its verify-JSON type as you design it. Geometry rule of thumb: **give the script the raw data (points, triangle givens), not your own computation.**

@@ -37,6 +37,7 @@ CASES=(
   "manual_only.json:2"
   "reject_injection.json:1"
   "reject_bad_schema.json:1"
+  "reject_coverage_gap.json:1"
 )
 
 failures=0

@@ -71,6 +71,8 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 
 **python3 + sympy** for answer verification: `pip3 install sympy`
 
+**No tectonic?** `scripts/compile.sh` falls back to `pdflatex` automatically. Unlike tectonic, pdflatex does not download packages — install the full set up front: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra` (the last one supplies `enumitem`, `mdframed`, and friends used by the templates).
+
 Output directory (create if needed): `~/Documents/Worksheets/`. In headless or sandboxed environments where the user won't browse `~/Documents`, use `./worksheets/` inside the workspace instead and report the paths.
 
 ## Workflow
@@ -129,10 +131,11 @@ Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 ```
 
-**JSON format:**
+**JSON format** — always set `problem_count` to the number of problems on the worksheet; verification hard-fails unless every problem id 1..N has at least one check (use `manual` for the unverifiable ones), so a partially-verified answer key can never slip through:
 ```json
 {
   "topic": "derivatives and trig",
+  "problem_count": 17,
   "problems": [
     {"id": 1, "type": "solve",  "expr": "x**2 - 5*x + 6",      "expected": [2, 3]},
     {"id": 2, "type": "factor", "expr": "x**2 - 7*x + 12",     "expected": "(x-3)*(x-4)"},
@@ -240,7 +243,8 @@ Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 
 | Problem | Fix |
 |---|---|
-| `tectonic` not found | `brew install tectonic` |
+| `tectonic` not found | `brew install tectonic`, or rely on the pdflatex fallback (see Prerequisites) |
+| pdflatex: `.sty` not found (enumitem, mdframed, …) | `apt install texlive-latex-extra` (pdflatex doesn't auto-download packages) |
 | Slow first compile | Downloading packages from CTAN — wait 30–60s, faster after |
 | LaTeX error on line N | Check paired `$...$`, matching `\begin{}/\end{}` |
 | pgfplots not rendering | Ensure `\pgfplotsset{compat=1.18}` is in preamble |

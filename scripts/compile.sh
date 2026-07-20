@@ -53,10 +53,18 @@ else
        -output-directory "$OUT_DIR" "$TEX_FILE" > "$LOG" 2>&1; then
     echo "pdflatex failed — last lines of log:" >&2
     tail -25 "$LOG" >&2
+    if grep -q "\.sty' not found" "$LOG"; then
+      echo "Hint: pdflatex doesn't auto-download packages — install texlive-latex-extra" >&2
+      echo "(plus texlive-pictures for TikZ/pgfplots) or use tectonic instead." >&2
+    fi
     rm -f "$LOG"
     exit 1
   fi
   rm -f "$LOG"
+  # pdflatex (unlike tectonic) drops .aux/.log next to the PDF — the output
+  # directory is a deliverable, keep only the PDF
+  JOB="$(basename "${TEX_FILE%.tex}")"
+  rm -f "${OUT_DIR}/${JOB}.aux" "${OUT_DIR}/${JOB}.log" "${OUT_DIR}/${JOB}.out"
 fi
 
 PDF="${OUT_DIR}/$(basename "${TEX_FILE%.tex}").pdf"

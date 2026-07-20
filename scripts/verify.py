@@ -661,6 +661,24 @@ def run_verification(json_path):
     problems = data["problems"]
     topic = data.get("topic", "unknown")
 
+    # Coverage gate: with "problem_count": N declared, every worksheet problem
+    # id 1..N must have at least one check — otherwise a generator could verify
+    # a subset of the worksheet and still pass.
+    problem_count = data.get("problem_count")
+    if problem_count is not None:
+        if not isinstance(problem_count, int) or problem_count < 1:
+            print("❌ 'problem_count' must be a positive integer.", file=sys.stderr)
+            return 1
+        ids = {p.get("id") for p in problems if isinstance(p, dict)}
+        missing = [i for i in range(1, problem_count + 1)
+                   if i not in ids and str(i) not in ids]
+        if missing:
+            print(f"❌ Coverage gap: problem_count={problem_count} but no checks "
+                  f"for problem id(s) {missing}. Every worksheet problem needs "
+                  "at least one check (use type 'manual' if unverifiable).",
+                  file=sys.stderr)
+            return 1
+
     print(f"Verifying: {topic} ({len(problems)} problems)\n")
 
     results = []

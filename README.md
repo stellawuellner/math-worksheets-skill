@@ -64,6 +64,8 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 pip3 install sympy
 ```
 
+No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
+
 ## Usage
 
 Just ask naturally:

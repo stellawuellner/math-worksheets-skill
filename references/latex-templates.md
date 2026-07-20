@@ -11,7 +11,10 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\textbf{TOPIC Practice}}
+% Keep the left title SHORT (≤ ~28 chars, e.g. "Triangle Trig Practice", not the
+% full course name) — it shares the header line with the Name/Date blanks and a
+% long title overlaps them. \small buys extra margin.
+\fancyhead[L]{\textbf{\small TOPIC Practice}}
 \fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
@@ -236,6 +239,31 @@ Keep the geometry honest: the inscribed angle must be half the central angle (he
   \node[below left] at (O) {$O$};
   \node[below] at (1,0) {$r = 6$};
   \pic [draw, angle radius=5mm, angle eccentricity=1.9, "$115^\circ$"] {angle = A--O--B};
+\end{tikzpicture}
+\end{center}
+```
+
+### Ambiguous SSA case — two-triangle "swing" figure
+Both possible triangles from the same SSA data (here $a=6$, $b=8$, $A=40^\circ$): the swinging side $a$ is drawn solid to $C_1$ (acute $B_1$) and dashed to $C_2$ (obtuse $B_2$). Compute both apex points from the actual solutions so the figure is to scale; keep the shared-side label below and each swing label on its own side of the apex to avoid collisions.
+```latex
+\begin{center}
+\begin{tikzpicture}[scale=0.55]
+  \coordinate (A) at (0,0);
+  % B1 = 58.99°, B2 = 121.01°, C = 180 − 40 − B. Place base along x-axis:
+  % c1 = a·sin(C1)/sin(A) ≈ 9.24, c2 = a·sin(C2)/sin(A) ≈ 3.05
+  \coordinate (B1) at (9.24,0);
+  \coordinate (B2) at (3.05,0);
+  \coordinate (C)  at ({8*cos(40)},{8*sin(40)});   % b = 8 from A at 40°
+  \draw[thick] (A) -- (B1) -- (C) -- cycle;
+  \draw[thick, dashed] (C) -- (B2);
+  \node[below left]  at (A)  {$A$};
+  \node[below right] at (B1) {$B_1$};
+  \node[below=2pt]   at (B2) {$B_2$};
+  \node[above]       at (C)  {$C$};
+  \node[above left]  at ($(A)!0.35!(C)$)  {$b = 8$};
+  \node[above right] at ($(B1)!0.45!(C)$) {$a = 6$};
+  \node[right=3pt]   at ($(B2)!0.3!(C)$)  {$a = 6$};
+  \pic [draw, angle radius=8mm, angle eccentricity=1.5, "$40^\circ$"] {angle = B1--A--C};
 \end{tikzpicture}
 \end{center}
 ```

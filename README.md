@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
 [![coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)](tests/coverage.sh)
-[![verifier](https://img.shields.io/badge/false%20accepts-0%2F7400%20corpus-brightgreen)](tests/eval_gsm8k.py)
+[![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
@@ -36,11 +36,11 @@ flowchart LR
     style E fill:#e8f5e9,stroke:#2e7d32
 ```
 
-The guarantee is enforced, not aspirational: a **mandatory coverage gate** means no problem can be skipped, the verifier's expression parser is a strict **allowlist** (no code execution), and the whole thing is validated against the **GSM8K** and **MATH** datasets with **0 false accepts on ~7,400 checks**. Where a task genuinely can't be machine-checked (proofs, "explain why"), it's honestly marked `manual` rather than faked. See the [Trust model](#trust-model) for the exact boundary.
+The guarantee is enforced, not aspirational: a **mandatory coverage gate** means no problem can be skipped, the verifier's expression parser is a strict **allowlist** (no code execution), and the whole thing is validated against the **GSM8K** and **MATH** datasets with **0 false accepts on 6,993 checks**. Where a task genuinely can't be machine-checked (proofs, "explain why"), it's honestly marked `manual` rather than faked. See the [Trust model](#trust-model) for the exact boundary.
 
 ## Trust model
 
-**Guaranteed** — every problem with a machine-checkable answer is CAS-verified; the mandatory coverage gate (`problem_count`) means no worksheet problem is silently skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values. Validated on GSM8K and MATH — **0 false accepts on ~7,400 checks**.
+**Guaranteed** — every problem with a machine-checkable answer is CAS-verified; the mandatory coverage gate (`problem_count`) means no worksheet problem is silently skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values. Validated on GSM8K and MATH — **0 false accepts on 6,993 checks**.
 
 **Human review still required** — `manual`-typed problems (proofs, constructions, "explain why", matrices/vectors), the soft alignment warnings from the binding checkers, and any problem whose *statement* is ambiguous. An optional [LLM-judge review aid](references/manual-review-aid.md) flags likely errors in that content first, but does not gate it. Verification proves the math and its transcription — it does not prove pedagogical intent.
 
@@ -156,7 +156,7 @@ bash tests/run_tests.sh          # verifier contract (18 fixtures)
 bash tests/coverage.sh           # all suites under coverage, floor 90%
 ```
 
-`coverage.sh` runs the fixture suite plus three Python suites — `test_audit_fixes.py` (soundness-regression pins from two adversarial audits, 33 assertions), `test_error_paths.py` (input-validation for every type), and `test_branches.py` (numeric fallbacks and verdict variants) — under `coverage`, and fails below **90%** (currently **91%**). Fixtures pin the contract: correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection/schema violations exit 1 without executing anything. CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on ~7,400 checks**.
+`coverage.sh` runs the fixture suite plus three Python suites — `test_audit_fixes.py` (soundness-regression pins from two adversarial audits, 33 assertions), `test_error_paths.py` (input-validation for every type), and `test_branches.py` (numeric fallbacks and verdict variants) — under `coverage`, and fails below **90%** (currently **91%**). Fixtures pin the contract: correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection/schema violations exit 1 without executing anything. CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on 6,993 checks**.
 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
@@ -169,7 +169,7 @@ bash tests/coverage.sh           # all suites under coverage, floor 90%
 - **Standards, difficulty, Bloom:** per-problem `standard` (K–4 through HS + AP CED, in `references/standards-map.md`), `difficulty` (1–5 ladders, ramp-checked), and `bloom` tags; tiered-differentiation workflow.
 - **Coverage:** elementary → AP Calculus BC; validated against the Marble OS-taxonomy (503 topics) — ~61% machine-verifiable, with an honest `manual` boundary for open reasoning (optional LLM-judge review aid in `references/manual-review-aid.md`).
 - **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy pinned and version-stamped; MIT `LICENSE`; CI runs the test suites on every push.
-- **Testing:** regression suite (18 fixtures incl. injection/schema/coverage) + audit-fix suite (21 assertions); verifier validated on GSM8K (4282/4282) and MATH (2711/2711) with 0 false accepts.
+- **Testing:** regression suite (18 fixtures incl. injection/schema/coverage) + audit-fix suite (21 assertions); verifier validated on GSM8K calculator annotations (4282/4282, test split) and MATH boxed answers (2711/2711) with 0 false accepts, 6,993 checks in total.
 
 ### v2.3.0 — 2026-07-20
 - **Geometry & trig verification:** Six new check types — `approx` (tolerance-based comparison for rounded answers, the workhorse for measurement problems), `distance`, `midpoint`, `slope` (with `"undefined"` for vertical lines), `polygon_area` (shoelace over raw vertices), and `triangle` (full SSS/SAS/ASA/AAS/SSA solver via law of sines/cosines in fixed code, accepting either triangle in the ambiguous SSA case). Geometry types take raw givens — points, sides, angles — so the model transcribes data and the audited script does the formulas

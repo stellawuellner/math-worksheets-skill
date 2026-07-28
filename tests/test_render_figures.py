@@ -113,7 +113,7 @@ demo = json.load(open(os.path.join(FIXTURES, "figs_demo.json")))["problems"]
 rc, figs, out = render(demo)
 check("figs_demo renders (exit 0)", rc == 0)
 b = blocks(figs)
-check("one \\probfig block per figured problem", sorted(b) == [1, 2, 3, 4, 5])
+check("one \\probfig block per figured problem", sorted(b) == [1, 2, 3, 4, 5, 6])
 check("dispatcher macro emitted",
       "\\newcommand{\\probfig}[1]{\\csname probfig#1\\endcsname}" in figs)
 check("emitted file is ASCII (pdflatex fallback must compile it)",
@@ -175,9 +175,28 @@ check("RT: unknown labelled with its declared name", "{$x$}" in b[5])
 check("RT: given leg labelled bare", "{$9$}" in b[5])
 check("RT: computed answer 6.30 NOT printed", "6.3" not in b[5])
 
+print("right_triangle figure on eval (write-the-ratio: a=8, b=15 via 'at'):")
+# same renderer path as approx — the figure object is consumed independent of
+# the problem's verification type; only the number BINDING source differs
+# (eval carries the numbers in its 'at' dict, not as expr literals)
+sol = solve_triangle({"a": 8.0, "b": 15.0}, {"C": math.pi / 2})[0]
+s = rf.TARGET_CM / max(sol["a"], sol["b"], sol["c"])
+c = coords(b[6])
+drawn = {"a": dist(c["B"], c["C"]), "b": dist(c["A"], c["C"]),
+         "c": dist(c["A"], c["B"])}
+for k in "abc":
+    check(f"eval-RT: drawn {k} = {sol[k]:.4f} after de-normalization",
+          abs(drawn[k] / s - sol[k]) <= 1e-3)
+check("eval-RT: right-angle mark at the implied C", RIGHT_MARK_RE.search(b[6]))
+check("eval-RT: both legs labelled bare", "{$8$}" in b[6] and "{$15$}" in b[6])
+check("eval-RT: asked-about angle keeps its declared name",
+      '"$A$"' in b[6])
+check("eval-RT: computed hypotenuse 17 NOT printed",
+      17.0 not in label_numbers(b[6]))
+
 print("labels never show a non-given number (all blocks):")
 givens = {1: {7, 8, 9}, 2: {7, 11, 34}, 3: {35, 12}, 4: {6, 8, 40},
-          5: {9, 35}}
+          5: {9, 35}, 6: {8, 15}}
 for pid, allowed in givens.items():
     check(f"problem {pid}: label numbers {sorted(label_numbers(b[pid]))} "
           f"⊆ givens {sorted(allowed)}",
@@ -199,6 +218,17 @@ rc, _, out = render([{"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)",
                                  "solve_for": "a"}}])
 check("kind (b) value missing from expr: nonzero exit", rc != 0)
 check("kind (b) mismatch message names the value", "A=40" in out)
+
+# same binding rule on the eval path: a figure value that is neither an expr
+# literal nor an 'at' value must refuse to render
+rc, _, out = render([{"id": 1, "type": "eval", "expr": "a/b",
+                      "at": {"a": 8, "b": 15}, "expected": "8/15",
+                      "figure": {"kind": "right_triangle",
+                                 "given": {"a": 8, "b": 16},
+                                 "solve_for": "A"}}])
+check("eval figure value missing from 'at': nonzero exit", rc != 0)
+check("eval mismatch message names the value and the 'at' source",
+      "b=16" in out and "'at'" in out)
 
 rc, _, out = render([{"id": 1, "type": "approx", "expr": "2*pi*3",
                       "expected": 18.85, "tol": 0.01,
@@ -252,6 +282,18 @@ try:
     check("triangle + opt-in marker passes schema", True)
 except verify.VerifyInputError as e:
     check(f"triangle + opt-in marker passes schema ({e})", False)
+# eval joined the figure allowlist (write-the-ratio problems are verified as
+# eval and inherently need the triangle they read from — the 'at' values are
+# the binding source)
+ok_ratio = {"id": 1, "type": "eval", "expr": "a/b",
+            "at": {"a": 8, "b": 15}, "expected": "8/15",
+            "figure": {"kind": "right_triangle", "given": {"a": 8, "b": 15},
+                       "solve_for": "A", "unknown": "A"}}
+try:
+    verify.check_schema(ok_ratio)
+    check("eval + right_triangle figure (at-bound) passes schema", True)
+except verify.VerifyInputError as e:
+    check(f"eval + right_triangle figure passes schema ({e})", False)
 for bad in (
     {**ok_marker, "figure": {"kind": "triangle", "a": 7}},   # duplicated given
     {**ok_marker, "figure": {"kind": "sphere"}},             # unknown kind

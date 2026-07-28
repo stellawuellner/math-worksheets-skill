@@ -67,6 +67,7 @@ CASES=(
   "pass_bigtol_reason.json:2"
   "figs_demo.json:0"
   "fail_figure_schema.json:1"
+  "reject_figure_type.json:1"
   "reject_role_value.json:1"
   "pass_traps.json:0"
   "fail_trap_indistinct.json:1"
@@ -238,6 +239,18 @@ if [ -f "$FIXTURES/figs_demo.json" ]; then
     echo "✅ check_layout passes the all-\\probfig sheet (spliced)"
   else
     echo "❌ check_layout wrongly flagged the all-\\probfig sheet"; exit 1
+  fi
+
+  # figure-type allowlist: a figure on a type with no bindable numbers (a
+  # solve root list) must be rejected TEACHING the rewrite — the allowed
+  # types and the "verify as approx/eval or drop the figure" path
+  output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/reject_figure_type.json" 2>&1)
+  if echo "$output" | grep -qF "['approx', 'eval']" \
+     && echo "$output" | grep -q "or drop the figure"; then
+    echo "✅ figure-on-solve rejection names the allowed types and the fix"
+  else
+    echo "❌ figure-on-solve rejection does not teach the rewrite"
+    echo "$output" | sed 's/^/     /'; exit 1
   fi
 fi
 

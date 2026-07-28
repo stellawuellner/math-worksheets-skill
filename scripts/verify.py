@@ -963,6 +963,35 @@ def interleave_report(problems, problem_count, fmt):
     return bool(viols)
 
 
+# Types that may carry a 'right_triangle' figure: the drawing's labels must
+# bind to numbers the problem's own check verified, and only these types carry
+# such numbers in a bindable place — approx as literals in 'expr', eval as the
+# substituted 'at' values (the write-the-ratio shape: expr "a/b" at
+# {"a": 8, "b": 15} inherently needs the triangle it reads from). Every other
+# type stays hard-rejected: a root LIST, a symbolic identity, or a manual flag
+# has no per-problem numbers a side label could be checked against, so its
+# figure would be exactly the unverifiable hand-drawing this pipeline bans.
+# ('triangle' problems are separate: they render automatically and their
+# figure field is the value-free opt-in marker.)
+_FIGURE_TYPES = {"approx", "eval"}
+
+
+def figure_bindable_numbers(p):
+    """The numbers a figure label is allowed to show: literals in the
+    problem's 'expr' plus plain-number values of its 'at' dict (eval
+    substitutes them into expr, so the check verifiably used them).
+    Shared with render_figures.py so the gate and the renderer can never
+    disagree about what counts as verified."""
+    nums = {float(t) for t in
+            re.findall(r"\d+(?:\.\d+)?|\.\d+", str(p.get("expr", "")))}
+    at = p.get("at")
+    if isinstance(at, dict):
+        for v in at.values():
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                nums.add(float(v))
+    return nums
+
+
 def validate_figure(p, ptype):
     """Validate the optional 'figure' object scripts/render_figures.py draws.
 
@@ -970,10 +999,11 @@ def validate_figure(p, ptype):
     'triangle' problem the figure may only be the opt-in marker — any value
     inside it would be a second copy of the givens, i.e. the retyping drift
     this pipeline exists to prevent. A 'right_triangle' figure carries its own
-    givens (the approx expr has no structure to draw from), so those are
+    givens (the approx/eval check has no structure to draw from), so those are
     geometry-checked here through the same solve_triangle that verifies
-    triangle problems, and literal-checked against 'expr' so the drawing can
-    only show numbers the arithmetic check actually used.
+    triangle problems, and checked against the numbers the problem's own check
+    used ('expr' literals, plus 'at' values on eval) so the drawing can only
+    show numbers the arithmetic check actually verified.
     """
     fig = p.get("figure")
     if fig is None:
@@ -996,10 +1026,14 @@ def validate_figure(p, ptype):
         raise VerifyInputError(
             "figure kind 'triangle' only applies to type 'triangle' problems "
             "(they render automatically from their 'given' dict)")
-    if ptype != "approx":
+    if ptype not in _FIGURE_TYPES:
         raise VerifyInputError(
-            "figure kind 'right_triangle' only applies to 'approx' problems — "
-            "the figure values are literal-checked against 'expr'")
+            f"figure kind 'right_triangle' is not allowed on type {ptype!r} — "
+            "a figure's labels must bind to numbers the problem's own check "
+            f"verified, which only types {sorted(_FIGURE_TYPES)} carry "
+            "(approx: literals in 'expr'; eval: 'at' values — the "
+            "write-the-ratio shape). Verify the figured problem as one of "
+            "those types, or drop the figure.")
     unknown = set(fig) - {"kind", "given", "solve_for", "unknown"}
     if unknown:
         raise VerifyInputError(
@@ -1023,14 +1057,13 @@ def validate_figure(p, ptype):
     if not isinstance(unk, str) or not re.fullmatch(r"[A-Za-z?]{1,3}", unk):
         raise VerifyInputError(
             "figure 'unknown' must be a short letter name like \"x\"")
-    expr_nums = {float(t) for t in
-                 re.findall(r"\d+(?:\.\d+)?|\.\d+", str(p.get("expr", "")))}
+    checked_nums = figure_bindable_numbers(p)
     for k, v in given.items():
-        if float(v) not in expr_nums:
+        if float(v) not in checked_nums:
             raise VerifyInputError(
                 f"figure value {k}={v} does not appear as a literal in expr "
-                f"{p.get('expr')!r} — the figure would print a number this "
-                "check never verified")
+                f"{p.get('expr')!r} or as an 'at' value — the figure would "
+                "print a number this check never verified")
     sides = {k: float(given[k]) for k in "abc" if k in given}
     angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
     angles["C"] = math.pi / 2

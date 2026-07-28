@@ -1,9 +1,11 @@
-% build.sh driver fixture: BROKEN answer key — problem 1's boxed answer is
-% wrong and the verified value appears nowhere (not even here: the checker
-% scans raw text, comments included), so check_answer_key must fail and
-% build.sh must exit 1 at the answer-key-ak gate.
-\documentclass{article}
-\usepackage{amsmath}
+% build.sh driver fixture: BROKEN answer key, on the mandated template shell —
+% problem 1's boxed answer is wrong and the verified value appears nowhere
+% (not even here: the checker scans raw text, comments included), so
+% check_answer_key must fail and build.sh must exit 1 at the answer-key-ak
+% gate.
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
 \begin{document}
 \section*{Build-demo answer key}
 \begin{enumerate}

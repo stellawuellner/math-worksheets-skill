@@ -1,7 +1,11 @@
-% build.sh driver fixture: worksheet. Must pass check_layout (>=2.5cm per
-% problem, no partial valued figures) and parse in check_prose_consistency.
-\documentclass{article}
-\usepackage{enumitem}
+% build.sh driver fixture: worksheet. Uses the mandated template shell (the
+% template-ws gate fails hand-rolled preambles), passes check_layout (>=2.5cm
+% per problem, no partial valued figures) and parses in
+% check_prose_consistency. The stub tectonic never reads the staged template;
+% compile.sh stages it beside the file for real engines.
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
 \begin{document}
 \section*{Build-demo worksheet}
 \begin{enumerate}[label=\textbf{\arabic*.}, itemsep=5cm]

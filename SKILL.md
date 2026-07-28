@@ -126,7 +126,7 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 \input{worksheet-preamble}
 \input{figure-macros}    % when using the shipped figure macros (\rtfig, \trifig, \refrt)
 ```
-`$SKILL_DIR/templates/worksheet-preamble.tex` carries the packages, `\problem`, `\fittedtitle`, the `\wsheader`/`\akheader`/`\ssheader` + title-block macros, and the study-guide box environments; `templates/figure-macros.tex` carries the figure macros. `compile.sh` (and therefore `build.sh`) stages both files beside your `.tex` automatically, so `/tmp` compiles just work — but only when you compile through the scripts, never by invoking the engine directly. Only `geometry` stays in the document (margins differ between worksheets and study guides).
+`$SKILL_DIR/templates/worksheet-preamble.tex` carries the packages, `\problem`, `\fittedtitle`, the `\wsheader`/`\akheader`/`\ssheader` + title-block macros, and the study-guide box environments; `templates/figure-macros.tex` carries the figure macros. `compile.sh` (and therefore `build.sh`) stages both files beside your `.tex` automatically, so `/tmp` compiles just work — but only when you compile through the scripts, never by invoking the engine directly. Only `geometry` stays in the document (margins differ between worksheets and study guides). `build.sh` enforces this mechanically — the `template-ws`/`template-ak`/`template-ss` gates (`tests/check_template_use.py`) fail any document that hand-rolls its shell, `\input`s a non-shipped preamble file, or redefines a shipped macro/environment/color.
 
 **Work space defaults**: `\problem[5cm]{...}` per problem; `8cm` for multi-step; `10cm+` for graphs.
 The workspace must live **inside the problem's unbreakable block** (the `\problem` macro's

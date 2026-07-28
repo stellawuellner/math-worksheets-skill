@@ -1,9 +1,10 @@
-% build.sh driver fixture: study guide. The worked example's result is boxed
-% so check_answer_key can bind it to verify_ss_build_demo.json. examplebox is
-% stubbed inline so the fixture also compiles under a real engine.
-\documentclass{article}
-\usepackage{amsmath}
-\newenvironment{examplebox}{}{}
+% build.sh driver fixture: study guide, on the mandated template shell. The
+% template provides examplebox — the old inline \newenvironment stub would now
+% rightly trip the template-ss gate's rule C. The worked example's result is
+% boxed so check_answer_key can bind it to verify_ss_build_demo.json.
+\documentclass[12pt]{article}
+\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
+\input{worksheet-preamble}
 \begin{document}
 \section*{Build-demo study guide}
 \begin{examplebox}

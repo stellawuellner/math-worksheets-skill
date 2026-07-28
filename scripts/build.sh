@@ -27,15 +27,19 @@
 #
 # GATE ORDER (fail-fast: the first FAIL stops the run and nothing after it
 # executes; in particular nothing compiles after a failed verification):
-#    1 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
-#    2 verify-ss       run_verify.sh on the study-guide JSON
-#    3 render-figures  scripts/render_figures.py, when shipped AND the JSON
+#    1 template-*      tests/check_template_use.py on ws, ak, ss — the shell
+#                      must \input{worksheet-preamble}, never hand-roll it
+#                      (cheapest check first; nothing verifies or compiles a
+#                      hand-rolled shell)
+#    2 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
+#    3 verify-ss       run_verify.sh on the study-guide JSON
+#    4 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
-#    4 layout-ws       tests/check_layout.py (figure scope + work space)
-#    5 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
+#    5 layout-ws       tests/check_layout.py (figure scope + work space)
+#    6 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two)
-#    6 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
-#    7 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
+#    7 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
+#    8 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
 #                      problems: a structural FAIL, not a manual-review pass)
 #
 # EXIT CODES: 0 all gates green · 1 a gate failed (named in the verdict line)
@@ -101,8 +105,9 @@ fi
 # ── Result bookkeeping ────────────────────────────────────────────────────────
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
-GATES=(discover verify-ws verify-ss render-figures layout-ws \
-       compile-ws compile-ak compile-ss answer-key-ak answer-key-ss prose-ws)
+GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
+       render-figures layout-ws compile-ws compile-ak compile-ss \
+       answer-key-ak answer-key-ss prose-ws)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -198,6 +203,28 @@ echo "   ws: $WS_TEX"
 [[ -n "$AK_TEX" ]] && echo "   ak: $AK_TEX"
 [[ -n "$SS_TEX" ]] && echo "   ss: $SS_TEX  (verify: $SS_JSON)"
 record discover "PASS"
+
+# Template shells first: the cheapest check, and it teaches the shell fix
+# before any sympy verification runs — nothing downstream should ever see a
+# hand-rolled preamble (the env names every later gate binds to live in the
+# shipped template).
+template_gate() { # gate-name tex-file
+  local gate="$1" tex="$2"
+  banner "template shell on $(basename "$tex")"
+  if "$PYTHON3" "$TESTS_DIR/check_template_use.py" "$tex"; then
+    record "$gate" "PASS"
+  else
+    fail "$gate"
+  fi
+}
+template_gate template-ws "$WS_TEX"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record template-ak "SKIPPED(--worksheet-only)"
+  record template-ss "SKIPPED(--worksheet-only)"
+else
+  template_gate template-ak "$AK_TEX"
+  template_gate template-ss "$SS_TEX"
+fi
 
 # run_verify.sh exit semantics: 0 pass · 1 fail · 2 manual-review-but-safe.
 run_verify_gate() { # gate-name json-file

@@ -1,7 +1,9 @@
-% build.sh driver fixture: answer key. Every verified value appears in a
-% \boxed{} inside its own problem's item, so it passes check_answer_key.
-\documentclass{article}
-\usepackage{amsmath}
+% build.sh driver fixture: answer key, on the mandated template shell. Every
+% verified value appears in a \boxed{} inside its own problem's item, so it
+% passes check_answer_key.
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
 \begin{document}
 \section*{Build-demo answer key}
 \begin{enumerate}

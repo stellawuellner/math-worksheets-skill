@@ -372,6 +372,39 @@ if ! echo "$output" | grep -q "problem 3: .*missing from JSON: \[77.0\]"; then
 fi
 echo "✅ check_prose parses nested sheets per top-level problem (3 blocks, 77 flagged)"
 
+# ── Template-use gate (tests/check_template_use.py) ──────────────────────────
+# The 'never retype the preamble' rule finally has teeth: a hand-rolled shell
+# (real e2e shape: local \input{preamble}, no template) and a post-template
+# shadowing doc (\newenvironment/\renewcommand/\definecolor of shipped names)
+# must FAIL; the SKILL.md shell with a rendered figs_* \input must PASS.
+tpl_ran=0
+TPL_CASES=(
+  "tpl_bad_handrolled.tex:1"
+  "tpl_bad_redefine.tex:1"
+  "tpl_good.tex:0"
+)
+for case in "${TPL_CASES[@]}"; do
+  fixture="${case%%:*}"
+  want="${case##*:}"
+  require_fixture "$fixture"
+  output=$("$PYTHON" "$SCRIPT_DIR/check_template_use.py" "$FIXTURES/$fixture" 2>&1)
+  got=$?
+  if [ "$got" -ne "$want" ]; then
+    echo "❌ check_template_use $fixture: expected exit $want, got $got"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
+  echo "✅ check_template_use: $fixture -> exit $got (as expected)"
+  tpl_ran=$((tpl_ran + 1))
+done
+# the failure must teach the fix: the shipped shell and the staging fact
+output=$("$PYTHON" "$SCRIPT_DIR/check_template_use.py" "$FIXTURES/tpl_bad_handrolled.tex" 2>&1)
+if echo "$output" | grep -q 'input{worksheet-preamble}' && echo "$output" | grep -q "compile.sh stages"; then
+  echo "✅ check_template_use failure teaches the shipped shell"
+else
+  echo "❌ check_template_use failure does not teach the fix"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+
 # Log hygiene (scripts/check_log.py, the gate compile.sh runs on the kept
 # TeX log). CI has no LaTeX engine, so the gate is fixture-tested on saved
 # log snippets: undefined refs / missing chars / big overfulls must FAIL,
@@ -492,6 +525,27 @@ EOS
     echo "$out" | sed 's/^/     /'; exit 1
   fi
 
+  # a hand-rolled worksheet shell must fail at template-ws BEFORE anything
+  # verifies or compiles (same fail-fast assertion style as broken-verify)
+  dir="$WORK/handrolled"; mkdir -p "$dir"
+  cp tests/fixtures/tpl_bad_handrolled.tex "$dir/ws_build_demo.tex"
+  cp tests/fixtures/trio/ak_build_demo.tex "$dir/ak_build_demo.tex"
+  cp tests/fixtures/trio/ss_build_demo.tex "$dir/ss_build_demo.tex"
+  cp tests/fixtures/trio/verify_build_demo.json "$dir/verify_build_demo.json"
+  cp tests/fixtures/trio/verify_ss_build_demo.json "$dir/verify_ss_build_demo.json"
+  export TECTONIC_MARKER="$dir/compile_calls"
+  out=$(PATH="$WORK/bin:$PATH" bash scripts/build.sh "$dir/verify_build_demo.json" \
+        --outdir "$dir/out" 2>&1)
+  got=$?
+  if [ "$got" -ne 1 ] || ! echo "$out" | grep -q "gate: template-ws"; then
+    echo "❌ build.sh handrolled: expected exit 1 at gate template-ws, got $got"
+    echo "$out" | sed 's/^/     /'; exit 1
+  fi
+  if [ -f "$dir/compile_calls" ]; then
+    echo "❌ build.sh handrolled: compiled despite a hand-rolled shell"; exit 1
+  fi
+  echo "✅ build.sh handrolled: exit 1 at template-ws, zero compile invocations"
+
   # ── compile.sh template staging ────────────────────────────────────────────
   # A .tex that \inputs a shipped template gets the templates copied beside
   # it; one that doesn't must NOT trigger the copy (negative control).
@@ -546,4 +600,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures"

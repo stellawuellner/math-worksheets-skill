@@ -64,7 +64,9 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Trig functions & unit circle | HSF-TF.A.2, HSF-TF.B.5 |
 | Trig identities | HSF-TF.C.8 |
 | Law of sines/cosines | HSG-SRT.D.10, HSG-SRT.D.11 |
-| Right-triangle trig | HSG-SRT.C.8 |
+| Trig ratio definitions (write-the-ratio) | HSG-SRT.C.6 |
+| Sine/cosine of complementary angles | HSG-SRT.C.7 |
+| Right-triangle trig (solve sides/angles, elevation/depression) | HSG-SRT.C.8 |
 | Circles (arcs, sectors) | HSG-C.B.5 |
 | Coordinate geometry proofs | HSG-GPE.B.4–B.7 |
 
@@ -107,7 +109,9 @@ Worksheet default mix: start at 1–2, majority at 2–3, finish with one or two
 
 Tag each problem `"bloom"`: **recall** (state/evaluate directly) · **apply**
 (routine procedure) · **analyze** (multi-step, method selection, error-analysis
-"find and fix the mistake" — still machine-verifiable: check the planted
-conclusion is wrong AND the correction is right) · **justify** (explain/prove —
+"find and fix the mistake" — declare the planted result as a `"traps"` entry:
+`verify.py` checks it is distinguishably wrong, and the correction is verified
+by the problem's own check; see `references/problem-library.md` →
+"Misconception traps & error analysis") · **justify** (explain/prove —
 usually `manual`). Default mixes: drill = mostly apply; test-prep ≈ 20% recall,
 50% apply, 20% analyze, 10% justify. Verification reports the mix.

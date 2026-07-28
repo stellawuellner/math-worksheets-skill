@@ -58,7 +58,12 @@ Supported types:
 
 Universal optional fields: "var" (default x), "note", "standard", "difficulty",
 "bloom", "figure" (declarative figure spec — scripts/render_figures.py draws it
-from these same givens). Top-level "problem_count" is REQUIRED (coverage gate).
+from these same givens), "facet" (the skill/method the problem tests —
+consistency-gated against a top-level "facets" plan and fed to the interleave
+report), "traps" (declared misconception results, each machine-checked to be
+distinguishably wrong). Top-level "problem_count" is REQUIRED (coverage gate);
+top-level "facets", "subtitle" (bound to the tex title block), and "format"
+("drill") are optional.
 Unknown types or fields are HARD FAILURES. A sheet with zero machine checks
 fails unless "allow_all_manual": true.
 
@@ -668,17 +673,31 @@ SCHEMAS = {
 }
 
 # Fields legal on ANY problem. "standard" (e.g. CCSS "8.EE.C.8"), "difficulty"
-# (1-5) and "bloom" are reporting tags, never gating. "skill" (a short
-# free-string label) IS matched by the coverage-ss gate
-# (tests/check_ss_coverage.py) in full build.sh runs: every worksheet skill
-# must have a study-guide entry tagged with it. "role" marks a study-guide
-# entry as a try-it ("tryit" is the only allowed value); check_answer_key.py
-# matches it against tryitbox positions. One constant shared by
-# check_schema() and --schema so the enforcement and the reference cannot drift.
+# (1-5) and "bloom" are reporting tags, never gating. Three tags ARE matched
+# by later gates: "skill" (a short free-string label) is matched by the
+# coverage-ss gate (tests/check_ss_coverage.py) in full build.sh runs — every
+# worksheet skill must have a study-guide entry tagged with it; "role" marks a
+# study-guide entry as a try-it ("tryit" is the only allowed value) and
+# check_answer_key.py matches it against tryitbox positions; "facet" is
+# consistency-gated (exit 1) against a declared top-level "facets" plan and
+# feeds the interleave structure flag (exit 2, never exit 1 for ordering) —
+# the observed failure mode is plan/tag drift, which only a gate catches.
+# One constant shared by check_schema() and --schema so the enforcement and
+# the reference cannot drift.
 _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
                      "skill", "role",
                      # the declarative figure spec render_figures.py draws from
-                     "figure"}
+                     "figure",
+                     # ── facet/misconception fields (grouped so schema merges
+                     # stay clean) ─────────────────────────────────────────
+                     # "facet": the method the student must discriminate
+                     # (lowercase-kebab slug); see the facet gates in
+                     # run_verification() and interleave_report().
+                     "facet",
+                     # "traps": declared misconception results — each must be
+                     # provably REJECTED by the problem's own check
+                     # (validate_traps / check_traps).
+                     "traps"}
 
 # One canonical, WORKING example per type — printed by --schema and executed
 # by tests/test_pipeline_fixes.py (each must pass check_schema + check_problem),
@@ -695,7 +714,8 @@ EXAMPLES = {
     "equiv":          {"id": 1, "type": "equiv", "expr": "sin(2*x)", "expected": "2*sin(x)*cos(x)"},
     "solve_interval": {"id": 1, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
                        "interval": [0, 360], "unit": "deg", "expected": [30, 150]},
-    "approx":         {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01},
+    "approx":         {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01,
+                       "traps": [{"desc": "used cos instead of tan", "expr": "9*cos(35*pi/180)", "value": 7.37}]},
     "distance":       {"id": 1, "type": "distance", "points": [[1, 2], [4, 6]], "expected": 5},
     "midpoint":       {"id": 1, "type": "midpoint", "points": [[2, -3], [8, 7]], "expected": [5, 2]},
     "slope":          {"id": 1, "type": "slope", "points": [[2, 1], [2, 9]], "expected": "undefined"},
@@ -722,6 +742,212 @@ EXAMPLES = {
 
 _RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
               ">": sympy.StrictGreaterThan, ">=": sympy.GreaterThan}
+
+
+# ── Facet tags & misconception traps ──────────────────────────────────────────
+# Facet values are lowercase-kebab so histograms, plans, and prose stay
+# greppable and a tag can never hide a second value in punctuation.
+_FACET_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
+# Traps only make sense on a type whose expected is one comparable scalar —
+# there is nothing to be "distinguishable from" on a root LIST or a manual
+# review flag.
+_TRAP_TYPES = {"approx", "eval", "triangle", "distance", "slope",
+               "polygon_area", "stats", "probability", "limit", "series",
+               "definite_integral", "estimate", "read_data"}
+
+
+def validate_traps(p, ptype):
+    """Shape-check the optional "traps" list (called from check_schema).
+
+    A trap is {"desc": why students make this error, "expr": the wrong-method
+    arithmetic, optional "value": the number printed in the worksheet's
+    planted work}. The expr is mandatory because a hand-typed wrong value
+    would be linting; deriving the printed number from the declared wrong
+    METHOD is construction.
+    """
+    traps = p.get("traps")
+    if traps is None:
+        return
+    if ptype not in _TRAP_TYPES:
+        raise VerifyInputError(
+            f"type {ptype!r} cannot carry traps — a trap needs a single "
+            f"comparable answer to be distinguishable from (allowed types: "
+            f"{' '.join(sorted(_TRAP_TYPES))})")
+    if not isinstance(traps, list) or not traps:
+        raise VerifyInputError(
+            '"traps" must be a non-empty list of objects like '
+            '{"desc": "used cos instead of sin", "expr": "9*cos(35*pi/180)"}')
+    for t in traps:
+        if not isinstance(t, dict):
+            raise VerifyInputError("each trap must be a JSON object")
+        unknown = set(t) - {"desc", "expr", "value"}
+        if unknown:
+            raise VerifyInputError(
+                f"trap has unknown field(s) {sorted(unknown)} — a trap is "
+                '{"desc": str, "expr": str, optional "value": number}')
+        if not isinstance(t.get("desc"), str) or not t["desc"].strip():
+            raise VerifyInputError(
+                "trap 'desc' must be a non-empty string naming the "
+                "misconception (e.g. \"used cos instead of sin\")")
+        if not isinstance(t.get("expr"), str):
+            raise VerifyInputError(
+                "trap 'expr' must be an expression string — the wrong-method "
+                "arithmetic the misconception produces")
+        if "value" in t and (isinstance(t["value"], bool)
+                             or not isinstance(t["value"], (int, float))):
+            raise VerifyInputError(
+                "trap 'value' must be a plain number — the wrong result as "
+                "printed in the worksheet's planted work")
+
+
+def check_traps(p):
+    """Gate declared misconception traps: each trap's wrong-method expr must
+    compute to a value the problem's OWN comparison rejects, along the same
+    path that accepts the correct answer (rounds-to for decimal-written
+    expected without an explicit tol, tolerance compare otherwise — a plain
+    'differs and rounds differently' conjunction false-fails symbolic
+    expecteds, because Decimal cannot parse "sqrt(3)/2"). A trap the check
+    would accept is a problem blind to the very error it targets. The printed
+    wrong number ("value") is gated against the expr, so it is derived, never
+    hand-typed. desc↔expr correspondence stays the author's claim — the same
+    trust boundary as the approx expr (SKILL.md step 4).
+
+    Returns (True, [report lines]) or (False, teaching failure message).
+    """
+    pid = p.get("id")
+    expected_raw = p.get("expected")
+    try:
+        expected = parse_value(expected_raw)
+    except VerifyInputError:
+        return (False,
+                f"problem {pid} declares traps but its 'expected' "
+                f"({expected_raw!r}) is not numerically comparable — traps "
+                "need a single comparable answer")
+    # Mirror get_tol() without calling it: get_tol already ran (and already
+    # tallied any tol_reason in WIDE_TOLS) inside the problem's own check —
+    # calling it again would double-count the widened-tol tally.
+    tol = p.get("tol")
+    tol = float(tol) if (isinstance(tol, (int, float))
+                         and not isinstance(tol, bool) and tol > 0) else None
+    decimal_written = (not isinstance(expected_raw, str)
+                       and _decimals_of(expected_raw) > 0)
+    lines = []
+    for t in p["traps"]:
+        desc = t["desc"]
+        try:
+            tv = safe_parse(t["expr"])
+        except VerifyInputError as e:
+            return (False, f"problem {pid} trap {desc!r}: bad expr — {e}")
+        if tv.free_symbols:
+            return (False,
+                    f"problem {pid} trap {desc!r}: expr must be fully numeric "
+                    f"(found {sorted(map(str, tv.free_symbols))})")
+        if decimal_written and tol is None:
+            accepted = rounds_to(tv, expected_raw)
+        else:
+            accepted = compare_value(
+                tv, expected, tol if tol is not None
+                else default_tol(expected_raw))
+        if accepted:
+            return (False,
+                    f"problem {pid} trap {desc!r} computes to "
+                    f"{float(sympy.N(tv, 15)):.6g}, which this problem's own "
+                    "check would accept as correct — this problem cannot "
+                    "distinguish the error it targets; change the givens.")
+        if "value" in t and not rounds_to(tv, t["value"]):
+            return (False,
+                    f"problem {pid} trap {desc!r}: the printed planted result "
+                    f"{t['value']} does not match the declared wrong-method "
+                    f"arithmetic {t['expr']} = {float(sympy.N(tv, 15)):.6g} — "
+                    "derive the printed number from the expr.")
+        lines.append(f"trap {desc!r}: {t['expr']} → "
+                     f"{float(sympy.N(tv, 15)):.6g} (rejected by the "
+                     "problem's own check)")
+    return (True, lines)
+
+
+def _max_runs(seq):
+    """Maximal same-value runs over seq → [(value, start, end)], 1-indexed."""
+    runs = []
+    for i, v in enumerate(seq, 1):
+        if runs and runs[-1][0] == v and runs[-1][2] == i - 1:
+            runs[-1] = (v, runs[-1][1], i)
+        else:
+            runs.append((v, i, i))
+    return runs
+
+
+def _interleave_violations(facet_seq):
+    """Enforcement window = positions floor(n/3)+1..n (1-indexed): a blocked
+    warm-up over the first third is legitimate acquisition practice, so runs
+    are truncated to their in-window portion and only a TRUNCATED length > 3
+    violates. Returns (boundary, [(facet, start, end, in_window_len)])."""
+    n = len(facet_seq)
+    boundary = n // 3
+    viols = []
+    for f, s, e in _max_runs(facet_seq):
+        lo = max(s, boundary + 1)
+        if e >= lo and e - lo + 1 > 3:
+            viols.append((f, s, e, e - lo + 1))
+    return boundary, viols
+
+
+def interleave_report(problems, problem_count, fmt):
+    """Facet-interleaving structure report (SKILL.md step 2). Returns True
+    when the sheet needs a manual-review flag (exit 2): after the blocked
+    warm-up third, no more than 3 consecutive problems may share a facet
+    unless the sheet declares "format": "drill". Ordering is a FLAG, never
+    exit 1 — facet tags are self-reported, and a blocked review sheet is
+    sometimes exactly what was asked for."""
+    seq = [p for p in problems if isinstance(p, dict) and p.get("facet")]
+    if not seq:
+        if problem_count >= 12 and fmt != "drill":
+            print('⚠ facets: none declared — interleave check skipped; tag '
+                  'facets or declare "format": "drill"')
+        return False
+    facets = [p["facet"] for p in seq]
+    if len(set(facets)) == 1:
+        print(f'facets: single facet {facets[0]!r} — consider '
+              '"format": "drill"')
+        return False
+    if fmt == "drill":
+        print("format: drill — interleave check waived")
+        return False
+    n = len(facets)
+    boundary, viols = _interleave_violations(facets)
+    counts = {}
+    for f in facets:
+        counts[f] = counts.get(f, 0) + 1
+    max_run = max((e - max(s, boundary + 1) + 1
+                   for _, s, e in _max_runs(facets) if e >= boundary + 1),
+                  default=0)
+    print("facet mix: " + ", ".join(f"{k}×{v}" for k, v in counts.items())
+          + f"; max in-window run: {max_run}")
+    for f, s, e, wlen in viols:
+        ids = [seq[i - 1].get("id") for i in range(s, e + 1)]
+        # the concrete fix: the nearest out-of-run problem with a different
+        # facet (later preferred — swapping backward would seed the warm-up
+        # with a stray facet), exchanged with the middle of the run's
+        # in-window portion
+        target = None
+        for dist in range(1, n):
+            for j in (e + dist, s - dist):
+                if 1 <= j <= n and facets[j - 1] != f:
+                    target = j
+                    break
+            if target:
+                break
+        mid = seq[(max(s, boundary + 1) + e) // 2 - 1].get("id")
+        print(f"⚠ interleave: {wlen} consecutive {f!r} problems inside the "
+              f"post-warm-up window (positions {boundary + 1}..{n}) — "
+              f"ids {ids}.")
+        print("   Students never practice choosing the method when one facet "
+              "runs this long.")
+        if target is not None:
+            print(f"   Fix: swap id {mid} with id {seq[target - 1].get('id')} "
+                  f"(facet {facets[target - 1]!r}) to break the run.")
+    return bool(viols)
 
 
 def validate_figure(p, ptype):
@@ -832,6 +1058,13 @@ def check_schema(p):
             f"'role' must be \"tryit\" (the study-guide try-it tag), "
             f"got {p['role']!r} — drop the field for ordinary problems and "
             "worked examples")
+    facet = p.get("facet")
+    if facet is not None and (not isinstance(facet, str)
+                              or not _FACET_RE.fullmatch(facet)):
+        raise VerifyInputError(
+            "'facet' must be a lowercase-kebab slug like \"side-from-angle\", "
+            f"got {facet!r}")
+    validate_traps(p, ptype)
     validate_figure(p, ptype)
     return ptype
 
@@ -1461,15 +1694,91 @@ def run_verification(json_path):
               file=sys.stderr)
         return 1
 
+    # ── Facet plan / format / subtitle gates (exit 1) ────────────────────────
+    # These verify plan/tag CONSISTENCY, not tag truth — a mislabeled facet
+    # passes, the same trust model as problem_count. The observed failure
+    # mode (a subtitle promising a skill no problem exercises) IS drift,
+    # which consistency gates catch.
+    fmt = data.get("format")
+    if fmt is not None and fmt != "drill":
+        print(f'❌ top-level "format" must be "drill" or absent, got {fmt!r} — '
+              '"drill" waives the interleave check; other formats need no '
+              "declaration.", file=sys.stderr)
+        return 1
+    facets_plan = data.get("facets")
+    if facets_plan is not None:
+        if (not isinstance(facets_plan, list) or not facets_plan
+                or len(set(facets_plan)) != len(facets_plan)
+                or not all(isinstance(f, str) and _FACET_RE.fullmatch(f)
+                           for f in facets_plan)):
+            print('❌ "facets" must be a non-empty list of unique '
+                  'lowercase-kebab strings, e.g. ["side-from-angle", '
+                  '"pythagorean"].', file=sys.stderr)
+            return 1
+    subtitle = data.get("subtitle")
+    if subtitle is not None and (not isinstance(subtitle, str)
+                                 or not subtitle.strip()):
+        print('❌ "subtitle" must be a non-empty string (it is bound verbatim '
+              "to the worksheet title block by tests/check_facet_coverage.py).",
+              file=sys.stderr)
+        return 1
+    dict_problems = [p for p in problems if isinstance(p, dict)]
+    tagged = [p for p in dict_problems if "facet" in p]
+    plan_errors = []
+    if facets_plan is not None:
+        for p in dict_problems:
+            f = p.get("facet")
+            if f is None:
+                plan_errors.append(
+                    f'problem {p.get("id", "?")} has no "facet" — when '
+                    '"facets" is declared, tag every problem (or remove the '
+                    "facets list)")
+            elif isinstance(f, str) and f not in facets_plan:
+                close = difflib.get_close_matches(f, facets_plan, n=1,
+                                                  cutoff=0.5)
+                hint = f" — did you mean {close[0]!r}?" if close else ""
+                plan_errors.append(
+                    f'problem {p.get("id", "?")} facet {f!r} is not in '
+                    f'"facets" {facets_plan}{hint}')
+        used = {p.get("facet") for p in dict_problems if p.get("facet")}
+        for f in facets_plan:
+            if f not in used:
+                plan_errors.append(
+                    f"facet {f!r} has no problems — add one or remove it "
+                    'from "facets"')
+    elif tagged and len(tagged) != len(dict_problems):
+        # All-or-none even without a plan: a half-tagged sheet makes the
+        # interleave run math meaningless.
+        plan_errors.append(
+            f'{len(tagged)} of {len(dict_problems)} problems carry "facet" — '
+            "tag every problem's facet or none; partial tagging makes the "
+            "interleave check meaningless")
+    if plan_errors:
+        for e in plan_errors:
+            print(f"❌ {e}", file=sys.stderr)
+        return 1
+
     print(f"Verifying: {topic} ({len(problems)} problems) · "
           f"SymPy {sympy.__version__}\n")
 
     results = []
+    trap_details = []      # (pid, line) for every distinguishable trap
+    traps_declared = 0
     for p in problems:
         pid = p.get("id", "?") if isinstance(p, dict) else "?"
         try:
             ptype = check_schema(p)
             status, detail = check_problem(p, ptype)
+            if isinstance(p.get("traps"), list):
+                traps_declared += len(p["traps"])
+            # Traps are gated only after the problem's own check passes — a
+            # wrong answer key is the louder failure and must not be masked.
+            if status == "PASS" and p.get("traps"):
+                tok, tinfo = check_traps(p)
+                if not tok:
+                    status, detail = "FAIL", tinfo
+                else:
+                    trap_details.extend((pid, line) for line in tinfo)
             results.append((pid, status, detail))
         except VerifyInputError as e:
             results.append((pid, "FAIL", f"invalid input: {e}"))
@@ -1523,6 +1832,28 @@ def run_verification(json_path):
             skills[key] = skills.get(key, 0) + 1
     if skills:
         print("skill mix: " + ", ".join(f"{k}×{v}" for k, v in sorted(skills.items())))
+    # Facet histogram beside the standards line: standards codes are often one
+    # constant per sheet (HSG-SRT.C.8 ×20), so facets are the line that can
+    # actually show skill coverage.
+    facet_counts = {}
+    for p in problems:
+        if isinstance(p, dict) and p.get("facet"):
+            facet_counts[p["facet"]] = facet_counts.get(p["facet"], 0) + 1
+    if facet_counts:
+        print("facets: " + ", ".join(f"{k}×{v}" for k, v in facet_counts.items()))
+    elif facets_plan is None and problem_count >= 10:
+        # Visible, exit-NEUTRAL nudge (hard-failing would break every legacy
+        # sheet; the WIDE_TOLS precedent is visibility, not blockage).
+        print('⚠ no "facets" declared for a 10+-problem sheet — declare the '
+              "skills this sheet covers (SKILL.md step 2)")
+    if traps_declared:
+        note = ("all distinguishable"
+                if len(trap_details) == traps_declared
+                else f"{len(trap_details)} distinguishable")
+        print(f"traps: {traps_declared} declared, {note}")
+        for pid, line in trap_details:
+            print(f"    problem {pid}: {line}")
+    interleave_flag = interleave_report(problems, problem_count, fmt)
     if diffs:
         ramp = [d for _, d in sorted(diffs, key=lambda x: x[0])]  # ids are ints
         drops = sum(1 for a, b in zip(ramp, ramp[1:]) if b < a - 1)
@@ -1550,6 +1881,13 @@ def run_verification(json_path):
         print(f"\n👁  {len(WIDE_TOLS)} widened-tolerance problem(s) to review "
               "(see the ⚠ tally above) — safe to compile.")
         return 2
+    if interleave_flag:
+        # Same manual-review semantics as WIDE_TOLS: the ordering flag is a
+        # structure review, never a hard block (build.sh treats 2 as "green
+        # with review items").
+        print("\n👁  facet-interleave flag(s) to review (see the ⚠ interleave "
+              "block above) — safe to compile.")
+        return 2
     print("\n✅ All checks passed — safe to compile.")
     return 0
 
@@ -1569,6 +1907,8 @@ def print_schema(mode="table"):
                       for t, (req, opt) in sorted(SCHEMAS.items())},
             "universal_required": ["id", "type"],
             "universal_optional": universal,
+            "top_level_optional": ["facets", "format", "subtitle"],
+            "traps_allowed_types": sorted(_TRAP_TYPES),
             "functions": sorted(_FUNCS),
             "constants": sorted(_CONSTS),
             "variables": sorted(_VARS),
@@ -1582,6 +1922,17 @@ def print_schema(mode="table"):
         print(f"| {t} | {', '.join(sorted(req))} | {', '.join(sorted(opt)) or '-'} |")
     print(f"\nEvery problem: 'id' (integer) and 'type' required; "
           f"universal optional fields: {', '.join(universal)}")
+    print('Top-level optional fields: "facets" (planned skill list, '
+          'lowercase-kebab — when declared, every problem must carry a '
+          'matching "facet" and every listed facet needs a problem), '
+          '"subtitle" (bound verbatim to the worksheet title block by '
+          'tests/check_facet_coverage.py), "format" ("drill" waives the '
+          "interleave check).")
+    print('"traps" (universal): [{"desc": str, "expr": wrong-method '
+          'expression, optional "value": printed wrong number}] — allowed '
+          "only on types with a single comparable answer "
+          f"({', '.join(sorted(_TRAP_TYPES))}); each trap must compute to a "
+          "value the problem's own check rejects.")
     print(f"Allowed functions: {' '.join(sorted(_FUNCS))}")
     print(f"Allowed constants: {' '.join(sorted(_CONSTS))}")
     print(f"Allowed variables: {' '.join(sorted(_VARS))}")

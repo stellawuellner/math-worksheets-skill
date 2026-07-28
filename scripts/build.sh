@@ -36,17 +36,21 @@
 #    4 coverage-ss     tests/check_ss_coverage.py — every "skill" the
 #                      worksheet tags must have a tagged study-guide entry
 #                      (zero/partial ws tagging is a FAIL, not a skip)
-#    5 render-figures  scripts/render_figures.py, when shipped AND the JSON
+#    5 facet-coverage  tests/check_facet_coverage.py — worksheet facets must
+#                      all have study-guide worked examples, and a declared
+#                      "subtitle" must appear in the worksheet title block
+#                      (no-op for sheets without a facet plan)
+#    6 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
-#    6 layout-ws       tests/check_layout.py (figure scope + work space)
-#    7 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
+#    7 layout-ws       tests/check_layout.py (figure scope + work space)
+#    8 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two)
-#    8 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
-#    9 ss-structure    tests/check_study_guide.py — every worked example opens
+#    9 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
+#   10 ss-structure    tests/check_study_guide.py — every worked example opens
 #                      with a \step strategy line before any computation
-#   10 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
+#   11 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
 #                      problems: a structural FAIL, not a manual-review pass)
-#   11 prose-ss        the same checker on the study guide (examplebox prose
+#   12 prose-ss        the same checker on the study guide (examplebox prose
 #                      givens bound to the ss JSON; same exit-2 semantics)
 #
 # EXIT CODES: 0 all gates green · 1 a gate failed (named in the verdict line)
@@ -113,8 +117,9 @@ fi
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
 GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
-       coverage-ss render-figures layout-ws compile-ws compile-ak compile-ss \
-       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss)
+       coverage-ss facet-coverage render-figures layout-ws compile-ws \
+       compile-ak compile-ss answer-key-ak answer-key-ss ss-structure \
+       prose-ws prose-ss)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -266,6 +271,21 @@ else
   else
     fail coverage-ss
   fi
+fi
+
+# Cross-file facet gates likewise run BEFORE any compile: they read only JSON
+# + tex text, so a facet or subtitle drift is caught in milliseconds, not
+# after three tectonic runs.
+banner "facet coverage (ws facets ⊆ ss examples; subtitle binding)"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  FACET_ARGS=("$WS_TEX" "$WS_JSON")
+else
+  FACET_ARGS=("$WS_TEX" "$WS_JSON" "$SS_JSON")
+fi
+if "$PYTHON3" "$TESTS_DIR/check_facet_coverage.py" "${FACET_ARGS[@]}"; then
+  record facet-coverage "PASS"
+else
+  fail facet-coverage
 fi
 
 banner "render figures"

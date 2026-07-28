@@ -95,6 +95,12 @@ See `references/problem-library.md` for topic-specific problem type menus.
 
 **Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes), `"difficulty"` (1–5 per that file's ladders), `"bloom"` (recall/apply/analyze/justify, same file), and `"skill"` (a short stable name for the skill the problem exercises, e.g. `"right-triangle-trig"` — reuse the same name across problems of the same Part). Skill tags are all-or-nothing and GATING: the study guide must contain an entry tagged with each distinct worksheet skill, enforced by `build.sh`'s `coverage-ss` gate; a partially tagged sheet fails it. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, the skill mix (the set the study guide must cover), and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
 
+**Facets (skill coverage):** a facet is a distinct method the sheet tests (e.g. `side-from-angle` vs `angle-from-sides` vs `pythagorean`) — standards codes are usually one constant per sheet and cannot show this. For sheets of 10+ problems, declare top-level `"facets": [...]` in the verify JSON and tag **every** problem with a `"facet"` from that list; consult `references/problem-library.md` → "Facet checklists" (topics without a table use your own lowercase-kebab names). The gate is strict: an unlisted facet, a planned facet with zero problems, or an untagged problem is a build failure. Tag TRUTH is your responsibility — the gate verifies plan/tag consistency, not that a tag describes its problem. Tag the `verify_ss_` entries' `"facet"` too: the facet-coverage gate (step 5) requires every worksheet facet to have a study-guide worked example.
+
+**Interleave after the warm-up:** a blocked warm-up over the first third of the sheet is fine; after that, keep same-facet runs to 3 or fewer so the student must *choose* the method — unless the sheet is genuinely a drill, declared with top-level `"format": "drill"`. `verify.py` flags longer runs (exit 2, manual review) with a concrete swap suggestion. See `references/problem-library.md` → "How to interleave".
+
+**Misconception traps:** consult the misconception table (`references/problem-library.md` → "Misconception traps & error analysis") when choosing givens — pick numbers so the canonical wrong method lands visibly off the correct answer — and declare `"traps"` on the 2–3 problems you designed that way. Traps are optional, but declared ones are machine-checked (step 4).
+
 **Tiered worksheets (differentiation, on request):** when asked for tiers (support/on-level/challenge), build ONE set of problem skeletons, then re-parameterize per tier — same structure and standards, different givens and difficulty band (support: 1–2 with a hints box and a worked first step; core: 2–3; challenge: 3–5). Each tier gets its OWN verify JSON (the gate re-checks every tier) and file prefix: `wsS_`/`wsC_`/`wsX_` + matching keys. Because construction is JSON-first, a tier is a data change, not a rewrite.
 
 **Tier naming for the build driver:** give each tier its own *stem* — `verify_factoring_S_2026-07-27.json` with `wsS_factoring_S_2026-07-27.tex` (or plain `ws_factoring_S_...`; both are discovered). What matters is that two tiers never share a stem in one directory: `scripts/build.sh` derives the document names from the verify JSON's stem, and two candidates for one role is a hard discovery error, not a guess.
@@ -117,6 +123,8 @@ The **skills summary** is a 1–2 page reference card the student can use while 
 See `references/latex-templates.md` → "Skills Summary / Study Guide Template" for the full shell and box macros.
 
 **Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation AND one per try-it. Entries MUST be listed in document order (example, try-it, example, try-it, …) because binding is positional; tag each try-it entry `"role": "tryit"` and each entry with the `"skill"` it demonstrates. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example or try-it with a printed result* does. `check_answer_key.py` segments ss documents **by box** (`examplebox`/`tryitbox`) — keep one worked example or try-it per box, one JSON entry per box (so total box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate. A try-it may be type `manual` only when its paired example is also `manual` (exit-2 visibility, never silent). The structure gate (`tests/check_study_guide.py`) additionally requires ≥2 `\step` lines and a boxed final answer per examplebox — the first step is the strategy sentence, capped at ONE sentence (page 1 fills fast and the guide is hard-capped at 2 pages).
+
+**Subtitle from facets:** when `"facets"` is declared, write a top-level `"subtitle"` in the verify JSON composed from that facet list *first*, then copy it verbatim into the worksheet's title block. The facet-coverage gate (step 5) binds the two, so the title can never promise a skill the sheet doesn't plan.
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
@@ -254,6 +262,13 @@ Use `manual` for: graph sketches, sign charts, word problem setups, two-column p
 
 **Trust boundary of `approx`:** it confirms the *arithmetic of the formula you wrote* matches `expected` — it cannot confirm the formula is the right one for the stated problem. Keep the `approx` `expr` a faithful transcription of the problem's givens, and rely on the prose/figure/answer-key checkers below to bind the story to the math.
 
+**Misconception traps (`"traps"`, universal on scalar-answer types):** declare the result a known wrong method yields:
+```json
+{"id": 11, "type": "approx", "expr": "9*sin(35*pi/180)", "expected": 5.16,
+ "traps": [{"desc": "used cos instead of sin", "expr": "9*cos(35*pi/180)", "value": 7.37}]}
+```
+Verification computes each trap `expr` and **fails unless the problem's own comparison rejects it** — a trap the check would accept means the problem cannot distinguish the error it targets: change the givens. The optional `value` (the wrong number printed in an error-analysis stem) must round-match its own `expr`, so the planted number is derived, never hand-typed; it then counts as a JSON given for the prose checker. The `desc`↔`expr` correspondence is yours to keep faithful — the same trust boundary as `approx` above. Allowed only on types with a single comparable answer (`approx eval triangle distance slope polygon_area stats probability limit series definite_integral estimate read_data`); `--schema` documents the shape.
+
 ### 4b. Render figures from the verified JSON
 
 Immediately after `run_verify.sh` succeeds, render the figures **from the same JSON**:
@@ -294,12 +309,13 @@ That single command replaces what used to be nine separate steps. It discovers `
 
 1. `run_verify.sh` on the worksheet JSON, then the study-guide JSON
 2. `check_ss_coverage.py` — every worksheet `"skill"` has a tagged study-guide entry (zero/partial worksheet tagging fails)
-3. figure rendering (when shipped and the JSON has figure/triangle problems)
-4. `check_layout.py` on the worksheet (figure scope + work space)
-5. `compile.sh` for all three documents (nothing compiles after a failed gate)
-6. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (for `ss_`: pairing — every examplebox is followed by its tryitbox — and role/position agreement, then per-box value binding)
-7. `check_study_guide.py` — every worked example opens with a `\step` strategy line before any computation
-8. `check_prose_consistency.py` on the worksheet AND the study guide (examplebox prose givens are bound to the ss JSON; intermediate values that equal a subexpression of the entry's expr at printed precision are auto-matched; story numbers unused by the computation are expected flags)
+3. `check_facet_coverage.py` — every worksheet facet must have a study-guide worked example tagged with it, and a declared `"subtitle"` must appear verbatim in the worksheet title block (no-op for sheets without a facet plan)
+4. figure rendering (when shipped and the JSON has figure/triangle problems)
+5. `check_layout.py` on the worksheet (figure scope + work space)
+6. `compile.sh` for all three documents (nothing compiles after a failed gate)
+7. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (for `ss_`: pairing — every examplebox is followed by its tryitbox — and role/position agreement, then per-box value binding)
+8. `check_study_guide.py` — every worked example opens with a `\step` strategy line before any computation
+9. `check_prose_consistency.py` on the worksheet AND the study guide (examplebox prose givens are bound to the ss JSON; intermediate values that equal a subexpression of the entry's expr at printed precision are auto-matched; story numbers unused by the computation are expected flags)
 
 It ends with a gate-summary table and ONE verdict line. Exit 0 = all green with three PDF paths printed; exit 1 = a gate failed (named — fix and re-run); exit 2 = green with manual-review items. **Missing `ak_`/`ss_` documents are failures, not skips** — the skill mandates three documents (`--worksheet-only` exists for the rare single-document request). Default output directory is `~/Documents/Worksheets/` (`--outdir` to override; see the Prerequisites note about headless environments).
 
@@ -335,7 +351,7 @@ Before compiling, verify each problem:
 - [ ] Appropriate difficulty for the student's level
 - [ ] Sufficient work space
 - [ ] Diagrams/graphs/tables included where needed
-- [ ] Problems vary across the set (not all the same sub-type)
+- [ ] Facets tagged and interleaved after the warm-up third (verify.py flags same-facet runs > 3)
 
 ## File Naming
 
@@ -354,6 +370,7 @@ Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 ```bash
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json          # 0 pass · 1 fail · 2 manual-review
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_facet_coverage.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex            # figure scope + work space
 python3 "$SKILL_DIR/tests/check_ss_coverage.py" /tmp/verify_TOPIC_DATE.json /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json

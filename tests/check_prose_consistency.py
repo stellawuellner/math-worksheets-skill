@@ -225,10 +225,14 @@ def json_numbers(entry):
             for x in v:
                 walk(x)
         elif isinstance(v, dict):
-            for x in v.values():
-                walk(x)
+            # desc/note are prose ABOUT the problem at any depth (a trap's
+            # "used 3 instead of 4" must not donate 3 and 4 to the given set);
+            # a trap's expr/value ARE printed planted numbers and flow through.
+            for k2, x in v.items():
+                if k2 not in ("desc", "note"):
+                    walk(x)
 
-    walk({k: v for k, v in entry.items() if k not in ("id", "note", "desc")})
+    walk({k: v for k, v in entry.items() if k != "id"})
     return found
 
 

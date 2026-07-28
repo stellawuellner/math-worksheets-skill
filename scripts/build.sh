@@ -89,6 +89,7 @@ if [[ "$STEM" == ss_* ]]; then
   exit 1
 fi
 JSON_DIR="$(cd "$(dirname "$JSON_FILE")" && pwd)"
+FIGS_TEX=""
 WS_JSON="$JSON_DIR/$JSON_BASE"
 
 PYTHON3="$(command -v python3 2>/dev/null || true)"
@@ -235,13 +236,15 @@ else
   SYMPY_PY="$(find_sympy_python)" || fail render-figures
   if "$SYMPY_PY" "$SCRIPT_DIR/render_figures.py" "$WS_JSON"; then
     record render-figures "PASS"
+    FIGS_TEX="$(dirname "$WS_JSON")/figs_${STEM}.tex"
+    [[ -f "$FIGS_TEX" ]] || FIGS_TEX=""
   else
     fail render-figures
   fi
 fi
 
 banner "layout check (figure scope + work space) on $(basename "$WS_TEX")"
-if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX"; then
+if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX" ${FIGS_TEX:+--figs "$FIGS_TEX"}; then
   record layout-ws "PASS"
 else
   fail layout-ws
@@ -287,7 +290,7 @@ else
 fi
 
 banner "prose consistency on $(basename "$WS_TEX")"
-"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON"
+"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" ${FIGS_TEX:+--figs "$FIGS_TEX"}
 rc=$?
 if [[ "$rc" -eq 0 ]]; then
   record prose-ws "PASS"

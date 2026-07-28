@@ -65,6 +65,8 @@ CASES=(
   "fail_reclaimed.json:1"
   "reject_bigtol.json:1"
   "pass_bigtol_reason.json:2"
+  "figs_demo.json:0"
+  "fail_figure_schema.json:1"
 )
 
 failures=0
@@ -125,6 +127,67 @@ if echo "$layout_out" | grep -q "list 2:"; then
 else
   echo "❌ check_layout missed the optional-arg macro figure — list 2 not flagged"
   exit 1
+fi
+
+
+# Rendered figures (scripts/render_figures.py). Construction is the guarantee —
+# the property suite parses the emitted TikZ (no LaTeX engine in CI) — and the
+# checkers' \probfig sight-line is fixture-tested: a figs file rendered from
+# OLD givens must be flagged against the edited JSON, a fresh one must pass,
+# blind invocation (no --figs) must be loud, and a mixed \probfig/bare list
+# must fail the all-or-nothing figure-scope rule even without the figs file.
+if [ -f "$FIXTURES/figs_demo.json" ]; then
+  echo
+  output=$("$PYTHON" "$SCRIPT_DIR/test_render_figures.py" 2>&1)
+  if [ $? -ne 0 ]; then
+    echo "❌ test_render_figures.py failed"
+    echo "$output" | sed 's/^/     /'
+    exit 1
+  fi
+  echo "✅ test_render_figures.py (renderer property suite)"
+
+  FIGS_TMP="$(mktemp -d)/figs_demo.tex"
+  if ! "$PYTHON" "$SCRIPT_DIR/../scripts/render_figures.py" "$FIXTURES/figs_demo.json" "$FIGS_TMP" >/dev/null 2>&1; then
+    echo "❌ render_figures.py failed on figs_demo.json"; exit 1
+  fi
+  echo "✅ render_figures.py renders figs_demo.json"
+
+  output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_probfig_stale.tex" \
+           "$FIXTURES/figs_demo_edited.json" --figs "$FIGS_TMP" 2>&1)
+  if echo "$output" | grep -q "figure shows"; then
+    echo "✅ check_prose flags a STALE figs file (CASE-21 sighted through \\probfig)"
+  else
+    echo "❌ check_prose missed the stale figure label"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
+
+  output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_probfig.tex" \
+           "$FIXTURES/figs_demo.json" --figs "$FIGS_TMP" 2>&1)
+  if echo "$output" | grep -q "Figure labels: all consistent"; then
+    echo "✅ check_prose passes fresh figs"
+  else
+    echo "❌ check_prose wrongly flagged fresh figs"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
+
+  "$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_probfig.tex" \
+    "$FIXTURES/figs_demo.json" >/dev/null 2>&1
+  if [ $? -eq 2 ]; then
+    echo "✅ check_prose is LOUD when \\probfig is unresolved (exit 2, not a silent pass)"
+  else
+    echo "❌ check_prose ran blind past unresolved \\probfig"; exit 1
+  fi
+
+  if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/ws_probfig_mixed.tex" >/dev/null 2>&1; then
+    echo "❌ check_layout did NOT flag the mixed \\probfig/bare list"; exit 1
+  else
+    echo "✅ check_layout flags a mixed \\probfig/bare list (\\probfig counts as valued)"
+  fi
+  if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/ws_probfig.tex" --figs "$FIGS_TMP" >/dev/null 2>&1; then
+    echo "✅ check_layout passes the all-\\probfig sheet (spliced)"
+  else
+    echo "❌ check_layout wrongly flagged the all-\\probfig sheet"; exit 1
+  fi
 fi
 
 # Answer-key binding (per-problem \boxed gate — audit B1/B2/B3). Same fixture

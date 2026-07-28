@@ -134,9 +134,11 @@ layout_ran=$((layout_ran + 1))
 
 # the optional-arg macro figure (\rtfig[scale=..]) must be SEEN: list 2 of
 # layout_bad is a fault only if the detector matches through the [..] arg —
-# exit code alone can't prove it (list 1 already fails the file)
+# exit code alone can't prove it (list 1 already fails the file). The grep
+# pins the FIGURE fault specifically: a bare "list 2:" would also match the
+# answer-location fault and mask a broken detector.
 layout_out=$("$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_bad.tex" 2>&1)
-if echo "$layout_out" | grep -q "list 2:"; then
+if echo "$layout_out" | grep -q "list 2: .*carry a figure"; then
   echo "✅ check_layout sees \\rtfig[scale=..] as a valued figure (list 2 fault)"
 else
   echo "❌ check_layout missed the optional-arg macro figure — list 2 not flagged"
@@ -162,6 +164,20 @@ if echo "$layout_out" | grep -q "items \[3\]"; then
 else
   echo "❌ check_layout mis-attributed the post-nested-list figure (no 'items [3]')"
   echo "$layout_out" | sed 's/^/     /'; exit 1
+fi
+
+# Answer-location rule (rule 4): a sheet with generous workspace but no
+# designated answer blanks must FAIL naming the rule, and the known-good
+# fixtures above already prove the acceptance branches (\ansline, \ansblank,
+# \noansline in layout_good.tex — a \noansline-marked item passes).
+require_fixture layout_bad_noans.tex
+noans_out=$("$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_bad_noans.tex" 2>&1)
+if [ $? -eq 1 ] && echo "$noans_out" | grep -q "answer location"; then
+  echo "✅ check_layout flags a sheet with no designated answer location"
+  layout_ran=$((layout_ran + 1))
+else
+  echo "❌ check_layout missed the missing answer blanks (rule 4)"
+  echo "$noans_out" | sed 's/^/     /'; exit 1
 fi
 
 
@@ -329,6 +345,97 @@ else
 fi
 facet_ran=$((facet_ran + 1))
 
+# Effort markers (scripts/render_meta.py + check_prose_consistency --meta).
+# Construction is the guarantee — the property suite tests the constructor —
+# and the placement residue is fixture-tested: unresolved calls are loud,
+# swapped/missing markers fail the index binding, hand-typed literals are
+# banned even with no meta file in play.
+echo
+require_fixture meta_demo.json ws_probmeta.tex
+output=$("$PYTHON" "$SCRIPT_DIR/test_render_meta.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_render_meta.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_render_meta.py (marker constructor property suite)"
+
+META_DIR="$(mktemp -d)"
+META_TMP="$META_DIR/meta_demo.tex"
+if ! "$PYTHON" "$SCRIPT_DIR/../scripts/render_meta.py" "$FIXTURES/meta_demo.json" "$META_TMP" >/dev/null 2>&1; then
+  echo "❌ render_meta.py failed on meta_demo.json"; exit 1
+fi
+echo "✅ render_meta.py renders meta_demo.json"
+
+if "$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_probmeta.tex" \
+     "$FIXTURES/meta_demo.json" --meta "$META_TMP" >/dev/null 2>&1; then
+  echo "✅ check_prose passes the fully-marked sheet (--meta resolved)"
+else
+  echo "❌ check_prose wrongly flagged the fully-marked sheet"; exit 1
+fi
+
+"$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_probmeta.tex" \
+  "$FIXTURES/meta_demo.json" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  echo "✅ check_prose is LOUD when \\probmeta is unresolved (exit 2, not a silent pass)"
+else
+  echo "❌ check_prose ran blind past unresolved \\probmeta"; exit 1
+fi
+
+# swapped markers: block 3 carrying \probmeta{4} (and vice versa) must fail
+# the index binding NAMING the blocks
+sed -e 's/\\probmeta{3}/\\probmeta{9}/; s/\\probmeta{4}/\\probmeta{3}/; s/\\probmeta{9}/\\probmeta{4}/' \
+  "$FIXTURES/ws_probmeta.tex" > "$META_DIR/ws_swapped.tex"
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$META_DIR/ws_swapped.tex" \
+         "$FIXTURES/meta_demo.json" --meta "$META_TMP" 2>&1)
+if [ $? -eq 2 ] && echo "$output" | grep -q "binding failed in block(s) \[3, 4\]"; then
+  echo "✅ check_prose fails swapped \\probmeta{3}/\\probmeta{4} naming the blocks"
+else
+  echo "❌ check_prose missed the swapped markers"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+
+# one block missing its marker: all-or-nothing must fail
+sed -e 's/\\probmeta{2} //' "$FIXTURES/ws_probmeta.tex" > "$META_DIR/ws_missing.tex"
+"$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$META_DIR/ws_missing.tex" \
+  "$FIXTURES/meta_demo.json" --meta "$META_TMP" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  echo "✅ check_prose fails a sheet where one block lost its marker (all-or-nothing)"
+else
+  echo "❌ check_prose passed a partially-marked sheet"; exit 1
+fi
+
+# hand-typed literals are banned unconditionally (no --meta in play)
+sed -e 's/\\probmeta{1}/(3 pts)/' "$FIXTURES/ws_probmeta.tex" \
+  | sed -e 's/\\probmeta{[0-9]}//' > "$META_DIR/ws_literal.tex"
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$META_DIR/ws_literal.tex" \
+         "$FIXTURES/meta_demo.json" 2>&1)
+if [ $? -eq 2 ] && echo "$output" | grep -q "hand-typed effort marker"; then
+  echo "✅ check_prose bans a hand-typed \"(3 pts)\" literal"
+else
+  echo "❌ check_prose let a hand-typed point value through"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+sed -e 's/\\probmeta{1}/{\\footnotesize\\ensuremath{\\bigstar\\bigstar}}/' \
+  "$FIXTURES/ws_probmeta.tex" | sed -e 's/\\probmeta{[0-9]}//' > "$META_DIR/ws_star.tex"
+"$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$META_DIR/ws_star.tex" \
+  "$FIXTURES/meta_demo.json" >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  echo "✅ check_prose bans a hand-typed \\bigstar"
+else
+  echo "❌ check_prose let a hand-typed \\bigstar through"; exit 1
+fi
+
+# the constructor itself gates garbage tags with a teaching message
+output=$("$PYTHON" "$SCRIPT_DIR/../scripts/render_meta.py" /dev/stdin "$META_DIR/meta_bad.tex" \
+         <<<'{"problem_count": 1, "problems": [{"id": 1, "type": "manual", "desc": "x", "difficulty": 7}]}' 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "\[1\]"; then
+  echo "✅ render_meta.py rejects difficulty 7 naming the offending id"
+else
+  echo "❌ render_meta.py accepted an out-of-range difficulty"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+
 # Answer-key binding (per-problem \boxed gate — audit B1/B2/B3). Same fixture
 # discipline: shuffled, masked, and precision-drift keys must FAIL; template
 # shapes (enumerate, nested multi-part, \problem{}, examplebox study guide)
@@ -352,6 +459,15 @@ AK_CASES=(
   "ss_tryit_missing.tex:ss_tryit.json:1"
   "ss_tryit_wrongans.tex:ss_tryit.json:1"
   "ss_tryit_good.tex:ss_tryit_roleswap.json:1"
+
+  # unit binding (tests/_units.py): declared answer_unit must be printed in
+  # the problem's own box; a printed lexicon unit the JSON never declared
+  # (today's-real-artifact class) must hard-fail; the good key exercises
+  # \text{ft}, split \text{cm}^2, "square units", and the ^\circ alias
+  "ak_unit_good.tex:ak_unit.json:0"
+  "ak_unit_wrong.tex:ak_unit.json:1"
+  "ak_unit_missing.tex:ak_unit.json:1"
+  "ak_unit_undeclared.tex:ak_bind.json:1"
 )
 for case in "${AK_CASES[@]}"; do
   IFS=: read -r texf jsonf want <<<"$case"
@@ -504,6 +620,93 @@ else
   echo "❌ check_prose ss zero-parse: expected exit 2, got $zero_got"; exit 1
 fi
 prose_ran=$((prose_ran + 1))
+
+# Sheet-side unit binding (check_answer_line.py): a declared answer_unit
+# needs a matching \answerline on the worksheet, a printed unit needs a
+# declaration — both directions fixture-tested, in both document shapes.
+echo
+ansline_ran=0
+# tex_fixture:json_fixture:expected_exit
+ANSLINE_CASES=(
+  "ws_line_good.tex:ak_unit.json:0"
+  "ws_line_good_prob.tex:ak_unit.json:0"
+  "ws_line_missing.tex:ak_unit.json:1"
+  "ws_line_mismatch.tex:ak_unit.json:1"
+  "ws_line_undeclared.tex:ak_bind.json:1"
+)
+for case in "${ANSLINE_CASES[@]}"; do
+  IFS=: read -r texf jsonf want <<<"$case"
+  require_fixture "$texf" "$jsonf"
+  output=$("$PYTHON" "$SCRIPT_DIR/check_answer_line.py" "$FIXTURES/$texf" "$FIXTURES/$jsonf" 2>&1)
+  got=$?
+  if [[ "$got" -ne "$want" ]]; then
+    echo "❌ $texf: expected exit $want, got $got"
+    echo "$output" | sed 's/^/     /'
+    exit 1
+  fi
+  echo "✅ $texf: exit $got"
+  ansline_ran=$((ansline_ran + 1))
+done
+
+# the shared matcher's edge semantics (token sequences, aliases, filters)
+output=$("$PYTHON" "$SCRIPT_DIR/test_unit_binding.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_unit_binding.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_unit_binding.py (unit matcher + answer_unit schema)"
+
+# Quick-answer bank (scripts/render_quick_answers.py). Regenerated every
+# build so staleness is impossible in the gated path; what needs fixtures is
+# the preflight (a bank the key never shows, a hand-rolled preamble) and the
+# strict-binding invariant: an \input'd bank must NOT degrade
+# check_answer_key.py's per-problem gate.
+echo
+require_fixture qa_bank.json ak_qa_good.tex ak_qa_noinput.tex ak_qa_nopreamble.tex
+output=$("$PYTHON" "$SCRIPT_DIR/test_render_quick_answers.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_render_quick_answers.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_render_quick_answers.py (bank constructor property suite)"
+
+QA_TMP="$(mktemp -d)/qa_demo.tex"
+if "$PYTHON" "$SCRIPT_DIR/../scripts/render_quick_answers.py" \
+     "$FIXTURES/qa_bank.json" "$FIXTURES/ak_qa_good.tex" "$QA_TMP" >/dev/null 2>&1 \
+   && [ -f "$QA_TMP" ]; then
+  echo "✅ render_quick_answers.py banks the mixed-type fixture"
+else
+  echo "❌ render_quick_answers.py failed on the known-good key"; exit 1
+fi
+"$PYTHON" "$SCRIPT_DIR/../scripts/render_quick_answers.py" \
+  "$FIXTURES/qa_bank.json" "$FIXTURES/ak_qa_noinput.tex" "$QA_TMP" >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+  echo "✅ render_quick_answers.py fails a key that never \\inputs its bank"
+else
+  echo "❌ render_quick_answers.py let a bank-less key through"; exit 1
+fi
+"$PYTHON" "$SCRIPT_DIR/../scripts/render_quick_answers.py" \
+  "$FIXTURES/qa_bank.json" "$FIXTURES/ak_qa_nopreamble.tex" "$QA_TMP" >/dev/null 2>&1
+if [ $? -eq 1 ]; then
+  echo "✅ render_quick_answers.py fails a hand-rolled preamble"
+else
+  echo "❌ render_quick_answers.py accepted a hand-rolled preamble"; exit 1
+fi
+# strict-binding regression: with the \input{qa_demo} line present and the
+# bank file on disk, the per-problem gate must stay STRICT (exit 0, no
+# degraded-mode warning) — the verified invariant that makes plain-text
+# banks safe at all
+output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/ak_qa_good.tex" \
+         "$FIXTURES/qa_bank.json" 2>&1)
+if [ $? -eq 0 ] && ! echo "$output" | grep -q "DEGRADED" \
+   && echo "$output" | grep -q "7 problem segments"; then
+  echo "✅ an \\input'd bank keeps check_answer_key in strict per-problem mode"
+else
+  echo "❌ the bank degraded (or broke) the per-problem binding gate"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
 
 log_ran=0
 
@@ -864,4 +1067,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures"

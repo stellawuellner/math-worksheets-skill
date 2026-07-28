@@ -4,7 +4,7 @@ check_prose_consistency.py — flag numbers in worksheet prose that don't appear
 as givens in the verify JSON (the word-problem analog of the figure rule).
 
 Usage: python3 tests/check_prose_consistency.py <worksheet.tex> <verify.json>
-                [--figs <figs.tex>]
+                [--figs <figs.tex>] [--meta <meta.tex>]
 
 Recognized shapes: \\problem{...} blocks, an enumerate/\\item list, or
 examplebox/tryitbox environments (study guides — the ss path binds each box's
@@ -13,8 +13,9 @@ entries by order (block i ↔ i-th JSON id). Heuristic by design — a report fo
 graders and generators, not a hard gate. Exit 0 always unless files are
 unreadable, the parse comes up empty, \\probfig{N} figures cannot be
 resolved (pass the figs file scripts/render_figures.py emitted via --figs, or
-the figure check runs blind), or a problem embeds \\includegraphics (an image
-this check can never bind to the JSON — see includegraphics_problems).
+the figure check runs blind), a problem embeds \\includegraphics (an image
+this check can never bind to the JSON — see includegraphics_problems), or the
+effort markers fail their binding (below).
 
 Study-guide noise control: worked examples print INTERMEDIATE values by
 design (10(0.642788)...), so a flagged prose token with >= 2 decimal places
@@ -22,6 +23,19 @@ is auto-matched when it equals a SymPy subexpression of the entry's own
 approx expr at the token's printed precision. The >= 2-decimals guard keeps
 integer drift (a changed given) from being masked by nearby subexpression
 values. Story numbers unused by the computation remain expected flags.
+
+Effort markers (\\probmeta{N} stars / \\probpts{N} point values) are
+CONSTRUCTED by scripts/render_meta.py from the verified difficulty tags, so
+the only residue to lint is placement — and that residue is hard (exit 2):
+  * an unresolved call (no --meta, stale meta, or a tag gap) is an UNCHECKED
+    marker, mirroring the \\probfig rule;
+  * markers are all-or-nothing and index-bound: if any call appears, problem
+    block i must contain exactly its own \\probmeta{i} (or \\probpts{i}),
+    one mode for the whole document — swapped, duplicated, missing, or
+    mixed-mode calls fail naming the blocks;
+  * hand-typed literals (\\bigstar, the unicode star, "(3 pts)") are banned
+    unconditionally — markers come from the verified JSON or not at all,
+    the same rule hand-drawn valued figures already follow.
 """
 
 import json
@@ -30,6 +44,7 @@ import re
 import sys
 
 from _probfig import CALL_RE, expand_probfigs, probfig_bodies
+from _probmeta import META_CALL_RE, PTS_CALL_RE, probmeta_ids
 from _tex_segments import _item_spans, blank_comments, box_spans
 
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
@@ -98,6 +113,13 @@ def _prose_stripped(block):
     # drop \probfig{N} calls — the braced arg is a problem INDEX, not a prose
     # value, and would otherwise be flagged as "missing from JSON" noise
     block = re.sub(r"\\probfig\{\d+\}", "", block)
+    # drop \probmeta{N}/\probpts{N} the same way — their bodies print digits
+    # ("(3 pts)") that are metadata, never prose values, so calls are
+    # STRIPPED rather than spliced (the opposite of the figs treatment)
+    block = re.sub(r"\\prob(?:meta|pts)\{\d+\}", "", block)
+    # drop \answerline unit arguments — "cm$^2$" would otherwise inject a
+    # phantom 2 into the scan (the unit itself is gated by check_answer_line)
+    block = re.sub(r"\\answerline\{[^{}]*\}", "", block)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
     return block
@@ -243,9 +265,14 @@ def main():
         i = argv.index("--figs")
         figs_path = argv[i + 1] if i + 1 < len(argv) else ""
         del argv[i:i + 2]
-    if len(argv) != 2 or figs_path == "":
+    meta_path = None
+    if "--meta" in argv:
+        i = argv.index("--meta")
+        meta_path = argv[i + 1] if i + 1 < len(argv) else ""
+        del argv[i:i + 2]
+    if len(argv) != 2 or figs_path == "" or meta_path == "":
         print("Usage: check_prose_consistency.py <worksheet.tex> <verify.json> "
-              "[--figs <figs.tex>]", file=sys.stderr)
+              "[--figs <figs.tex>] [--meta <meta.tex>]", file=sys.stderr)
         sys.exit(2)
     tex_path, json_path = argv
     tex = open(tex_path).read()
@@ -275,6 +302,63 @@ def main():
         print("    with scripts/render_figures.py (triangle problems) or a TikZ figure")
         print("    from references/latex-templates.md so its labels are checkable.")
         sys.exit(2)
+
+    # ── Effort markers (construction lives in scripts/render_meta.py) ────────
+    # Comment-blanked text for the literal ban: a comment MENTIONING \bigstar
+    # is not a hand-typed marker.
+    clean = blank_comments(tex)
+    literal = []
+    if re.search(r"\\bigstar\b", clean):
+        literal.append("\\bigstar")
+    if "\u2605" in clean:
+        literal.append("a literal star glyph")
+    if re.search(r"\(\s*\d+\s*pts\s*\)", clean):
+        literal.append('"(N pts)"')
+    if literal:
+        # unconditional — even with no meta file in play, matching the
+        # hand-drawn-valued-figure precedent. Prose like "scored 78 points"
+        # is untouched: only the unambiguous marker patterns are banned.
+        print(f"  ❌ hand-typed effort marker(s): {', '.join(literal)}.")
+        print("    Effort markers must be constructed from the verify JSON — "
+              "run scripts/render_meta.py")
+        print("    and place \\probmeta{N} or \\probpts{N} (see SKILL.md step 3).")
+        sys.exit(2)
+    block_meta = [[int(n) for n in META_CALL_RE.findall(b)] for b in blocks]
+    block_pts = [[int(n) for n in PTS_CALL_RE.findall(b)] for b in blocks]
+    meta_flat = [n for c in block_meta for n in c]
+    pts_flat = [n for c in block_pts for n in c]
+    if meta_flat or pts_flat:
+        have = probmeta_ids(open(meta_path).read()) if meta_path else set()
+        unresolved_meta = sorted(set(meta_flat + pts_flat) - have)
+        if unresolved_meta:
+            # an unresolved marker is an UNCHECKED marker — same rule as
+            # \probfig above, never a silent pass
+            print(f"  ⚠ UNRESOLVED \\probmeta/\\probpts for problem(s) "
+                  f"{unresolved_meta}.")
+            print("    Marker bodies live in the generated meta file, so this "
+                  "check cannot see them.")
+            print("    Re-run with the file render_meta.py emitted:  "
+                  "--meta /tmp/meta_TOPIC_DATE.tex")
+            print("    (and re-run scripts/render_meta.py if the JSON changed).")
+            sys.exit(2)
+        if meta_flat and pts_flat:
+            stars_in = [i + 1 for i, c in enumerate(block_meta) if c]
+            pts_in = [i + 1 for i, c in enumerate(block_pts) if c]
+            print(f"  ❌ mixed marker modes: \\probmeta in block(s) {stars_in} "
+                  f"but \\probpts in block(s) {pts_in} — use ONE mode for the "
+                  "whole document (points for quizzes, stars for practice).")
+            sys.exit(2)
+        calls = block_meta if meta_flat else block_pts
+        macro = "\\probmeta" if meta_flat else "\\probpts"
+        bad_blocks = [i + 1 for i, c in enumerate(calls) if c != [i + 1]]
+        if bad_blocks:
+            print(f"  ❌ marker/problem binding failed in block(s) {bad_blocks}: "
+                  f"once any marker appears, problem block i must contain "
+                  f"exactly {macro}{{i}} — swapped, duplicated, or missing "
+                  "markers put the wrong effort label on a problem (all "
+                  "problems carry a marker or none do).")
+            sys.exit(2)
+
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}
     for e in data.get("problems", []):

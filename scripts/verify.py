@@ -697,7 +697,17 @@ _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
                      # "traps": declared misconception results — each must be
                      # provably REJECTED by the problem's own check
                      # (validate_traps / check_traps).
-                     "traps"}
+                     "traps",
+                     # ── printed-answer metadata (unit binding) ──────────────
+                     # "answer_unit" is the printed MEASUREMENT unit of the
+                     # final answer ("ft", "m", "cm^2", "square units") —
+                     # never an angle mode. The deg/rad angle mode is the
+                     # per-type "unit" option on solve_interval/triangle
+                     # (get_unit), and the two must not be confused: a
+                     # "unit": "ft" is still rejected there. answer_unit is
+                     # enforced against the printed documents by
+                     # tests/check_answer_key.py and tests/check_answer_line.py.
+                     "answer_unit"}
 
 # One canonical, WORKING example per type — printed by --schema and executed
 # by tests/test_pipeline_fixes.py (each must pass check_schema + check_problem),
@@ -714,7 +724,10 @@ EXAMPLES = {
     "equiv":          {"id": 1, "type": "equiv", "expr": "sin(2*x)", "expected": "2*sin(x)*cos(x)"},
     "solve_interval": {"id": 1, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
                        "interval": [0, 360], "unit": "deg", "expected": [30, 150]},
-    "approx":         {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01,
+    # traps + answer_unit here double as the executed documentation of the
+    # universal fields (tests/test_pipeline_fixes.py runs every EXAMPLE
+    # through the gate)
+    "approx":         {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01, "answer_unit": "ft",
                        "traps": [{"desc": "used cos instead of tan", "expr": "9*cos(35*pi/180)", "value": 7.37}]},
     "distance":       {"id": 1, "type": "distance", "points": [[1, 2], [4, 6]], "expected": 5},
     "midpoint":       {"id": 1, "type": "midpoint", "points": [[2, -3], [8, 7]], "expected": [5, 2]},
@@ -1065,6 +1078,15 @@ def check_schema(p):
             "'facet' must be a lowercase-kebab slug like \"side-from-angle\", "
             f"got {facet!r}")
     validate_traps(p, ptype)
+    # answer_unit is universal but not free-form: an empty or non-string unit
+    # would silently disable the downstream unit-binding gates.
+    if "answer_unit" in p:
+        au = p["answer_unit"]
+        if not isinstance(au, str) or not au.strip():
+            raise VerifyInputError(
+                "'answer_unit' must be a non-empty string naming the printed "
+                "measurement unit of the final answer (e.g. \"ft\", \"cm^2\") "
+                "— for deg/rad angle MODE use the 'unit' field instead")
     validate_figure(p, ptype)
     return ptype
 

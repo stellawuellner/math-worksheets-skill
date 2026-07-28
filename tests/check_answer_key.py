@@ -18,10 +18,15 @@ tolerance let \\boxed{4.52} satisfy a verified 4.51. The box is what the
 student trusts, so the hard gate reads only the boxes, problem by problem,
 at the precision each answer is printed with.
 
+Units bind the same way (tests/_units.py): a problem that declares
+"answer_unit" must print that unit inside its own box, and a box printing a
+lexicon unit the JSON never declared hard-fails — otherwise a key could
+answer a metres problem in feet and pass every numeric gate.
+
 Exit 0 = every verified value is boxed in its own problem (soft alignment
 notes may still print when binding is degraded). Exit 1 = drift: a wrong or
-missing boxed value, a swapped key, a segment/problem count mismatch, or a
-key with no recognizable problem structure.
+missing boxed value, a swapped key, a unit mismatch, a segment/problem count
+mismatch, or a key with no recognizable problem structure.
 """
 import json
 import re
@@ -31,6 +36,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _tex_segments import segment_spans, blank_comments, box_spans  # noqa: E402
+from _units import unit_in, undeclared_units  # noqa: E402
 
 NUM = re.compile(r"-?\d+(?:\.\d+)?(?:/\d+)?")
 _FRAC = re.compile(r"\\[dt]?frac\s*\{?(-?\d+(?:\.\d+)?)\}?\s*\{?(-?\d+(?:\.\d+)?)\}?")
@@ -200,6 +206,24 @@ def role_agreement_errors(kinds, by_id):
                 "answer binds to the right box.")
     return errs
 
+def expected_strings(entry):
+    """String leaves of `expected` — the undeclared-unit gate must not flag a
+    word the verified answer itself contains (\\text{undefined})."""
+    out = []
+
+    def walk(v):
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+
+    walk(entry.get("expected"))
+    return out
+
 
 def main():
     # comments are blanked (length-preserving) so a commented-out \boxed or
@@ -316,15 +340,46 @@ def main():
                 elif not any_match(v, num_tokens(seg)):
                     soft.append((i, v))
 
+    # ── Unit binding (tests/_units.py) ───────────────────────────────────────
+    # Forward: a declared answer_unit must be printed inside the problem's own
+    # boxed answer. Reverse: a lexicon unit printed in a box the JSON never
+    # declared is unverified decoration — precisely the hole that let a key
+    # answer a metres problem in feet while every numeric gate stayed green.
+    unit_faults = []
+    for i in sorted(by_id):
+        entries = by_id[i]
+        if all(e.get("type") == "manual" for e in entries):
+            continue
+        declared = [e["answer_unit"] for e in entries
+                    if isinstance(e.get("answer_unit"), str)]
+        if strict and i - 1 < len(spans):
+            a, b = spans[i - 1]
+            content = " ".join(c for s, c in boxes if a <= s < b)
+        else:
+            content = " ".join(c for _, c in boxes)
+        for u in declared:
+            if not unit_in(content, u):
+                unit_faults.append(
+                    f"problem {i}'s boxed answer must print its verified unit "
+                    f"'{u}' — add \\text{{{u}}} inside \\ans{{}}/\\boxed{{}}")
+        exp = [s for e in entries for s in expected_strings(e)]
+        for u in undeclared_units(content, exp, declared):
+            unit_faults.append(
+                f"problem {i}'s key prints unit '{u}' that the verified JSON "
+                f"never declares — add \"answer_unit\": \"{u}\" to problem {i} "
+                f"so the unit is verified, or remove it")
+
     for pid, v, why in hard:
         print(f"  ❌ problem {pid}: verified value {v:g} {why}.")
+    for msg in unit_faults:
+        print(f"  ❌ {msg}.")
     for pid, v in soft:
         print(f"  ⚠ problem {pid}: verified value {v:g} not in its own segment "
               "(printed elsewhere) — check problem/answer alignment.")
 
-    if hard:
-        print(f"\n❌ {len(hard)} binding failure(s) — fix the key before "
-              "delivering.")
+    if hard or unit_faults:
+        print(f"\n❌ {len(hard) + len(unit_faults)} binding failure(s) — fix "
+              "the key before delivering.")
         sys.exit(1)
     if soft:
         print(f"\n⚠ {len(soft)} alignment warning(s) — heuristic, review by eye.")

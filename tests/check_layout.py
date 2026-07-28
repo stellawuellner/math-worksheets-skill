@@ -34,6 +34,18 @@ None is visible to verify.py, which only sees the JSON.
    unstarred \vspace outside any minipage is therefore a fault. Starred
    \vspace* at least survives the break, so it is tolerated as a minimal fix.
 
+4. ANSWER LOCATION. Bare workspace gives the grader nowhere to look and the
+   student nothing to commit to — the final answer drowns in scratch work.
+   Every enumerate \item must therefore contain one answer-location macro:
+   \ansline (right-aligned blank), \ansblank (inline drill blank),
+   \answerline{unit} (blank + measurement unit), or \noansline (explicit
+   opt-out for problems whose worked product IS the answer — sketch, proof,
+   construction). \problem regions are exempt BY DESIGN: the shipped
+   preamble's \problem macro emits the answer line itself whenever its
+   workspace argument is positive, so the document body shows nothing to
+   count — construction, not linting, is the guarantee there. Rules run on
+   comment-stripped text, so a commented-out marker can never satisfy this.
+
 Both the enumerate/\item and the \problem{...} macro shapes are parsed — the
 skill's first-taught template style is \problem, and a checker that only sees
 enumerate lists passes a zero-workspace \problem sheet vacuously (the same
@@ -64,6 +76,10 @@ SKIP_CM = {"bigskip": 0.42, "medskip": 0.28, "smallskip": 0.14}
 # takes the workspace as an optional first argument). Does NOT match the
 # preamble's \newcommand{\problem}... definition: there the next char is `}`.
 PROBLEM_RE = re.compile(r"\\problem(\[[^\]]*\])?\{")
+
+# the answer-location macros the shipped preamble defines (rule 4). \b so a
+# hypothetical \anslinesque never satisfies the rule.
+ANSWER_RE = re.compile(r"\\(?:ansline|ansblank|answerline|noansline)\b")
 
 
 def to_cm(value, unit):
@@ -297,6 +313,19 @@ def main():
                 f"or add \\vspace after each item.")
         else:
             print(f"  list {n}: work space ok (all {len(its)} problems ≥ {MIN_CM_PER_PROBLEM}cm)")
+
+        # 4. answer location (\problem regions are exempt — see the docstring)
+        noans = [i for i, it in enumerate(its, 1) if not ANSWER_RE.search(it)]
+        if noans:
+            faults.append(
+                f"list {n}: items {noans} have no designated answer location. "
+                f"End each item with \\ansline (right-aligned answer blank) or "
+                f"an inline \\ansblank; mark \\noansline only where the worked "
+                f"product IS the answer (sketch, proof, construction). A grader "
+                f"should never hunt through scratch work for the final answer.")
+        else:
+            print(f"  list {n}: answer location ok "
+                  f"(all {len(its)} items carry an answer-location macro)")
 
     # \problem-macro sheets: same two rules over the regions, treated as one
     # pseudo-list (a figure sits just as ambiguously between \problem blocks

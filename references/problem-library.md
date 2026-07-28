@@ -303,7 +303,7 @@ student to choose between.
 | `pythagorean` | third side from two sides |
 | `elevation` | angle-of-elevation application |
 | `depression` | angle-of-depression application |
-| `write-the-ratio` | state the ratio (no solving) — tag standard HSG-SRT.C.6 |
+| `write-the-ratio` | state the ratio (no solving) — tag standard HSG-SRT.C.6; verify as `eval` (`"expr": "a/b"` with the sides in `at`) and attach the renderer `"figure"` object — the triangle it reads from is renderer-figured, never hand-drawn (SKILL.md step 4b) |
 
 **Factoring quadratics**
 

@@ -193,7 +193,10 @@ triangle here is labelled. No values shown: use the numbers given in each proble
 
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem
-automatically, plus `approx` problems that declare a `"figure"` object. Reference them
+automatically, plus `approx` and `eval` problems that declare a `"figure"` object. A
+write-the-ratio problem ("write $\tan A$ as a fraction") is verified as `eval` and is
+renderer-figured like any other right triangle — the renderer covers it, so the
+hand-macro escape hatch never applies to it. Reference the macros
 in the worksheet instead of writing TikZ: hand-computed figure coordinates are exactly
 the retyping drift the JSON-first pipeline exists to prevent (the reference SSA swing
 figure itself shipped with wrong hand-computed constants until the renderer replaced
@@ -320,11 +323,16 @@ Figures are to scale (longest side ≈ 4.5cm), label **only** given values plus 
 ambiguous SSA case as the two-apex swing figure — both apexes computed, not retyped.
 
 - Every `type: "triangle"` problem renders automatically from its own `given` dict.
-- Right-triangle setups on `approx` problems opt in with a `"figure"` object:
+- Right-triangle setups on `approx` and `eval` problems opt in with a `"figure"` object:
   `{"kind": "right_triangle", "given": {"b": 9, "A": 35}, "solve_for": "a", "unknown": "x"}`
   (two of `a/b/c/A/B`; the right angle at `C` is implied). Every figure value must
-  appear as a literal in the problem's `expr` — verification hard-fails otherwise, so
-  the figure can only show numbers the arithmetic check actually used.
+  appear among the numbers the problem's own check used — a literal in `expr`, or one
+  of the `at` values on `eval` (the write-the-ratio shape: `"expr": "a/b"` with
+  `"at": {"a": 8, "b": 15}`, figure `"given": {"a": 8, "b": 15}`, `"solve_for": "A"`,
+  `"unknown": "A"` to mark the asked-about angle) — verification hard-fails otherwise,
+  so the figure can only show numbers the arithmetic check actually used. Other problem
+  types cannot carry a figure: they have no bindable single answer, and verification
+  rejects them with the rewrite (verify as `approx`/`eval`, or drop the figure).
 - In the worksheet: `\input{/tmp/figs_TOPIC_DATE.tex}` right after `\begin{document}`,
   then place `\probfig{N}` with problem N inside its minipage (figure-placement rules
   in `references/latex-templates.md`), keeping the work-space `\vspace` outside.

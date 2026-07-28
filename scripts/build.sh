@@ -29,6 +29,10 @@
 # executes; in particular nothing compiles after a failed verification):
 #    1 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
 #    2 verify-ss       run_verify.sh on the study-guide JSON
+#    2b facet-coverage tests/check_facet_coverage.py — worksheet facets must
+#                      all have study-guide worked examples, and a declared
+#                      "subtitle" must appear in the worksheet title block
+#                      (no-op for sheets without a facet plan)
 #    3 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
 #    4 layout-ws       tests/check_layout.py (figure scope + work space)
@@ -101,7 +105,7 @@ fi
 # ── Result bookkeeping ────────────────────────────────────────────────────────
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
-GATES=(discover verify-ws verify-ss render-figures layout-ws \
+GATES=(discover verify-ws verify-ss facet-coverage render-figures layout-ws \
        compile-ws compile-ak compile-ss answer-key-ak answer-key-ss prose-ws)
 RESULTS=()
 MANUALS=0
@@ -219,6 +223,21 @@ if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
 else
   banner "verify study-guide JSON ($(basename "$SS_JSON"))"
   run_verify_gate verify-ss "$SS_JSON"
+fi
+
+# Cross-file facet gates run BEFORE any compile: they read only JSON + tex
+# text, so a facet or subtitle drift is caught in milliseconds, not after
+# three tectonic runs.
+banner "facet coverage (ws facets ⊆ ss examples; subtitle binding)"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  FACET_ARGS=("$WS_TEX" "$WS_JSON")
+else
+  FACET_ARGS=("$WS_TEX" "$WS_JSON" "$SS_JSON")
+fi
+if "$PYTHON3" "$TESTS_DIR/check_facet_coverage.py" "${FACET_ARGS[@]}"; then
+  record facet-coverage "PASS"
+else
+  fail facet-coverage
 fi
 
 banner "render figures"

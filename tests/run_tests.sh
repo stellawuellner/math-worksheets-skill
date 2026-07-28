@@ -67,6 +67,19 @@ CASES=(
   "pass_bigtol_reason.json:2"
   "figs_demo.json:0"
   "fail_figure_schema.json:1"
+  "pass_traps.json:0"
+  "fail_trap_indistinct.json:1"
+  "fail_trap_value_drift.json:1"
+  "reject_trap_schema.json:1"
+  "facets_good_ws.json:0"
+  "facets_orphan.json:1"
+  "facets_untagged.json:1"
+  "facets_unknown.json:1"
+  "interleave_blocked.json:2"
+  "interleave_drill.json:0"
+  "interleave_good.json:0"
+  "interleave_single_facet.json:0"
+  "reject_bad_format.json:1"
 )
 
 failures=0
@@ -189,6 +202,110 @@ if [ -f "$FIXTURES/figs_demo.json" ]; then
     echo "❌ check_layout wrongly flagged the all-\\probfig sheet"; exit 1
   fi
 fi
+
+# ── Facet plans, misconception traps, interleaving ───────────────────────────
+# The unit suite pins the gate messages and the window/run math; the blocks
+# below pin what only the CLI surfaces: report lines, the cross-file
+# facet-coverage checker, and the prose binder's trap-number handling.
+echo
+facet_ran=0
+output=$("$PYTHON" "$SCRIPT_DIR/test_facets.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_facets.py failed"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+echo "✅ test_facets.py (facet/trap/interleave unit suite)"
+
+# the 10+-problem nudge is exit-NEUTRAL but must be visible
+output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/pass_calculus.json" 2>&1)
+if echo "$output" | grep -q 'no "facets" declared'; then
+  echo "✅ verify nudges a 10+-problem facetless sheet (exit stays 0)"
+else
+  echo "❌ nudge line missing for pass_calculus.json"; exit 1
+fi
+facet_ran=$((facet_ran + 1))
+
+# a facet-tagged sheet prints the histogram beside the standards line
+output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/facets_good_ws.json" 2>&1)
+if echo "$output" | grep -q "facets: side-from-angle×2"; then
+  echo "✅ verify prints the facet histogram"
+else
+  echo "❌ facet histogram missing for facets_good_ws.json"; exit 1
+fi
+facet_ran=$((facet_ran + 1))
+
+# the interleave flag must teach the fix: run ids + a concrete swap
+output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/interleave_blocked.json" 2>&1)
+if echo "$output" | grep -q "swap id"; then
+  echo "✅ interleave violation suggests a concrete swap"
+else
+  echo "❌ interleave violation did not suggest a swap"; exit 1
+fi
+facet_ran=$((facet_ran + 1))
+
+# cross-file gates: ws facets ⊆ ss examples, subtitle bound to the title block
+FACETCOV="$SCRIPT_DIR/check_facet_coverage.py"
+require_fixture facets_good_ws.tex facets_good_ws.json facets_good_ss.json \
+                facets_ss_gap.json facets_ss_untagged.json facets_subtitle_ws.tex
+# fixture set:  tex:ws_json:ss_json(or -):expected_exit
+FC_CASES=(
+  "facets_good_ws.tex:facets_good_ws.json:facets_good_ss.json:0"
+  "facets_good_ws.tex:facets_good_ws.json:facets_ss_gap.json:1"
+  "facets_good_ws.tex:facets_good_ws.json:facets_ss_untagged.json:1"
+  "facets_subtitle_ws.tex:facets_good_ws.json:facets_good_ss.json:1"
+  "facets_good_ws.tex:facets_good_ws.json:-:0"
+)
+for case in "${FC_CASES[@]}"; do
+  IFS=: read -r texf wsj ssj want <<<"$case"
+  if [ "$ssj" = "-" ]; then
+    output=$("$PYTHON" "$FACETCOV" "$FIXTURES/$texf" "$FIXTURES/$wsj" 2>&1)
+  else
+    output=$("$PYTHON" "$FACETCOV" "$FIXTURES/$texf" "$FIXTURES/$wsj" "$FIXTURES/$ssj" 2>&1)
+  fi
+  got=$?
+  if [ "$got" -ne "$want" ]; then
+    echo "❌ check_facet_coverage $texf/$wsj/$ssj: expected exit $want, got $got"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
+  echo "✅ check_facet_coverage $texf ($wsj vs $ssj): exit $got"
+  facet_ran=$((facet_ran + 1))
+done
+# a failing subset gate must NAME the missing facet so the fix is findable
+output=$("$PYTHON" "$FACETCOV" "$FIXTURES/facets_good_ws.tex" \
+         "$FIXTURES/facets_good_ws.json" "$FIXTURES/facets_ss_gap.json" 2>&1)
+if echo "$output" | grep -q "no worked example tagged 'pythagorean'"; then
+  echo "✅ check_facet_coverage names the missing study-guide facet"
+else
+  echo "❌ check_facet_coverage did not name the missing facet"; exit 1
+fi
+# legacy sheets (no facet plan) must pass untouched
+if "$PYTHON" "$FACETCOV" "$FIXTURES/trio/ws_build_demo.tex" \
+     "$FIXTURES/pass_algebra.json" >/dev/null 2>&1; then
+  echo "✅ check_facet_coverage passes a legacy no-plan sheet"
+else
+  echo "❌ check_facet_coverage failed a legacy no-plan sheet"; exit 1
+fi
+facet_ran=$((facet_ran + 1))
+
+# prose binder: a planted wrong number counts as a given ONLY when declared
+# as a trap (and trap desc numbers never count)
+require_fixture ws_trap_prose.tex trap_prose.json trap_prose_undeclared.json
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" \
+         "$FIXTURES/ws_trap_prose.tex" "$FIXTURES/trap_prose.json" 2>&1)
+if echo "$output" | grep -q "missing from JSON"; then
+  echo "❌ check_prose flagged a DECLARED trap value as missing"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+echo "✅ check_prose accepts a declared trap value in error-analysis prose"
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" \
+         "$FIXTURES/ws_trap_prose.tex" "$FIXTURES/trap_prose_undeclared.json" 2>&1)
+if echo "$output" | grep -q "missing from JSON: \[7.37\]"; then
+  echo "✅ check_prose flags the same number when the trap is UNdeclared"
+else
+  echo "❌ check_prose missed the undeclared planted number"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+facet_ran=$((facet_ran + 1))
 
 # Answer-key binding (per-problem \boxed gate — audit B1/B2/B3). Same fixture
 # discipline: shuffled, masked, and precision-drift keys must FAIL; template
@@ -462,4 +579,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $facet_ran facet/trap checks"

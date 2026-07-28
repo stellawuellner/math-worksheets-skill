@@ -86,8 +86,11 @@ def json_expected_nums(entry):
 
 def problem_segments(tex):
     """Split the key into per-problem segments by the \\problem{...} macro the
-    answer key uses to repeat each statement; returns list of segment texts."""
-    starts = [m.start() for m in re.finditer(r"\\problem\{", tex)]
+    answer key uses to repeat each statement; returns list of segment texts.
+    Also matches the optional-workspace form \\problem[5cm]{...} (see
+    references/latex-templates.md) so keys written in the current template
+    style still segment."""
+    starts = [m.start() for m in re.finditer(r"\\problem(?:\[[^\]]*\])?\{", tex)]
     if not starts:
         return None
     starts.append(len(tex))

@@ -20,7 +20,14 @@
 \renewcommand{\headrulewidth}{0.4pt}
 
 \newcounter{prob}
-\newcommand{\problem}[1]{\stepcounter{prob}\vspace{0.4cm}\noindent\textbf{\large\theprob.}\quad #1\vspace{0.3cm}}
+% \problem[workspace]{stem} --- number, stem, and workspace live in ONE minipage
+% because LaTeX discards \vspace glue at page/column breaks: workspace left
+% outside the box vanishes exactly when a problem lands at a page bottom, and
+% on a multi-page sheet that hits several problems per sheet. The minipage is
+% unbreakable, so stem + workspace always move to the next page together.
+% Default 0pt: answer keys and study guides reuse \problem and must not
+% inherit worksheet-sized gaps.
+\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\end{minipage}\par}
 
 % Shrink-to-fit title: use \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
@@ -46,19 +53,25 @@
 ## Problem Patterns
 
 ### Simple algebraic problem
+The workspace is the macro's optional argument — never a trailing `\vspace`,
+which is glue outside the unbreakable box and is discarded at a page break.
 ```latex
-\problem{Solve for $x$: \quad $2x^2 - 5x - 3 = 0$}
-\vspace{6cm}
+\problem[6cm]{Solve for $x$: \quad $2x^2 - 5x - 3 = 0$}
 ```
 
 ### Two-column layout (shorter problems)
+Workspace rides inside each item's `minipage[t]`, not in `itemsep`: itemsep
+glue is discarded at every column break (twice per page in two columns), so an
+itemsep-spaced sheet loses the workspace of the last item in each column.
+3.9cm rather than 4cm keeps the last item from overhanging the bottom margin.
 ```latex
 \begin{multicols}{2}
-\begin{enumerate}[label=\textbf{\arabic*.}, itemsep=4cm]
-  \item $3x + 7 = 22$
-  \item $-2(x - 5) = 14$
-  \item $\dfrac{x}{4} + 3 = 9$
-  \item $5x - 3 = 2x + 9$
+\raggedcolumns
+\begin{enumerate}[label=\textbf{\arabic*.}, itemsep=0pt]
+  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.9cm}\end{minipage}
 \end{enumerate}
 \end{multicols}
 ```
@@ -149,7 +162,7 @@ $3$  & \\[0.5cm]\hline
 - In thin or small triangles (any angle < 25° or any side rendered < 2cm), move that side's label fully outside with an explicit shift, e.g. `\node[below=2pt] at ...`, and prefer `font=\small` for all labels in the figure.
 - Vertex labels take anchors pointing *away* from the triangle interior (e.g. `below left` for a bottom-left vertex).
 - After composing a figure, mentally trace each label's bounding box against every drawn line; if in doubt, add a 2pt shift. A worksheet with an unreadable figure fails the student even when the math is right.
-- **Keep a problem and its figure on the same page**: wrap the statement + figure in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Leave the work-space `\vspace` *outside* the minipage so pages can still fill naturally.
+- **Keep a problem, its figure, AND its workspace on the same page**: wrap all three in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \par\vspace*{5cm} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Put the work-space `\vspace*` *inside* the minipage too: `\vspace` glue outside the box is silently discarded when it falls at a page break, which is exactly when a bottom-of-page problem needs its room. Pages fill less tightly this way — that is the honest cost of not stealing the student's workspace.
 - **ASCII only in templates**: pdflatex (the fallback engine) cannot typeset literal Unicode symbols like ⚠ or →. Use LaTeX macros or ASCII markers — `(!)`, `$\rightarrow$`, `$^\circ$` — so documents compile identically under both engines.
 
 ### Right triangle

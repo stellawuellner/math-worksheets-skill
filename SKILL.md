@@ -132,10 +132,14 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 \usetikzlibrary{calc, angles, quotes}
 ```
 
-**Work space defaults**: `\vspace{5cm}` per problem; `8cm` for multi-step; `10cm+` for graphs.
-These are a floor, not a suggestion: `tests/check_layout.py` fails a worksheet whose
-problems get under 2.5cm. A sheet with correct answers and nowhere to write them is a
-sheet the student cannot use.
+**Work space defaults**: `\problem[5cm]{...}` per problem; `8cm` for multi-step; `10cm+` for graphs.
+The workspace must live **inside the problem's unbreakable block** (the `\problem` macro's
+minipage, or a per-item minipage in lists — see the templates): `\vspace` glue outside it
+is silently discarded when it falls at a page or column break, leaving a bottom-of-page
+problem with zero room to work. These are a floor, not a suggestion: `tests/check_layout.py`
+fails a worksheet whose problems get under 2.5cm and flags workspace `\vspace` left outside
+a minipage. A sheet with correct answers and nowhere to write them is a sheet the student
+cannot use.
 
 **Figure scope (all-or-nothing per list)**: a figure carrying numbers belongs to one
 problem, but on the page it merely sits *near* several. If problem 6 shows a triangle
@@ -245,7 +249,7 @@ Verification proves the JSON is correct; these checkers prove the **PDFs the stu
 
 ```bash
 python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # worksheet prose + figure labels ↔ JSON givens
-python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex                                  # figure scope + work space (exit 1 = fix before shipping)
+python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex                                  # figure scope + work space (nonzero exit = fix before shipping)
 python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
 ```
 
@@ -304,5 +308,7 @@ Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 | pdflatex: `.sty` not found (enumitem, mdframed, …) | `apt install texlive-latex-extra` (pdflatex doesn't auto-download packages) |
 | Slow first compile | Downloading packages from CTAN — wait 30–60s, faster after |
 | LaTeX error on line N | Check paired `$...$`, matching `\begin{}/\end{}` |
+| Compile blocked: `Overfull \hbox (Npt too wide)` | Text physically overflows the printed page — shorten the line, allow a break point, or scale the figure. The log gate (`scripts/check_log.py`) blocks PDFs that would ship with off-page text; `OVERFULL_PT=5` relaxes the threshold if the overhang is verified harmless |
+| Compile blocked: undefined references | A `\ref` points at a missing or typo'd `\label` — the PDF would print `??` where the number belongs. Fix the pair and recompile |
 | pgfplots not rendering | Ensure `\pgfplotsset{compat=1.18}` is in preamble |
 | PDF not created | Read full tectonic output for the specific error |

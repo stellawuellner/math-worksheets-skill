@@ -147,6 +147,17 @@ directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How
 triangle here is labelled. No values shown: use the numbers given in each problem."
 `tests/check_layout.py` enforces this.
 
+**Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
+Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem
+automatically, plus `approx` problems that declare a `"figure"` object. Reference them
+in the worksheet instead of writing TikZ: hand-computed figure coordinates are exactly
+the retyping drift the JSON-first pipeline exists to prevent (the reference SSA swing
+figure itself shipped with wrong hand-computed constants until the renderer replaced
+them). Leave a `\probfig{N}` placeholder while writing the `.tex`; the macro exists
+once step 4b's figs file is `\input`. Hand-built TikZ per `references/latex-templates.md`
+remains the path only for figure kinds the renderer doesn't cover — circles, sectors,
+solids, transversals, coordinate grids.
+
 ### 4. Write and run the verification file
 
 Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file describing each problem and its expected answer. The bundled `scripts/verify.py` evaluates this using SymPy. No generated code is ever executed.
@@ -239,19 +250,48 @@ Use `manual` for: graph sketches, sign charts, word problem setups, two-column p
 
 **Trust boundary of `approx`:** it confirms the *arithmetic of the formula you wrote* matches `expected` — it cannot confirm the formula is the right one for the stated problem. Keep the `approx` `expr` a faithful transcription of the problem's givens, and rely on the prose/figure/answer-key checkers below to bind the story to the math.
 
-### 4b. Bind the printed documents to the verified JSON
+### 4b. Render figures from the verified JSON
+
+Immediately after `run_verify.sh` succeeds, render the figures **from the same JSON**:
+
+```bash
+python3 "$SKILL_DIR/scripts/render_figures.py" /tmp/verify_TOPIC_DATE.json
+# → /tmp/figs_TOPIC_DATE.tex, one \probfig{N} macro per figured problem
+```
+
+This is the `read_data` chart rule applied to geometry: the `given` dict the verifier
+checks is what places every vertex, so the drawing cannot disagree with the answer key.
+Figures are to scale (longest side ≈ 4.5cm), label **only** given values plus `?` on
+`solve_for`, mark a given 90° angle with a square instead of an arc, and render the
+ambiguous SSA case as the two-apex swing figure — both apexes computed, not retyped.
+
+- Every `type: "triangle"` problem renders automatically from its own `given` dict.
+- Right-triangle setups on `approx` problems opt in with a `"figure"` object:
+  `{"kind": "right_triangle", "given": {"b": 9, "A": 35}, "solve_for": "a", "unknown": "x"}`
+  (two of `a/b/c/A/B`; the right angle at `C` is implied). Every figure value must
+  appear as a literal in the problem's `expr` — verification hard-fails otherwise, so
+  the figure can only show numbers the arithmetic check actually used.
+- In the worksheet: `\input{/tmp/figs_TOPIC_DATE.tex}` right after `\begin{document}`,
+  then place `\probfig{N}` with problem N inside its minipage (figure-placement rules
+  in `references/latex-templates.md`), keeping the work-space `\vspace` outside.
+- An impossible figure refuses to render (exit 1) — fix the JSON, don't fight the tool.
+- **Re-run this whenever the JSON changes.** A stale figs file is caught by
+  `check_prose_consistency.py --figs` in step 4c.
+
+### 4c. Bind the printed documents to the verified JSON
 
 Verification proves the JSON is correct; these checkers prove the **PDFs the student receives** match it. Run all three before compiling and resolve every hard flag:
 
 ```bash
-python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # worksheet prose + figure labels ↔ JSON givens
-python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex                                  # figure scope + work space (exit 1 = fix before shipping)
+python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json --figs /tmp/figs_TOPIC_DATE.tex   # worksheet prose + figure labels ↔ JSON givens
+python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex --figs /tmp/figs_TOPIC_DATE.tex   # figure scope + work space (exit 1 = fix before shipping)
 python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
 ```
 
 - `check_answer_key.py` exits 1 if a verified answer value is printed **nowhere** in the key (transcription drift) — fix the `.tex` and re-run. Soft `⚠` alignment notes are heuristic; eyeball them.
 - **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
 - `check_prose_consistency.py` also now checks **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
+- `--figs` splices the rendered `\probfig{N}` bodies back into the text so both checkers see the figures the student sees; without it, a sheet using `\probfig` exits 2 (an unchecked figure must never read as a pass). It also catches a **stale** figs file rendered before a JSON edit — re-run step 4b. Sheets with no rendered figures can omit the flag.
 
 ### 5. Compile
 

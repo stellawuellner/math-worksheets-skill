@@ -1,0 +1,540 @@
+#!/usr/bin/env python3
+"""
+render_figures.py — construct TikZ figures FROM the verify JSON, so a figure
+can never disagree with the answer it illustrates.
+
+Why this exists: charts already follow this rule (read_data's "the SAME data
+feeds the pgfplots chart") but geometry figures were hand-drawn — the agent
+solved the triangle by hand and retyped coordinates into TikZ. The shipped SSA
+"swing" reference figure carried wrong hand-computed constants (9.24/3.05 for
+the true 9.220/3.037), which is exactly the transcription drift verify.py
+exists to kill. This script closes the gap by CONSTRUCTION: the same `given`
+dict solve_triangle verifies is what places every vertex, so drawing and check
+share one source of truth. Lints stay as belt-and-braces; construction is the
+guarantee.
+
+Usage: render_figures.py <verify_TOPIC_DATE.json> [out.tex]
+Default output: figs_TOPIC_DATE.tex next to the input (verify_ prefix -> figs_,
+matching the ws_/ak_/ss_ naming convention).
+
+What renders:
+  * every `type: "triangle"` problem — automatically, from its own `given`
+    dict (opt-in marker `"figure": {"kind": "triangle"}` is allowed but adds
+    nothing; values inside it are rejected by verify.py so the givens can
+    never be duplicated). Ambiguous SSA emits the two-triangle swing figure
+    with BOTH computed apexes.
+  * `approx` problems carrying `"figure": {"kind": "right_triangle", "given":
+    {two of a/b/c/A/B}, "solve_for": ..., "unknown": "x"}` — the right angle
+    is at C; every figure value must appear as a literal in the problem's
+    `expr`, which binds the drawing to the arithmetic the verifier checked.
+
+Emitted file: one `% >>> probfig N` marker + macro per figured problem and a
+single dispatcher `\\probfig{N}`. The worksheet `\\input`s the file and places
+`\\probfig{N}` inside problem N's minipage. The markers are what lets
+tests/check_prose_consistency.py and tests/check_layout.py splice the figure
+bodies back in (--figs) so their figure rules stay sighted.
+
+Figures are to scale: longest drawn side is normalized to ~4.5cm. Labels show
+ONLY given values, plus "?" (or the declared unknown name) on solve_for —
+never a computed answer. Output is ASCII-only so the pdflatex fallback
+compiles it identically to tectonic.
+
+Exit 0: figs file written. Exit 1: invalid input or an impossible figure —
+no file is written, because a wrong figure is worse than no figure.
+"""
+
+import json
+import math
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import sympy
+    from verify import VerifyInputError, parse_value, solve_triangle, _OPP, _SIDE_OF
+except ModuleNotFoundError:
+    # Same dependency story as run_verify.sh: the renderer deliberately reuses
+    # verify.py's solver (one solver, one truth), which needs sympy.
+    print("Error: sympy is not installed. render_figures.py shares verify.py's\n"
+          "triangle solver so the figure and the check can never disagree —\n"
+          "install it with:  pip3 install sympy", file=sys.stderr)
+    sys.exit(1)
+
+
+class FigureError(Exception):
+    """A figure that must not render (impossible geometry, bad figure spec)."""
+
+
+TARGET_CM = 4.5                    # longest drawn side after normalization
+THIN_ANGLE = math.radians(25.0)    # thin-triangle rule, latex-templates.md
+THIN_SIDE_CM = 2.0                 # (any angle < 25 deg or drawn side < 2cm)
+RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
+
+# side x connects the two vertices whose angles are NOT _OPP[x]
+_EDGES = {"a": ("B", "C"), "b": ("A", "C"), "c": ("A", "B")}
+
+_ANCHOR_NAMES = ["right", "above right", "above", "above left",
+                 "left", "below left", "below", "below right"]
+
+
+# ── small numeric/TikZ helpers ────────────────────────────────────────────────
+
+def _f(v):
+    """JSON given -> float through verify.py's own parser (accepts "pi/3")."""
+    return float(sympy.N(parse_value(v)))
+
+
+def _fmt(x):
+    # 4 decimals: coarser rounding (2-3dp) can shift a de-normalized side by
+    # more than the 1e-3 the property test allows on long sides.
+    return f"{x:.4f}"
+
+
+def _pt(p):
+    return f"({_fmt(p[0])},{_fmt(p[1])})"
+
+
+def _unitv(x, y):
+    n = math.hypot(x, y)
+    return (x / n, y / n) if n else (0.0, 0.0)
+
+
+def _anchor(x, y):
+    """Map an outward direction to the nearest of the 8 TikZ anchors."""
+    ang = math.degrees(math.atan2(y, x)) % 360.0
+    return _ANCHOR_NAMES[int(((ang + 22.5) // 45) % 8)]
+
+
+def _node(anchor, pos, text, thin, shift_dir=None, shift_pt=0.0):
+    opts = [anchor]
+    if shift_dir is not None and shift_pt:
+        # explicit xshift/yshift instead of positioning-library `below left=2pt`
+        # syntax — the templates only load calc/angles/quotes
+        opts.append(f"xshift={shift_dir[0] * shift_pt:.1f}pt")
+        opts.append(f"yshift={shift_dir[1] * shift_pt:.1f}pt")
+    if thin:
+        opts.append("font=\\small")
+    return "\\node[" + ", ".join(opts) + "] at " + _pt(pos) + " {" + text + "};"
+
+
+def _pic(first, vertex, second, label, thin):
+    opts = "draw, angle radius=7mm, angle eccentricity=1.6"
+    if thin:
+        opts += ", font=\\small"
+    return ("\\pic [" + opts + ", \"" + label + "\"] {angle = "
+            + first + "--" + vertex + "--" + second + "};")
+
+
+def _arc_order(vpos, ray1, ray2):
+    """Order two rays so the CCW sweep from first to second is the INTERIOR
+    angle (TikZ `pic {angle=X--V--Y}` measures counterclockwise from V--X)."""
+    (n1, p1), (n2, p2) = ray1, ray2
+    a1 = math.atan2(p1[1] - vpos[1], p1[0] - vpos[0])
+    a2 = math.atan2(p2[1] - vpos[1], p2[0] - vpos[0])
+    if (a2 - a1) % (2 * math.pi) <= math.pi:
+        return n1, n2
+    return n2, n1
+
+
+def _pic_at(vname, vpos, ray1, ray2, label, thin):
+    first, second = _arc_order(vpos, ray1, ray2)
+    return _pic(first, vname, second, label, thin)
+
+
+def _right_mark(vpos, p1, p2, size=0.28):
+    """Small square at a right-angle vertex, oriented along the two edges."""
+    u1 = _unitv(p1[0] - vpos[0], p1[1] - vpos[1])
+    u2 = _unitv(p2[0] - vpos[0], p2[1] - vpos[1])
+    q1 = (vpos[0] + u1[0] * size, vpos[1] + u1[1] * size)
+    q2 = (vpos[0] + (u1[0] + u2[0]) * size, vpos[1] + (u1[1] + u2[1]) * size)
+    q3 = (vpos[0] + u2[0] * size, vpos[1] + u2[1] * size)
+    return "\\draw " + _pt(q1) + " -- " + _pt(q2) + " -- " + _pt(q3) + ";"
+
+
+def _disp(v):
+    """Display a given exactly as the JSON wrote it (7, 6.5, "pi/3")."""
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def _angle_label(v, unit):
+    if unit == "deg":
+        return "$" + _disp(v) + "^\\circ$"
+    return "$" + str(v).replace("pi", "\\pi") + "$"
+
+
+def _split_given(given, unit):
+    to_rad = math.radians if unit == "deg" else float
+    sides = {k: _f(given[k]) for k in "abc" if k in given}
+    angles = {k: to_rad(_f(given[k])) for k in "ABC" if k in given}
+    return sides, angles
+
+
+# ── single-triangle emission ─────────────────────────────────────────────────
+# Canonical placement (same as the SAS template): A at the origin, B on the
+# x-axis at distance c, C = (b cos A, b sin A). All angles are in (0, 180) so
+# C is always above the axis and A->B->C is counterclockwise.
+
+def _single_lines(sol, side_labels, angle_marks):
+    a, b, c = sol["a"], sol["b"], sol["c"]
+    s = TARGET_CM / max(a, b, c)
+    pts = {"A": (0.0, 0.0),
+           "B": (c * s, 0.0),
+           "C": (b * math.cos(sol["A"]) * s, b * math.sin(sol["A"]) * s)}
+    thin = (min(sol["A"], sol["B"], sol["C"]) < THIN_ANGLE
+            or min(a, b, c) * s < THIN_SIDE_CM)
+    lines = [f"\\coordinate ({v}) at {_pt(pts[v])};" for v in "ABC"]
+    lines.append("\\draw[thick] (A) -- (B) -- (C) -- cycle;")
+    for v, mark in angle_marks.items():
+        if mark and mark[0] == "right":
+            o1, o2 = [o for o in "ABC" if o != v]
+            lines.append(_right_mark(pts[v], pts[o1], pts[o2]))
+    # vertex labels: anchored away from the centroid so they clear both edges
+    cx = sum(p[0] for p in pts.values()) / 3.0
+    cy = sum(p[1] for p in pts.values()) / 3.0
+    for v in "ABC":
+        d = _unitv(pts[v][0] - cx, pts[v][1] - cy)
+        lines.append(_node(_anchor(*d), pts[v], "$" + v + "$", thin))
+    # side labels: outward normal at the edge midpoint (templates' anchor rule);
+    # thin triangles get an explicit 2pt outward shift
+    for side, (v1, v2) in _EDGES.items():
+        text = side_labels.get(side)
+        if not text:
+            continue
+        mid = ((pts[v1][0] + pts[v2][0]) / 2.0, (pts[v1][1] + pts[v2][1]) / 2.0)
+        ex, ey = pts[v2][0] - pts[v1][0], pts[v2][1] - pts[v1][1]
+        nx, ny = -ey, ex
+        third = pts[_OPP[side]]                     # interior lies toward it
+        if nx * (mid[0] - third[0]) + ny * (mid[1] - third[1]) < 0:
+            nx, ny = -nx, -ny
+        nu = _unitv(nx, ny)
+        lines.append(_node(_anchor(*nu), mid, text, thin,
+                           shift_dir=nu, shift_pt=2.0 if thin else 0.0))
+    for v, mark in angle_marks.items():
+        if mark and mark[0] == "arc":
+            o1, o2 = [o for o in "ABC" if o != v]
+            first, second = _arc_order(pts[v], (o1, pts[o1]), (o2, pts[o2]))
+            lines.append(_pic(first, v, second, mark[1], thin))
+    return lines
+
+
+# ── ambiguous-SSA swing emission ─────────────────────────────────────────────
+# Shared parts of both triangles: the given angle's vertex P0, the given
+# "other" side P0--F, and the swinging given side F--W. Only W moves: the base
+# P0--W (the missing side) has two lengths. solve_triangle returns the acute
+# second angle first, which always has the LONGER base — so W1 (solid) is the
+# far apex and W2 (dashed) the near one, matching the reference figure.
+
+def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
+    sol1, sol2 = sols
+    w_ang = _OPP[other]                              # swing vertex's angle
+    f_ang = ({"A", "B", "C"} - {ang_name, w_ang}).pop()
+    base = _SIDE_OF[f_ang]                           # side with two lengths
+    c1, c2 = sol1[base], sol2[base]
+    other_len, opp_len, ang_v = sol1[other], sol1[opp], sol1[ang_name]
+    s = TARGET_CM / max(c1, other_len, opp_len)
+    p0 = (0.0, 0.0)
+    w1 = (c1 * s, 0.0)
+    w2 = (c2 * s, 0.0)
+    fp = (other_len * math.cos(ang_v) * s, other_len * math.sin(ang_v) * s)
+    n_p0, n_w1, n_w2, n_f = ang_name, w_ang + "1", w_ang + "2", f_ang
+    drawn = [c1 * s, c2 * s, other_len * s, opp_len * s]
+    all_angles = [sol[k] for sol in sols for k in "ABC"]
+    thin = min(all_angles) < THIN_ANGLE or min(drawn) < THIN_SIDE_CM
+    lines = [f"\\coordinate ({n_p0}) at {_pt(p0)};",
+             f"\\coordinate ({n_w1}) at {_pt(w1)};",
+             f"\\coordinate ({n_w2}) at {_pt(w2)};",
+             f"\\coordinate ({n_f}) at {_pt(fp)};",
+             f"\\draw[thick] ({n_p0}) -- ({n_w1}) -- ({n_f}) -- cycle;",
+             f"\\draw[thick, dashed] ({n_f}) -- ({n_w2});"]
+    # vertex labels (subscripts _1/_2 are point NAMES, not printed values)
+    cx = (p0[0] + w1[0] + fp[0]) / 3.0
+    cy = (p0[1] + w1[1] + fp[1]) / 3.0
+    for name, text, pos in ((n_p0, "$" + ang_name + "$", p0),
+                            (n_w1, "$" + w_ang + "_1$", w1),
+                            (n_f, "$" + f_ang + "$", fp)):
+        d = _unitv(pos[0] - cx, pos[1] - cy)
+        lines.append(_node(_anchor(*d), pos, text, thin))
+    # W2 sits ON the base inside the solid triangle — push its label clear
+    d = _unitv(w2[0] - cx, w2[1] - cy)
+    lines.append(_node(_anchor(*d), w2, "$" + w_ang + "_2$", thin,
+                       shift_dir=(0.0, -1.0), shift_pt=2.0))
+
+    def _side_node(p_from, p_to, frac, away_from, text, extra_shift=0.0):
+        pos = (p_from[0] + frac * (p_to[0] - p_from[0]),
+               p_from[1] + frac * (p_to[1] - p_from[1]))
+        ex, ey = p_to[0] - p_from[0], p_to[1] - p_from[1]
+        nx, ny = -ey, ex
+        if nx * (pos[0] - away_from[0]) + ny * (pos[1] - away_from[1]) < 0:
+            nx, ny = -nx, -ny
+        nu = _unitv(nx, ny)
+        shift = extra_shift if extra_shift else (2.0 if thin else 0.0)
+        return _node(_anchor(*nu), pos, text, thin, shift_dir=nu, shift_pt=shift)
+
+    # fixed side at 0.55: high enough to clear both the given-angle arc label
+    # at P0 and the "?" arc label at W2 (which sits up-left of W2, right where
+    # the reference figure's 0.35 anchor lands); swing labels per the
+    # reference figure (0.45 solid, 0.30 + 3pt dashed)
+    lines.append(_side_node(p0, fp, 0.55, w1,
+                            "$" + other + " = " + _disp(raw[other]) + "$"))
+    swing_text = "$" + opp + " = " + _disp(raw[opp]) + "$"
+    lines.append(_side_node(w1, fp, 0.45, p0, swing_text))
+    lines.append(_side_node(w2, fp, 0.30, p0, swing_text, extra_shift=3.0))
+    if base in solve_fors:
+        lines.append(_side_node(p0, w1, 0.5, fp, "$" + base + " = ?$"))
+    lines.append(_pic_at(n_p0, p0, (n_w1, w1), (n_f, fp),
+                         _angle_label(raw[ang_name], unit), thin))
+    if w_ang in solve_fors:   # both candidate angles get the "?" arc
+        lines.append(_pic_at(n_w1, w1, (n_f, fp), (n_p0, p0), "$?$", thin))
+        lines.append(_pic_at(n_w2, w2, (n_f, fp), (n_p0, p0), "$?$", thin))
+    if f_ang in solve_fors:   # only the solid triangle's apex angle
+        lines.append(_pic_at(n_f, fp, (n_p0, p0), (n_w1, w1), "$?$", thin))
+    return lines
+
+
+# ── per-problem figure builders ──────────────────────────────────────────────
+
+def _render_triangle_problem(pid, given, unit, solve_fors):
+    sides, angles = _split_given(given, unit)
+    sols = solve_triangle(sides, angles)
+    if not sols:
+        raise FigureError(
+            f"problem {pid}: given {given} does not form a valid triangle "
+            "(each side must be shorter than the other two combined, angles "
+            "must leave room for a third). run_verify.sh fails this problem "
+            "for the same reason — fix the JSON givens, then re-render.")
+    side_labels, angle_marks = {}, {}
+    for k in "abc":
+        if k in given:
+            side_labels[k] = "$" + k + " = " + _disp(given[k]) + "$"
+        elif k in solve_fors:
+            side_labels[k] = "$" + k + " = ?$"
+    for k in "ABC":
+        if k in given:
+            # a square mark IS the printed value "90", so it replaces the arc
+            angle_marks[k] = (("right",) if abs(angles[k] - math.pi / 2) <= RIGHT_TOL
+                              else ("arc", _angle_label(given[k], unit)))
+        elif k in solve_fors:
+            angle_marks[k] = ("arc", "$?$")
+    if len(sols) == 2:
+        (ang_name,) = angles.keys()
+        opp = _SIDE_OF[ang_name]
+        other = (set(sides) - {opp}).pop()
+        return _swing_lines(sols, ang_name, opp, other, given, unit, solve_fors)
+    return _single_lines(sols[0], side_labels, angle_marks)
+
+
+_RT_KEYS = {"kind", "given", "solve_for", "unknown"}
+_NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
+
+
+def _render_right_triangle_figure(pid, p):
+    fig = p["figure"]
+    extra = set(fig) - _RT_KEYS
+    if extra:
+        raise FigureError(
+            f"problem {pid}: figure has unknown field(s) {sorted(extra)} — "
+            f"allowed: {sorted(_RT_KEYS)}")
+    given = fig.get("given")
+    if (not isinstance(given, dict) or len(given) != 2
+            or set(given) - {"a", "b", "c", "A", "B"}):
+        raise FigureError(
+            f"problem {pid}: right_triangle 'given' must be an object with "
+            "exactly two of a/b/c/A/B (the right angle C is implied), e.g. "
+            '{"b": 9, "A": 35}')
+    for k, v in given.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise FigureError(
+                f"problem {pid}: figure given {k!r} must be a number "
+                "(it must also appear literally in 'expr')")
+    solve_for = fig.get("solve_for")
+    if solve_for not in {"a", "b", "c", "A", "B"} or solve_for in given:
+        raise FigureError(
+            f"problem {pid}: figure 'solve_for' must be one of a/b/c/A/B "
+            "and not already given")
+    unknown = fig.get("unknown", "?")
+    if not isinstance(unknown, str) or not re.fullmatch(r"[A-Za-z?]{1,3}", unknown):
+        raise FigureError(
+            f"problem {pid}: figure 'unknown' must be a short letter name "
+            'like "x" (it is typeset in math mode)')
+    expr = p.get("expr")
+    if not isinstance(expr, str):
+        raise FigureError(
+            f"problem {pid}: a right_triangle figure needs the problem's "
+            "'expr' (approx type) to bind the drawing to the checked "
+            "arithmetic")
+    # the figure <-> check binding: construction makes the drawing internally
+    # consistent, but only a literal match ties it to what verify.py verified
+    expr_nums = {float(t) for t in _NUM_RE.findall(expr)}
+    for k, v in given.items():
+        if float(v) not in expr_nums:
+            raise FigureError(
+                f"problem {pid}: figure value {k}={_disp(v)} does not appear "
+                f"in expr {expr!r} — the figure would show a number the "
+                "verifier never checked. Use the same literals in both.")
+    sides = {k: float(given[k]) for k in "abc" if k in given}
+    angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
+    angles["C"] = math.pi / 2
+    sols = solve_triangle(sides, angles)
+    if not sols:
+        raise FigureError(
+            f"problem {pid}: figure givens {given} do not form a right "
+            "triangle (a leg cannot exceed the hypotenuse; A + B must be "
+            "90 degrees). Fix the figure givens.")
+    side_labels, angle_marks = {}, {"C": ("right",)}
+    for k in "abc":
+        if k in given:
+            side_labels[k] = "$" + _disp(given[k]) + "$"
+        elif k == solve_for:
+            side_labels[k] = "$" + unknown + "$"
+    for k in "AB":
+        if k in given:
+            angle_marks[k] = ("arc", _angle_label(given[k], "deg"))
+        elif k == solve_for:
+            angle_marks[k] = ("arc", "$" + unknown + "$")
+    return _single_lines(sols[0], side_labels, angle_marks)
+
+
+# ── assembly ─────────────────────────────────────────────────────────────────
+
+def build_figures(problems):
+    """Returns (figures, errors): figures = [(pid, comment, lines)]."""
+    errors = []
+    tri = {}       # pid -> {"given", "unit", "solve_fors"}
+    rt = {}        # pid -> problem dict
+    for p in problems:
+        if not isinstance(p, dict):
+            continue
+        pid = p.get("id")
+        if p.get("type") == "triangle":
+            entry = tri.get(pid)
+            if entry is None:
+                tri[pid] = {"given": p.get("given"), "unit": p.get("unit", "deg"),
+                            "solve_fors": {p.get("solve_for")}}
+            elif (entry["given"] != p.get("given")
+                  or entry["unit"] != p.get("unit", "deg")):
+                # one \probfig{N} per problem; two different triangles under
+                # one id cannot share a figure
+                errors.append(
+                    f"problem {pid}: two triangle checks with DIFFERENT givens "
+                    "share this id — one figure cannot show both. Split them "
+                    "into separate problem ids.")
+            else:
+                entry["solve_fors"].add(p.get("solve_for"))
+        elif isinstance(p.get("figure"), dict):
+            kind = p["figure"].get("kind")
+            if kind == "triangle":
+                continue     # opt-in marker on a triangle problem; no-op here
+            if kind != "right_triangle":
+                errors.append(
+                    f"problem {pid}: unknown figure kind {kind!r} — v1 renders "
+                    "'triangle' (automatic) and 'right_triangle'. Other shapes "
+                    "keep using the hand-built templates in "
+                    "references/latex-templates.md.")
+                continue
+            if pid in rt or pid in tri:
+                errors.append(f"problem {pid}: more than one figure for this id")
+                continue
+            rt[pid] = p
+    figures = []
+    for pid, entry in tri.items():
+        if pid in rt:
+            errors.append(f"problem {pid}: more than one figure for this id")
+            continue
+        try:
+            lines = _render_triangle_problem(pid, entry["given"], entry["unit"],
+                                             entry["solve_fors"])
+            comment = (f"triangle from verify JSON given {entry['given']} "
+                       f"(unit {entry['unit']}) -- solve_for "
+                       f"{sorted(str(x) for x in entry['solve_fors'])}")
+            figures.append((pid, comment, lines))
+        except (FigureError, VerifyInputError) as e:
+            errors.append(str(e) if isinstance(e, FigureError)
+                          else f"problem {pid}: {e} — run_verify.sh rejects "
+                               "this problem too; fix the JSON first.")
+    for pid, p in rt.items():
+        try:
+            lines = _render_right_triangle_figure(pid, p)
+            comment = (f"right_triangle figure {p['figure'].get('given')} -- "
+                       f"solve_for {p['figure'].get('solve_for')}, values "
+                       "literal-checked against expr")
+            figures.append((pid, comment, lines))
+        except (FigureError, VerifyInputError) as e:
+            errors.append(str(e) if isinstance(e, FigureError)
+                          else f"problem {pid}: {e}")
+    figures.sort(key=lambda f: (f[0] is None, f[0]))
+    return figures, errors
+
+
+def _wrap(pid, comment, lines):
+    body = "\n".join("  " + ln for ln in lines)
+    return (f"% >>> probfig {pid}\n"
+            f"% {comment}\n"
+            f"\\expandafter\\newcommand\\csname probfig{pid}\\endcsname{{%\n"
+            "\\begin{center}\n\\begin{tikzpicture}\n"
+            + body +
+            "\n\\end{tikzpicture}\n\\end{center}%\n}\n")
+
+
+def default_out_path(json_path):
+    base = os.path.basename(json_path)
+    stem = base[:-5] if base.endswith(".json") else base
+    if stem.startswith("verify_"):
+        stem = stem[len("verify_"):]
+    return os.path.join(os.path.dirname(json_path) or ".", f"figs_{stem}.tex")
+
+
+def main(argv):
+    if len(argv) not in (1, 2) or argv[0] in ("-h", "--help"):
+        print("Usage: render_figures.py <verify_TOPIC_DATE.json> [out.tex]\n"
+              "Renders \\probfig{N} TikZ macros from the SAME givens verify.py "
+              "checks.", file=sys.stderr)
+        return 1
+    json_path = argv[0]
+    try:
+        with open(json_path) as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"❌ Could not read {json_path}: {e}", file=sys.stderr)
+        return 1
+    if not isinstance(data, dict) or not isinstance(data.get("problems"), list):
+        print("❌ Not a verify file: expected an object with a 'problems' "
+              "list (the same JSON run_verify.sh takes).", file=sys.stderr)
+        return 1
+    out_path = argv[1] if len(argv) == 2 else default_out_path(json_path)
+    figures, errors = build_figures(data["problems"])
+    if errors:
+        for e in errors:
+            print(f"❌ {e}", file=sys.stderr)
+        print("\nNo figs file was written — a wrong figure is worse than no "
+              "figure.", file=sys.stderr)
+        return 1
+    src = os.path.basename(json_path)
+    # The figs file itself stays ASCII-only (latex-templates.md's engine rule:
+    # pdflatex, the fallback, cannot typeset literal Unicode).
+    header = (
+        "% Generated by scripts/render_figures.py -- DO NOT EDIT BY HAND.\n"
+        f"% Source of truth: {src}. Every coordinate and label below is\n"
+        "% computed from the SAME 'given' values verify.py checks, so the\n"
+        "% drawing cannot disagree with the answer key. Regenerate after ANY\n"
+        f"% change to the JSON:  python3 scripts/render_figures.py {src}\n"
+        "% Worksheet usage: \\input this file after \\begin{document}, then\n"
+        "% put \\probfig{N} inside problem N's minipage.\n"
+        "\\newcommand{\\probfig}[1]{\\csname probfig#1\\endcsname}\n")
+    with open(out_path, "w") as f:
+        f.write(header)
+        for pid, comment, lines in figures:
+            f.write(_wrap(pid, comment, lines))
+    if figures:
+        ids = ", ".join(str(pid) for pid, _, _ in figures)
+        print(f"✅ {len(figures)} figure(s) → {out_path} (problems: {ids})")
+    else:
+        print(f"✅ no triangle/right_triangle figures in {src} — wrote an "
+              f"empty figs shell to {out_path} (safe to \\input)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

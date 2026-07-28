@@ -138,6 +138,7 @@ $3$  & \\[0.5cm]\hline
 ## Geometric Figures
 
 **Figure conventions** (apply to every figure):
+- **Triangle figures are generated, not hand-drawn**: `scripts/render_figures.py` renders every `triangle`-type problem (and `right_triangle` figure specs on `approx` problems) from the verify JSON as `\probfig{N}` macros — see SKILL.md step 4b. The triangle templates below document what the renderer emits; hand-built TikZ remains the pattern only for shapes the renderer doesn't cover (circles, sectors, solids, transversals).
 - **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
 - Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
 - **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
@@ -256,14 +257,22 @@ Keep the geometry honest: the inscribed angle must be half the central angle (he
 
 ### Ambiguous SSA case — two-triangle "swing" figure
 Both possible triangles from the same SSA data (here $a=6$, $b=8$, $A=40^\circ$): the swinging side $a$ is drawn solid to $C_1$ (acute $B_1$) and dashed to $C_2$ (obtuse $B_2$). Compute both apex points from the actual solutions so the figure is to scale; keep the shared-side label below and each swing label on its own side of the apex to avoid collisions.
+
+**Don't hand-compute this figure** — `scripts/render_figures.py` emits exactly
+this construction as `\probfig{N}`, with both apexes computed by the same
+`solve_triangle` that verifies the problem (SKILL.md step 4b). That is the
+point: an earlier revision of this very example shipped hand-computed constants
+`9.24`/`3.05` where the true values are `9.220`/`3.037` — transcription drift
+in the skill's own reference figure. The template below documents what the
+renderer emits.
 ```latex
 \begin{center}
 \begin{tikzpicture}[scale=0.55]
   \coordinate (A) at (0,0);
   % B1 = 58.99$^\circ$, B2 = 121.01$^\circ$, C = 180 - 40 - B. Place base along x-axis:
-  % c1 = a·sin(C1)/sin(A) ≈ 9.24, c2 = a·sin(C2)/sin(A) ≈ 3.05
-  \coordinate (B1) at (9.24,0);
-  \coordinate (B2) at (3.05,0);
+  % c1 = a·sin(C1)/sin(A) = 9.220, c2 = a·sin(C2)/sin(A) = 3.037
+  \coordinate (B1) at (9.220,0);
+  \coordinate (B2) at (3.037,0);
   \coordinate (C)  at ({8*cos(40)},{8*sin(40)});   % b = 8 from A at 40$^\circ$
   \draw[thick] (A) -- (B1) -- (C) -- cycle;
   \draw[thick, dashed] (C) -- (B2);

@@ -57,9 +57,10 @@ Supported types:
   manual         — flagged for human review, never fails automatically
 
 Universal optional fields: "var" (default x), "note", "standard", "difficulty",
-"bloom". Top-level "problem_count" is REQUIRED (coverage gate). Unknown types or
-fields are HARD FAILURES. A sheet with zero machine checks fails unless
-"allow_all_manual": true.
+"bloom", "figure" (declarative figure spec — scripts/render_figures.py draws it
+from these same givens). Top-level "problem_count" is REQUIRED (coverage gate).
+Unknown types or fields are HARD FAILURES. A sheet with zero machine checks
+fails unless "allow_all_manual": true.
 
 Exit codes: 0 all passed · 1 a check FAILED (or gate violation) · 2 manual review
 needed (safe to compile).
@@ -569,6 +570,83 @@ _RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
               ">": sympy.StrictGreaterThan, ">=": sympy.GreaterThan}
 
 
+def validate_figure(p, ptype):
+    """Validate the optional 'figure' object scripts/render_figures.py draws.
+
+    The whole point of rendered figures is a SINGLE source of givens, so on a
+    'triangle' problem the figure may only be the opt-in marker — any value
+    inside it would be a second copy of the givens, i.e. the retyping drift
+    this pipeline exists to prevent. A 'right_triangle' figure carries its own
+    givens (the approx expr has no structure to draw from), so those are
+    geometry-checked here through the same solve_triangle that verifies
+    triangle problems, and literal-checked against 'expr' so the drawing can
+    only show numbers the arithmetic check actually used.
+    """
+    fig = p.get("figure")
+    if fig is None:
+        return
+    if not isinstance(fig, dict):
+        raise VerifyInputError(
+            "'figure' must be an object like {\"kind\": \"triangle\"}")
+    kind = fig.get("kind")
+    if kind not in ("triangle", "right_triangle"):
+        raise VerifyInputError(
+            f"figure 'kind' must be 'triangle' or 'right_triangle', got {kind!r}")
+    if ptype == "triangle":
+        if kind != "triangle" or set(fig) != {"kind"}:
+            raise VerifyInputError(
+                "on a 'triangle' problem, 'figure' must be exactly "
+                '{"kind": "triangle"} — render_figures.py draws from the '
+                "problem's own 'given' dict, never from a second copy")
+        return
+    if kind == "triangle":
+        raise VerifyInputError(
+            "figure kind 'triangle' only applies to type 'triangle' problems "
+            "(they render automatically from their 'given' dict)")
+    if ptype != "approx":
+        raise VerifyInputError(
+            "figure kind 'right_triangle' only applies to 'approx' problems — "
+            "the figure values are literal-checked against 'expr'")
+    unknown = set(fig) - {"kind", "given", "solve_for", "unknown"}
+    if unknown:
+        raise VerifyInputError(
+            f"figure has unknown field(s): {sorted(unknown)}")
+    given = fig.get("given")
+    if (not isinstance(given, dict) or len(given) != 2
+            or set(given) - {"a", "b", "c", "A", "B"}):
+        raise VerifyInputError(
+            "figure 'given' must hold exactly two of a/b/c/A/B "
+            "(the right angle C is implied)")
+    for k, v in given.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise VerifyInputError(
+                f"figure given {k!r} must be a plain number so it can be "
+                "literal-matched against 'expr'")
+    solve_for = fig.get("solve_for")
+    if solve_for not in {"a", "b", "c", "A", "B"} or solve_for in given:
+        raise VerifyInputError(
+            "figure 'solve_for' must be one of a/b/c/A/B and not already given")
+    unk = fig.get("unknown", "?")
+    if not isinstance(unk, str) or not re.fullmatch(r"[A-Za-z?]{1,3}", unk):
+        raise VerifyInputError(
+            "figure 'unknown' must be a short letter name like \"x\"")
+    expr_nums = {float(t) for t in
+                 re.findall(r"\d+(?:\.\d+)?|\.\d+", str(p.get("expr", "")))}
+    for k, v in given.items():
+        if float(v) not in expr_nums:
+            raise VerifyInputError(
+                f"figure value {k}={v} does not appear as a literal in expr "
+                f"{p.get('expr')!r} — the figure would print a number this "
+                "check never verified")
+    sides = {k: float(given[k]) for k in "abc" if k in given}
+    angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
+    angles["C"] = math.pi / 2
+    if not solve_triangle(sides, angles):
+        raise VerifyInputError(
+            f"figure givens {given} do not form a right triangle "
+            "(a leg cannot exceed the hypotenuse)")
+
+
 def check_schema(p):
     if not isinstance(p, dict):
         raise VerifyInputError("each problem must be a JSON object")
@@ -584,8 +662,10 @@ def check_schema(p):
             f"unknown problem type {ptype!r} — allowed types: {sorted(SCHEMAS)}")
     required, optional = SCHEMAS[ptype]
     # "standard" (e.g. CCSS "8.EE.C.8" / AP "CHA-3.A") and "difficulty" (1-5)
-    # are universal optional tags — reported in the summary, never gating
-    fields = set(p) - {"id", "type", "note", "standard", "difficulty", "bloom"}
+    # are universal optional tags — reported in the summary, never gating.
+    # "figure" is the declarative figure spec render_figures.py draws from.
+    fields = set(p) - {"id", "type", "note", "standard", "difficulty", "bloom",
+                       "figure"}
     missing = required - fields
     if missing:
         raise VerifyInputError(
@@ -594,6 +674,7 @@ def check_schema(p):
     if unknown:
         raise VerifyInputError(
             f"type {ptype!r} has unknown field(s): {sorted(unknown)}")
+    validate_figure(p, ptype)
     return ptype
 
 

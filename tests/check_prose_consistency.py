@@ -4,15 +4,21 @@ check_prose_consistency.py — flag numbers in worksheet prose that don't appear
 as givens in the verify JSON (the word-problem analog of the figure rule).
 
 Usage: python3 tests/check_prose_consistency.py <worksheet.tex> <verify.json>
+                [--figs <figs.tex>]
 
 Matches worksheet \\problem{...} blocks to verify-JSON entries by order
 (problem i ↔ i-th JSON id). Heuristic by design — a report for graders and
-generators, not a hard gate. Exit 0 always unless files are unreadable.
+generators, not a hard gate. Exit 0 always unless files are unreadable, the
+parse comes up empty, or \\probfig{N} figures cannot be resolved (pass the
+figs file scripts/render_figures.py emitted via --figs, or the figure check
+runs blind).
 """
 
 import json
 import re
 import sys
+
+from _probfig import CALL_RE, expand_probfigs, probfig_bodies
 
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
@@ -53,6 +59,9 @@ def prose_numbers(block):
     # see figure_label_numbers, which is checked separately (CASE-21)
     block = re.sub(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", "", block,
                    flags=re.S)
+    # drop \probfig{N} calls — the braced arg is a problem INDEX, not a prose
+    # value, and would otherwise be flagged as "missing from JSON" noise
+    block = re.sub(r"\\probfig\{\d+\}", "", block)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
     return {float(n) for n in NUM_RE.findall(block)}
@@ -67,6 +76,9 @@ def figure_label_numbers(block):
     for m in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", block):
         label = m.group(1)
         label = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2", label)
+        # subscript indices are point NAMES, not printed quantities — the SSA
+        # swing figure labels its two apexes $B_1$/$B_2$
+        label = re.sub(r"_\{?\d+\}?", "", label)
         nums |= {float(n) for n in NUM_RE.findall(label)}
     for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):  # pic "$34^\circ$"
         nums |= {float(n) for n in NUM_RE.findall(m.group(1))}
@@ -96,9 +108,34 @@ def json_numbers(entry):
 
 
 def main():
-    tex_path, json_path = sys.argv[1], sys.argv[2]
+    argv = sys.argv[1:]
+    figs_path = None
+    if "--figs" in argv:
+        i = argv.index("--figs")
+        figs_path = argv[i + 1] if i + 1 < len(argv) else ""
+        del argv[i:i + 2]
+    if len(argv) != 2 or figs_path == "":
+        print("Usage: check_prose_consistency.py <worksheet.tex> <verify.json> "
+              "[--figs <figs.tex>]", file=sys.stderr)
+        sys.exit(2)
+    tex_path, json_path = argv
     tex = open(tex_path).read()
     data = json.load(open(json_path))
+    # Expand \probfig{N} into the rendered figure bodies BEFORE parsing, so
+    # the figure-label check (CASE-21) sees the labels the student sees. An
+    # unresolved call means an UNCHECKED figure — like the zero-parse guard
+    # below, that must never read as a pass.
+    if figs_path:
+        tex, unresolved = expand_probfigs(tex, probfig_bodies(open(figs_path).read()))
+    else:
+        unresolved = sorted({int(n) for n in CALL_RE.findall(tex)})
+    if unresolved:
+        print(f"  ⚠ UNRESOLVED \\probfig for problem(s) {unresolved}.")
+        print("    Those figures' labels live in the generated figs file, so this")
+        print("    check cannot see them. Re-run with the file render_figures.py")
+        print("    emitted:  --figs /tmp/figs_TOPIC_DATE.tex")
+        print("    (and re-run scripts/render_figures.py if the JSON changed).")
+        sys.exit(2)
     blocks = problem_blocks(tex) or item_blocks(tex)
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}

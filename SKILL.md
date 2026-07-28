@@ -133,6 +133,19 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 ```
 
 **Work space defaults**: `\vspace{5cm}` per problem; `8cm` for multi-step; `10cm+` for graphs.
+These are a floor, not a suggestion: `tests/check_layout.py` fails a worksheet whose
+problems get under 2.5cm. A sheet with correct answers and nowhere to write them is a
+sheet the student cannot use.
+
+**Figure scope (all-or-nothing per list)**: a figure carrying numbers belongs to one
+problem, but on the page it merely sits *near* several. If problem 6 shows a triangle
+labelled `a=6, b=8` and problems 7-8 show none, a student reading 7 will apply the
+nearest figure to it — the figure is correct and the worksheet is still wrong. So within
+one problem list, either **every** problem gets its own valued figure or **none** does.
+Shared labelling conventions go in a single value-free reference figure placed with the
+directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How every
+triangle here is labelled. No values shown: use the numbers given in each problem."
+`tests/check_layout.py` enforces this.
 
 ### 4. Write and run the verification file
 
@@ -232,6 +245,7 @@ Verification proves the JSON is correct; these checkers prove the **PDFs the stu
 
 ```bash
 python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # worksheet prose + figure labels ↔ JSON givens
+python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex                                  # figure scope + work space (exit 1 = fix before shipping)
 python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
 ```
 

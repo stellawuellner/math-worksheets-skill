@@ -17,6 +17,22 @@ import sys
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
 
+def item_blocks(tex):
+    """Extract each \\item body inside an enumerate.
+
+    The shipped worksheet templates use enumerate/\\item rather than the
+    \\problem{...} macro, so a generator that follows the templates produced
+    ZERO parsed blocks here and the report still said "all consistent".
+    Parsing both shapes is what makes this checker apply to real worksheets.
+    """
+    blocks = []
+    for env in re.finditer(r"\\begin\{enumerate\}(.*?)\\end\{enumerate\}", tex, re.S):
+        body = env.group(1)
+        parts = re.split(r"\\item\b", body)[1:]
+        blocks.extend(p.strip() for p in parts if p.strip())
+    return blocks
+
+
 def problem_blocks(tex):
     """Extract the argument of each \\problem{...} handling nested braces."""
     blocks = []
@@ -83,7 +99,7 @@ def main():
     tex_path, json_path = sys.argv[1], sys.argv[2]
     tex = open(tex_path).read()
     data = json.load(open(json_path))
-    blocks = problem_blocks(tex)
+    blocks = problem_blocks(tex) or item_blocks(tex)
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}
     for e in data.get("problems", []):
@@ -110,11 +126,19 @@ def main():
             fig_flags.append((i + 1, fig_missing))
 
     print(f"Prose-consistency report: {tex_path}")
+    if not blocks:
+        print("\n  ⚠ PARSED ZERO PROBLEMS from this file.")
+        print("    Nothing was checked, so this is NOT a pass. The worksheet")
+        print("    must use \\problem{...} or an enumerate/\\item list.")
+        sys.exit(2)
     for pid, prose, missing in report:
         flag = f"  ⚠ missing from JSON: {missing}" if missing else "  ok"
         print(f"  problem {pid}: {len(prose)} prose numbers{flag}")
     rate = matched / total_nums if total_nums else 1.0
-    print(f"\nMatch rate: {matched}/{total_nums} ({100*rate:.1f}%)")
+    scope = f"{len(blocks)} problem block(s)"
+    print(f"\nMatch rate: {matched}/{total_nums} ({100*rate:.1f}%) across {scope}")
+    if total_nums == 0:
+        print("  ⚠ no numbers found in any problem — check the parse before trusting this")
     if fig_flags:
         print("Figure-label numbers not found in JSON givens (audit 3d):")
         for pid, miss in fig_flags:

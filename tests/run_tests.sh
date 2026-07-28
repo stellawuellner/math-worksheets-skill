@@ -76,3 +76,19 @@ if [[ "$failures" -gt 0 ]]; then
   exit 1
 fi
 echo "✅ All tests passed"
+
+# Layout rules (figure scope + work space). Fixture-driven: a known-bad sheet
+# must fail and a known-good one must pass, so the checker itself is tested.
+if [ -f tests/fixtures/layout_bad.tex ]; then
+  echo
+  if python3 tests/check_layout.py tests/fixtures/layout_bad.tex >/dev/null 2>&1; then
+    echo "❌ check_layout did NOT flag layout_bad.tex"; exit 1
+  else
+    echo "✅ check_layout flags layout_bad.tex"
+  fi
+  if python3 tests/check_layout.py tests/fixtures/layout_good.tex >/dev/null 2>&1; then
+    echo "✅ check_layout passes layout_good.tex"
+  else
+    echo "❌ check_layout wrongly flagged layout_good.tex"; exit 1
+  fi
+fi

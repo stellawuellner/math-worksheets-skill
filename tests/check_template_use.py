@@ -18,7 +18,7 @@ Three rules, all on comment-blanked text:
 
   A. \input{worksheet-preamble} must appear before \begin{document}.
   B. Every \input target must be a shipped template (worksheet-preamble,
-     figure-macros) or a rendered figs file (figs_*): a local preamble file
+     figure-macros) or a rendered figs_/meta_/qa_ file: a local preamble file
      is exactly where hand-rolled redefinitions hide from a doc-only scan.
   C. No definition (\newcommand/\renewcommand/\providecommand/\def,
      \newenvironment/\renewenvironment/\newmdenv/\renewmdenv, \definecolor)
@@ -84,16 +84,21 @@ def check(doc_tex, template_tex, template_path):
             "missing \\input{worksheet-preamble} before \\begin{document}")
 
     # B. foreign \input files: a local preamble is where hand-rolled
-    # redefinitions live, invisible to the rule-C scan of this file alone
+    # redefinitions live, invisible to the rule-C scan of this file alone.
+    # figs_/meta_/qa_ files are CONSTRUCTED by the shipped renderers from the
+    # verify JSON (render_figures/render_meta/render_quick_answers), so they
+    # are the opposite of hand-rolled — the whole point of the construction
+    # pipeline is that these inputs are allowed while everything else is not.
+    _RENDERED = ("figs_", "meta_", "qa_")
     for m in re.finditer(r"\\input\{([^}]*)\}", doc):
         target = m.group(1).strip()
         base = target[:-4] if target.endswith(".tex") else target
-        if base in WHITELIST or os.path.basename(base).startswith("figs_"):
+        if base in WHITELIST or os.path.basename(base).startswith(_RENDERED):
             continue
         faults.append(
             f"\\input{{{target}}} is not a shipped template — only "
             f"\\input{{worksheet-preamble}}, \\input{{figure-macros}} and "
-            f"rendered figs_* files are allowed")
+            f"rendered figs_*/meta_*/qa_* files are allowed")
 
     # C. shadowed identifiers: every *definition* verb LaTeX offers, because a
     # post-template override must use \renew* to compile and a pre-template

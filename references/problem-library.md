@@ -226,3 +226,125 @@ the task is exactly how these are normally practiced:
 Reserve `manual` for what is genuinely open: "explain why…", proofs, strategy
 justification, open construction, and vocabulary used in context (see
 `references/manual-review-aid.md` for the optional LLM-judge pass on those).
+
+### Misconception traps & error analysis
+
+Choose givens so the canonical wrong method produces a **visibly wrong
+answer** — a problem whose givens make the misconception land on the correct
+value (a=b in a ratio-swap problem) is blind to the very error it should
+catch. Declare each designed-for error as a `"traps"` entry and verify.py
+proves it distinguishable (see SKILL.md step 4 for the field).
+
+Top misconceptions by family — use the trap-expr recipe as the wrong-method
+arithmetic:
+
+| Family | Top misconceptions | Trap expr recipe |
+|---|---|---|
+| Fractions | add tops and bottoms; forget common denominator | `(a+c)/(b+d)` for a/b + c/d |
+| Percent | wrong base after change; add percents of different bases | `part/wrong_base*100` |
+| Integers | sign lost in subtraction; (-a)² vs -a² | drop the sign in the expr |
+| Linear equations | move a term without flipping sign; divide only one side | redo the step with the sign kept |
+| Factoring / quadratics | sign pair swapped; forget GCF first | `(x+p)*(x+q)` with the wrong sign pair |
+| Exponents / logs | multiply exponents on a product; log(a+b)=log a + log b | apply the wrong rule literally |
+| Right-triangle trig | wrong ratio (cos for sin); adjacent/opposite swap; calculator in radians; inverse vs reciprocal | `h*cos(A*pi/180)` when sin is right; `h*sin(A)` (radians) |
+| Law of sines/cosines | law of sines on a SAS setup; missing −2bc·cosA term | `sqrt(b**2 + c**2)` (dropped term) |
+| Coordinate geometry | Δx/Δy slope inversion; midpoint as difference | `(x2-x1)/(y2-y1)` |
+| Derivatives | product-rule omission (f'·g'); chain-rule omission | `diff(f)*diff(g)` computed numerically at the point |
+| Integrals | power-rule off-by-one; forgotten +C in evaluation | `x**(n+1)/n` form evaluated at the bounds |
+| Limits | plug in and report 0/0 as 0; ignore one-sided sign | the naive substitution value |
+
+**Error-analysis recipe (JSON first, prose second):**
+
+1. **JSON first** — write an ordinary typed check for the CORRECT answer, plus
+   one `traps` entry whose `expr` is the planted wrong method and whose
+   `value` is the wrong result as printed:
+   ```json
+   {"id": 7, "type": "approx", "expr": "9*sin(35*pi/180)", "expected": 5.16,
+    "traps": [{"desc": "used cos instead of sin",
+               "expr": "9*cos(35*pi/180)", "value": 7.37}]}
+   ```
+   verify.py proves the planted result is *distinguishably wrong* and that the
+   printed `value` really is what the wrong method computes — the promise the
+   bloom "analyze" tag makes is now machine-checked.
+2. **Prose second** — the worksheet stem shows the planted solution ("Ari
+   claims … ≈ 7.37. Find the mistake, then compute the correct value."), with
+   every number drawn from the entry's givens or the trap `value` —
+   `check_prose_consistency.py` binds them. The correct fix goes in the `ak_`
+   key inside `\boxed{}`/`\ans{}` and is bound by `check_answer_key.py` as
+   usual.
+
+**Guidance (not a rule):** on a mixed or test-prep sheet, consider one
+error-analysis problem, and declare traps on 2–3 ordinary problems whose
+givens you chose specifically to discriminate the canonical error — the
+verify report tallies declared traps so you can see the count.
+
+## Facet checklists
+
+A **facet** is a distinct skill a sheet can test — the method or decision the
+student must discriminate, not the presentation. Tag application/word
+problems with the facet of the method they exercise (a ladder problem that
+uses sine is `side-from-angle`, never a blanket `applications` facet).
+Declare the plan as top-level `"facets": [...]` in the verify JSON and tag
+**every** problem's `"facet"` from it; verify.py fails the build on an
+unlisted facet, a planned facet with zero problems, or an untagged problem.
+Drill sheets legitimately declare a single facet.
+
+The tables below are **exemplars, not an exhaustive taxonomy**: for topics
+without a table, choose your own facet names (lowercase-kebab) at the same
+granularity — one facet per distinct method the sheet should force the
+student to choose between.
+
+**Right-triangle trig**
+
+| Facet | The skill |
+|---|---|
+| `side-from-angle` | solve for a side via sin/cos/tan of a given angle |
+| `angle-from-sides` | solve for an angle via asin/acos/atan |
+| `pythagorean` | third side from two sides |
+| `elevation` | angle-of-elevation application |
+| `depression` | angle-of-depression application |
+| `write-the-ratio` | state the ratio (no solving) — tag standard HSG-SRT.C.6 |
+
+**Factoring quadratics**
+
+| Facet | The skill |
+|---|---|
+| `gcf-first` | pull the greatest common factor |
+| `monic-trinomial` | factor x² + bx + c |
+| `nonmonic-trinomial` | factor ax² + bx + c, a ≠ 1 |
+| `difference-of-squares` | a² − b² |
+| `special-forms` | perfect-square trinomials, cubes |
+| `factor-to-solve` | zero-product property after factoring |
+
+**Fraction operations**
+
+| Facet | The skill |
+|---|---|
+| `add-like` | add/subtract with like denominators |
+| `add-unlike` | add/subtract needing a common denominator |
+| `multiply` | multiply fractions/mixed numbers |
+| `divide` | divide via reciprocal |
+| `simplify` | reduce to lowest terms |
+| `compare-order` | compare or order fractions |
+
+**Basic derivatives**
+
+| Facet | The skill |
+|---|---|
+| `power-rule` | polynomials and roots as powers |
+| `product-rule` | products of functions |
+| `quotient-rule` | quotients |
+| `chain-rule` | compositions |
+| `trig-derivative` | sin/cos/tan derivatives |
+| `tangent-line` | build the tangent-line equation from f and f' |
+
+### How to interleave
+
+A facet is the method *decided*, not the presentation — applications inherit
+the facet of the method they exercise. Block the warm-up: the first third of
+the sheet may drill one facet while the pattern is being acquired. After
+that, rotate facets so the student must **choose** the method: verify.py
+flags any same-facet run longer than 3 past the first third (exit 2 with a
+suggested swap) unless the sheet declares `"format": "drill"`. Bring Part-A
+facets back inside later problems — and, as guidance only (not checked), let
+earlier facets return at higher difficulty in the final stretch.

@@ -28,6 +28,37 @@
 \pgfplotsset{compat=1.18}
 \usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure macros
 
+% ── Answer location (constructed, never hand-typed) ─────────────────────────
+% A worksheet problem with workspace but no designated answer blank makes the
+% grader hunt through scratch work for the final answer, and the student never
+% commits to one. The blank is CONSTRUCTED: \problem emits it automatically
+% whenever its workspace argument is positive, so generators cannot forget it
+% and cannot misplace it. All dimensions live HERE, not at call sites — the
+% generated .tex carries no rule lengths for the prose-number checker to
+% misread as problem values.
+%
+%   \ansline   right-aligned "Answer: ____" — emitted by \problem itself;
+%              enumerate/\item sheets call it explicitly at the end of each
+%              item (tests/check_layout.py enforces one answer-location macro
+%              per item there)
+%   \ansblank  inline blank for drill formats: "$7 + 5 =$~\ansblank"
+%   \noansline opt-out for problems whose worked product IS the answer
+%              (graph sketch, proof, construction) — prints nothing, just
+%              suppresses the auto-emitted line for the current \problem
+%   \answerline{unit}  answer blank with the measurement unit printed after
+%              it, e.g. \answerline{ft} — the unit must match the problem's
+%              "answer_unit" in the verify JSON (tests/check_answer_line.py
+%              enforces the pairing in both directions). Also suppresses the
+%              auto \ansline so a unit problem never gets two blanks.
+\makeatletter
+\newif\ifmws@ans
+\mws@anstrue
+\newdimen\mws@wsdim
+\newcommand{\noansline}{\global\mws@ansfalse}
+\newcommand{\ansline}{\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \rule[-1pt]{3.5cm}{0.4pt}}
+\newcommand{\ansblank}{\rule[-1pt]{1.8cm}{0.4pt}}
+\newcommand{\answerline}[1]{\global\mws@ansfalse\par\nopagebreak\vspace{4pt}\hfill\textbf{Answer:}\ \rule[-2pt]{3.5cm}{0.4pt}\ #1}
+
 % ── Problem numbering ───────────────────────────────────────────────────────
 \newcounter{prob}
 % \problem[workspace]{stem} — number, stem, and workspace live in ONE minipage
@@ -37,7 +68,12 @@
 % unbreakable, so stem + workspace always move to the next page together.
 % Default 0pt: answer keys and study guides reuse \problem and must not
 % inherit worksheet-sized gaps.
-\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\end{minipage}\par}
+% The answer line is emitted only when workspace > 0pt (so ak_/ss_ documents
+% and multi-part parents stay untouched) and only if the stem did not opt out.
+% The opt-out flag is reset at the START of each \problem, not the end — a
+% \noansline inside an enumerate item must never leak into a later \problem.
+\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\global\mws@anstrue\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\mws@wsdim=#1\relax\ifdim\mws@wsdim>0pt\ifmws@ans\ansline\fi\fi\end{minipage}\par}
+\makeatother
 
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
@@ -60,12 +96,22 @@
   \renewcommand{\headrulewidth}{0.4pt}}
 
 % \akheader{Short Topic} — answer key
+% Also switches \ans{...} to the COMPACT boxed form: check_answer_key.py binds
+% printed answers through the \ans/\boxed macro names, so a space-saving layout
+% must keep the macro name and change only what it typesets — a new macro
+% (\aksol etc.) would be invisible to the gate. The TeXbook end-of-proof idiom
+% below puts the \fbox on the same line as the last worked step when it fits
+% and flush-right on the next line when it does not; a bare \hfill\fbox would
+% instead produce Overfull \hbox on long answers, which scripts/check_log.py
+% rightly turns into build failures. Study guides keep the \boldsymbol form
+% (\ssheader never redefines \ans).
 \newcommand{\akheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
   \fancyhead[L]{\textbf{\small #1 --- Answer Key}}%
   \fancyhead[R]{\textit{\small For instructor/parent use}}%
   \fancyfoot[C]{\thepage}%
-  \renewcommand{\headrulewidth}{0.4pt}}
+  \renewcommand{\headrulewidth}{0.4pt}%
+  \renewcommand{\ans}[1]{{\unskip\nobreak\hfil\penalty50\hskip1em\null\nobreak\hfil\mbox{\fbox{$\,##1\,$}}\parfillskip=0pt\finalhyphendemerits=0\par}}}
 
 % \ssheader{Topic} — skills summary / study guide
 \newcommand{\ssheader}[1]{%
@@ -111,6 +157,8 @@
 \definecolor{warnbg}{RGB}{255,243,230}
 \definecolor{exgreen}{RGB}{20,120,60}
 \definecolor{exgreenbg}{RGB}{230,248,238}
+\definecolor{tryviolet}{RGB}{110,60,160}
+\definecolor{tryvioletbg}{RGB}{243,236,250}
 
 % Formula/rule box
 \newmdenv[
@@ -121,14 +169,42 @@
   skipabove=6pt, skipbelow=4pt
 ]{formulabox}
 
-% Mini example box
+% Mini example box. The mdframed environment is the INNER shell: examplebox
+% itself is a wrapper that resets the step counter, so \step numbering starts
+% at 1 in every worked example without the author touching the counter.
 \newmdenv[
   backgroundcolor=exgreenbg,
   linecolor=exgreen, linewidth=1pt,
   innertopmargin=5pt, innerbottommargin=5pt,
   innerleftmargin=10pt, innerrightmargin=10pt,
   skipabove=4pt, skipbelow=4pt
-]{examplebox}
+]{exampleboxinner}
+\newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}}{\end{exampleboxinner}}
+
+% \step{...} — one auto-numbered line of a worked example. The FIRST \step of
+% every examplebox is the strategy line: one sentence, in words, naming what
+% you want, what you know, and why that picks this tool/ratio/method — the
+% computation starts in step 2. tests/check_study_guide.py enforces the shape
+% (>= 2 steps per worked example, prose-first opening step); the reasoning
+% move is what transfers, not the arithmetic.
+\newcounter{exstep}
+\newcommand{\step}[1]{\par\noindent\textbf{Step \stepcounter{exstep}\theexstep.}~#1}
+
+% Try-it box (violet): the student's first retrieval attempt, paired with the
+% worked example it re-parameterizes (same skeleton, new givens). Print ONLY
+% the stem plus the answer, upside down so the student attempts before
+% checking:  \rotatebox{180}{\footnotesize check: $\ans{...}$}
+% The answer must print INSIDE this box — an \ans placed outside every box
+% (footer/answer-bank style) degrades the whole document's per-example
+% binding in check_answer_key.py. (\rotatebox comes from graphicx, which
+% tikz already loads.)
+\newmdenv[
+  backgroundcolor=tryvioletbg,
+  linecolor=tryviolet, linewidth=1pt,
+  innertopmargin=5pt, innerbottommargin=5pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=4pt, skipbelow=4pt
+]{tryitbox}
 
 % Watch-out box
 \newmdenv[

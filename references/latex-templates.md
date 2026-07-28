@@ -29,7 +29,11 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 
 | Macro | Purpose |
 |---|---|
-| `\problem{...}` | numbered problem stem (steps the `prob` counter) |
+| `\problem{...}` | numbered problem stem (steps the `prob` counter). With a positive workspace argument (`\problem[5cm]{...}`) it also emits the right-aligned answer line automatically — construction, don't type it |
+| `\ansline` | right-aligned "Answer: ____" blank — end every enumerate `\item` with it (`\problem` emits its own); `tests/check_layout.py` requires one answer-location macro per item |
+| `\ansblank` | inline blank for drill formats: `$7 + 5 =$~\ansblank` |
+| `\answerline{unit}` | answer blank + measurement unit (`\answerline{ft}`, `\answerline{cm$^2$}`) — the unit must match the problem's `"answer_unit"` in the verify JSON (`tests/check_answer_line.py`); suppresses `\problem`'s automatic line |
+| `\noansline` | explicit opt-out for problems whose worked product IS the answer (sketch, proof, construction) — prints nothing |
 | `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
 | `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
 | `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
@@ -37,7 +41,8 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 | `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule |
 | `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase |
 | `\sstitleblock{Topic}` | study-guide title block |
-| `formulabox` / `examplebox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / orange watch-out) |
+| `formulabox` / `examplebox` / `tryitbox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / violet try-it / orange watch-out) |
+| `\step{...}` | auto-numbered worked-example line; the counter resets at each `examplebox`. Step 1 is always the strategy sentence (why this tool), computation starts at step 2 |
 | `\skillheading{...}` | study-guide skill-section heading |
 
 ## Problem Patterns
@@ -58,21 +63,23 @@ itemsep-spaced sheet loses the workspace of the last item in each column.
 \begin{multicols}{2}
 \raggedcolumns
 \begin{enumerate}[label=\textbf{\arabic*.}, itemsep=0pt]
-  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.6cm}\ansline\end{minipage}
 \end{enumerate}
 \end{multicols}
 ```
 
 ### Multi-part problem
+The parent `\problem` takes no workspace (so it emits no answer line of its
+own); each part carries its own blank.
 ```latex
 \problem{Given $f(x) = 3x^2 - 2x + 1$, find:}
 \begin{enumerate}[label=(\alph*), itemsep=3cm, leftmargin=1.5cm]
-  \item $f(0)$
-  \item $f(-2)$
-  \item $f(x+1)$ --- expand and simplify
+  \item $f(0) =$~\ansblank
+  \item $f(-2) =$~\ansblank
+  \item $f(x+1)$ --- expand and simplify \ansline
   \vspace{2cm}
 \end{enumerate}
 ```
@@ -142,6 +149,7 @@ $3$  & \\[0.5cm]\hline
 
 **Figure conventions** (apply to every figure):
 - **Triangle figures are generated, not hand-drawn**: `scripts/render_figures.py` renders every `triangle`-type problem (and `right_triangle` figure specs on `approx` problems) from the verify JSON as `\probfig{N}` macros — see SKILL.md step 4b. The triangle templates below document what the renderer emits; hand-built TikZ remains the pattern only for shapes the renderer doesn't cover (circles, sectors, solids, transversals).
+- **Effort markers are generated the same way**: `scripts/render_meta.py` renders `\probpts{N}` point values and `\probmeta{N}` difficulty stars (plus a computed `\totalpoints`) from the verified difficulty tags — see SKILL.md step 4c. Never hand-type `\bigstar` or "(N pts)"; the literal forms are banned by `check_prose_consistency.py`, exactly like hand-drawn valued figures.
 - **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
 - Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
 - **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
@@ -441,13 +449,33 @@ Use the shipped macros (defined in `templates/worksheet-preamble.tex`):
 \akheader{TOPIC}                       % keep TOPIC short (under ~28 chars)
 ...
 \aktitleblock{TOPIC}{COURSE}{DATE}
+\input{qa_TOPIC_DATE}                  % the generated quick-answer bank
 ```
 `\aktitleblock` puts the topic on its own line (shrink-to-fit) and **"Answer
 Key" as a subtitle beneath it** — never append "--- Answer Key" to the big
 title, or a long topic wraps mid-phrase. The skills summary uses
 `\ssheader`/`\sstitleblock` the same way.
 
+### Quick-answer bank (generated, never hand-edited)
+`scripts/render_quick_answers.py` regenerates `qa_<stem>.tex` from the verify
+JSON on every build — a compact multi-column "answers at a glance" block for
+fast grading, placed by the one `\input{qa_<stem>}` line directly under
+`\aktitleblock`. The build gate fails a key that hand-rolls its preamble or
+never `\input`s the bank; the bank's entries are plain text (never
+`\ans`/`\boxed`), so `check_answer_key.py`'s strict per-problem binding is
+untouched.
+
 ### Step-by-step solution
+`\akheader` switches `\ans{...}` to a compact form that keeps the `\fbox` on
+the same line as the last worked step when it fits (flush-right on the next
+line when it does not), roughly halving the key's vertical space. Prefer it
+for single-value answers; keep the display `\[ \boxed{...} \]` form for long
+or multi-value answers.
+```latex
+\problem{[Repeat full problem statement]}
+
+\textbf{Solution:} \quad $3x = 15$, so $x = 5$. \ans{x = 5.00}
+```
 ```latex
 \problem{[Repeat full problem statement]}
 
@@ -522,10 +550,18 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \vspace{0.2cm}
 
 \begin{examplebox}
-\textbf{Example:} \quad Factor $x^2 - 7x + 12$\\[4pt]
-Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ $\checkmark$\\[2pt]
+\textbf{Example:} \quad Factor $x^2 - 7x + 12$
+\step{Product $+12$ with sum $-7$: both numbers are negative --- hunt for a negative factor pair of $12$.}
+\step{$-3$ and $-4$: \ $(-3)+(-4) = -7$, \ $(-3)(-4) = 12$ $\checkmark$}
 $\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
+
+\vspace{0.2cm}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Factor $x^2 - 9x + 20$\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{(x-4)(x-5)}$}
+\end{tryitbox}
 
 \vspace{0.2cm}
 
@@ -555,10 +591,18 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \vspace{0.2cm}
 
 \begin{examplebox}
-\textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$\\[4pt]
-$a = 2,\ b = -3,\ c = -5$\quad $\Delta = 9 + 40 = 49$\\[2pt]
-$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\ans{x = \tfrac{-4}{4} = -1}$
+\textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$
+\step{No obvious factor pair and $a \neq 1$ --- go straight to the quadratic formula.}
+\step{$a = 2,\ b = -3,\ c = -5$: \quad $\Delta = 9 + 40 = 49$, \quad $x = \dfrac{3 \pm 7}{4}$}
+$\Rightarrow\quad\ans{x = \tfrac{5}{2}}$ \quad or \quad $\ans{x = -1}$
 \end{examplebox}
+
+\vspace{0.2cm}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Solve $3x^2 - 5x - 2 = 0$\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{x = 2}$ or $\ans{x = -\tfrac{1}{3}}$}
+\end{tryitbox}
 
 % =================== KEY VOCABULARY ===================
 \vspace{0.3cm}
@@ -579,8 +623,11 @@ $x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5
 ### Usage guidance
 
 - Generate **one skill section per distinct skill** tested in the worksheet (typically 2–5 sections)
-- Each section should have: a formula/rule box + 1 mini example + optional watch-out
+- Each section should have: a formula/rule box + 1 mini example + 1 try-it + optional watch-out. Formula-only reference sections (no example) are legal and need no try-it
 - Keep the whole document to **1–2 pages max** — it's a reference card, not a lesson
 - Vocabulary section is optional — include only when there are ≥3 important terms
-- The mini examples should be **shorter and simpler** than the worksheet problems, to illustrate the pattern without being distracting
+- The mini examples have **fewer steps than worksheet problems, but the choose-the-tool step is always written out** — one sentence, before any computation, never a bare answer chain. `\step` 1 names what you want, what you know, and why that picks this tool/ratio/method; the computation starts in `\step` 2 and the result prints in `\ans{...}`. Two more exemplars:
+  - trig: `\step{Want the side opposite $A$, know the hypotenuse --- that is SOH: $\sin A = \text{opp}/\text{hyp}$.} \step{$a = 10\sin 40^\circ = 6.4279\ldots$}` then `$\ans{a \approx 6.43}$`
+  - definition recall (when the example just applies a definition, SAY so — don't pad): `\step{Want $\sin A$ --- sine is opposite over hypotenuse by definition.}`
+- The try-it re-parameterizes its section's worked example (same skeleton, new givens) and prints ONLY the stem plus the verified answer upside down INSIDE the box: `\rotatebox{180}{\footnotesize check: $\ans{...}$}`. No worked steps — solving it is the student's retrieval practice. The answer must stay inside the box: an `\ans` outside every box degrades the whole document's per-example binding
 - The watch-out box is optional per skill — only add if there's a genuinely common mistake worth flagging

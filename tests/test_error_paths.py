@@ -56,6 +56,10 @@ rejects("triangle bad given key", {"id": 1, "type": "triangle", "given": {"x": 5
 rejects("triangle not 3 givens", {"id": 1, "type": "triangle", "given": {"a": 5, "b": 6}, "solve_for": "A", "expected": 1})
 rejects("triangle no side", {"id": 1, "type": "triangle", "given": {"A": 30, "B": 60, "C": 90}, "solve_for": "a", "expected": 1})
 rejects("triangle bad unit", {"id": 1, "type": "triangle", "given": {"a": 5, "b": 6, "c": 7}, "solve_for": "A", "expected": 1, "unit": "grad"})
+# 'unit' is the deg/rad ANGLE MODE, never a measurement unit — a measurement
+# accidentally landing there (the answer_unit confusion) must stay rejected
+rejects("triangle unit 'ft' (answer_unit confusion)", {"id": 1, "type": "triangle", "given": {"a": 5, "b": 6, "c": 7}, "solve_for": "A", "expected": 1, "unit": "ft"})
+rejects("solve_interval unit 'ft' (answer_unit confusion)", {"id": 1, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t", "interval": [0, 360], "unit": "ft", "expected": [30, 150]})
 rejects("triangle solve_for given", {"id": 1, "type": "triangle", "given": {"a": 5, "b": 6, "c": 7}, "solve_for": "a", "expected": 5})
 rejects("triangle negative side", {"id": 1, "type": "triangle", "given": {"a": -5, "b": 6, "c": 7}, "solve_for": "A", "expected": 1})
 

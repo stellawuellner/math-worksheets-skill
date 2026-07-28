@@ -1,8 +1,24 @@
 {
-  "topic": "build.sh driver fixture — a minimal ws+ak+ss set that passes every gate",
+  "topic": "build.sh driver fixture \u2014 a minimal ws+ak+ss set that passes every gate",
   "problem_count": 2,
   "problems": [
-    {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01},
-    {"id": 2, "type": "solve", "expr": "x**2 - 5*x + 6", "expected": [2, 3]}
+    {
+      "id": 1,
+      "type": "approx",
+      "expr": "9*tan(35*pi/180)",
+      "expected": 6.3,
+      "tol": 0.01,
+      "skill": "right-triangle-trig"
+    },
+    {
+      "id": 2,
+      "type": "solve",
+      "expr": "x**2 - 5*x + 6",
+      "expected": [
+        2,
+        3
+      ],
+      "skill": "quadratic-equations"
+    }
   ]
 }

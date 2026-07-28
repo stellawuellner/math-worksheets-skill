@@ -27,16 +27,42 @@
 #
 # GATE ORDER (fail-fast: the first FAIL stops the run and nothing after it
 # executes; in particular nothing compiles after a failed verification):
-#    1 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
-#    2 verify-ss       run_verify.sh on the study-guide JSON
-#    3 render-figures  scripts/render_figures.py, when shipped AND the JSON
+#    1 template-*      tests/check_template_use.py on ws, ak, ss — the shell
+#                      must \input{worksheet-preamble}, never hand-roll it
+#                      (cheapest check first; nothing verifies or compiles a
+#                      hand-rolled shell)
+#    2 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
+#    3 verify-ss       run_verify.sh on the study-guide JSON
+#    4 coverage-ss     tests/check_ss_coverage.py — every "skill" the
+#                      worksheet tags must have a tagged study-guide entry
+#                      (zero/partial ws tagging is a FAIL, not a skip)
+#    5 facet-coverage  tests/check_facet_coverage.py — worksheet facets must
+#                      all have study-guide worked examples, and a declared
+#                      "subtitle" must appear in the worksheet title block
+#                      (no-op for sheets without a facet plan)
+#    6 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
-#    4 layout-ws       tests/check_layout.py (figure scope + work space)
-#    5 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
+#    7 render-meta     scripts/render_meta.py, when shipped AND the worksheet
+#                      uses \probmeta/\probpts or every problem carries an
+#                      integer difficulty (else skipped)
+#    8 quick-answers   scripts/render_quick_answers.py regenerates the ak_'s
+#                      qa_ bank every build (skipped with --worksheet-only)
+#    9 layout-ws       tests/check_layout.py (figure scope + work space +
+#                      answer location)
+#   10 answer-line-ws  tests/check_answer_line.py (answer_unit <-> \answerline)
+#   11 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two)
-#    6 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
-#    7 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
-#                      problems: a structural FAIL, not a manual-review pass)
+#   12 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
+#                      (values AND units; for ss_ also examplebox/tryitbox
+#                      pairing and role agreement)
+#   13 ss-structure    tests/check_study_guide.py — every worked example opens
+#                      with a \step strategy line before any computation
+#   14 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
+#                      problems, an unresolved \probfig/\probmeta/\probpts, a
+#                      marker-binding fault, or a hand-typed effort marker: a
+#                      structural FAIL, not a manual-review pass)
+#   15 prose-ss        the same checker on the study guide (examplebox prose
+#                      givens bound to the ss JSON; same exit-2 semantics)
 #
 # EXIT CODES: 0 all gates green · 1 a gate failed (named in the verdict line)
 #             · 2 green but manual review needed (run_verify's 2 propagates).
@@ -101,8 +127,10 @@ fi
 # ── Result bookkeeping ────────────────────────────────────────────────────────
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
-GATES=(discover verify-ws verify-ss render-figures layout-ws \
-       compile-ws compile-ak compile-ss answer-key-ak answer-key-ss prose-ws)
+GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
+       coverage-ss facet-coverage render-figures render-meta quick-answers \
+       layout-ws answer-line-ws compile-ws compile-ak compile-ss \
+       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -199,6 +227,28 @@ echo "   ws: $WS_TEX"
 [[ -n "$SS_TEX" ]] && echo "   ss: $SS_TEX  (verify: $SS_JSON)"
 record discover "PASS"
 
+# Template shells first: the cheapest check, and it teaches the shell fix
+# before any sympy verification runs — nothing downstream should ever see a
+# hand-rolled preamble (the env names every later gate binds to live in the
+# shipped template).
+template_gate() { # gate-name tex-file
+  local gate="$1" tex="$2"
+  banner "template shell on $(basename "$tex")"
+  if "$PYTHON3" "$TESTS_DIR/check_template_use.py" "$tex"; then
+    record "$gate" "PASS"
+  else
+    fail "$gate"
+  fi
+}
+template_gate template-ws "$WS_TEX"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record template-ak "SKIPPED(--worksheet-only)"
+  record template-ss "SKIPPED(--worksheet-only)"
+else
+  template_gate template-ak "$AK_TEX"
+  template_gate template-ss "$SS_TEX"
+fi
+
 # run_verify.sh exit semantics: 0 pass · 1 fail · 2 manual-review-but-safe.
 run_verify_gate() { # gate-name json-file
   local gate="$1" json="$2" rc
@@ -221,6 +271,42 @@ else
   run_verify_gate verify-ss "$SS_JSON"
 fi
 
+# Skill coverage runs BEFORE anything renders or compiles: an uncovered skill
+# means the study guide must gain a section, so later gates would be wasted.
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record coverage-ss "SKIPPED(--worksheet-only)"
+else
+  banner "skill coverage: $JSON_BASE → $(basename "$SS_JSON")"
+  if "$PYTHON3" "$TESTS_DIR/check_ss_coverage.py" "$WS_JSON" "$SS_JSON"; then
+    record coverage-ss "PASS"
+  else
+    fail coverage-ss
+  fi
+fi
+
+# Cross-file facet gates likewise run BEFORE any compile: they read only JSON
+# + tex text, so a facet or subtitle drift is caught in milliseconds, not
+# after three tectonic runs.
+banner "facet coverage (ws facets ⊆ ss examples; subtitle binding)"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  FACET_ARGS=("$WS_TEX" "$WS_JSON")
+else
+  FACET_ARGS=("$WS_TEX" "$WS_JSON" "$SS_JSON")
+fi
+if "$PYTHON3" "$TESTS_DIR/check_facet_coverage.py" "${FACET_ARGS[@]}"; then
+  record facet-coverage "PASS"
+else
+  fail facet-coverage
+fi
+
+# One python-resolution path for every render gate that needs sympy
+# (render-figures imports verify.py's solver; quick-answers typesets symbolic
+# answers via sympify). Resolved ONCE; empty means no sympy python exists —
+# the first gate that needs it fails, and the finder has already printed its
+# teaching message.
+source "$SCRIPT_DIR/find_python.sh"
+SYMPY_PY="$(find_sympy_python)" || SYMPY_PY=""
+
 banner "render figures"
 if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
   # Defensive: the renderer ships separately; its absence is not a fault.
@@ -229,11 +315,9 @@ if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
 elif ! grep -Eq '"type"[[:space:]]*:[[:space:]]*"triangle"|"figure"[[:space:]]*:' "$WS_JSON"; then
   echo "   no triangle-type or \"figure\" problems in the JSON — skipping."
   record render-figures "SKIPPED(no figure problems)"
+elif [[ -z "$SYMPY_PY" ]]; then
+  fail render-figures
 else
-  # render_figures imports verify.py, which needs sympy — same finder as
-  # run_verify.sh so there is exactly one python-resolution path.
-  source "$SCRIPT_DIR/find_python.sh"
-  SYMPY_PY="$(find_sympy_python)" || fail render-figures
   if "$SYMPY_PY" "$SCRIPT_DIR/render_figures.py" "$WS_JSON"; then
     record render-figures "PASS"
     FIGS_TEX="$(dirname "$WS_JSON")/figs_${STEM}.tex"
@@ -243,11 +327,72 @@ else
   fi
 fi
 
-banner "layout check (figure scope + work space) on $(basename "$WS_TEX")"
+banner "render effort markers (difficulty -> \\probmeta/\\probpts)"
+META_TEX=""
+if [[ ! -f "$SCRIPT_DIR/render_meta.py" ]]; then
+  echo "   render_meta.py not shipped — skipping."
+  record render-meta "SKIPPED(renderer not shipped)"
+else
+  # Run when the sheet already calls markers, or when every problem carries a
+  # legal difficulty tag (bash never parses JSON — python answers that).
+  WANT_META="no"
+  grep -Eq '\\probmeta\{|\\probpts\{' "$WS_TEX" && WANT_META="yes"
+  if [[ "$WANT_META" == "no" ]]; then
+    WANT_META="$("$PYTHON3" -c 'import json, sys
+ps = json.load(open(sys.argv[1])).get("problems", [])
+ok = bool(ps) and all(isinstance(p, dict)
+                      and isinstance(p.get("difficulty"), int)
+                      and not isinstance(p.get("difficulty"), bool)
+                      and 1 <= p["difficulty"] <= 5 for p in ps)
+print("yes" if ok else "no")' "$WS_JSON" 2>/dev/null || echo no)"
+  fi
+  if [[ "$WANT_META" == "yes" ]]; then
+    # stdlib-only renderer: plain python3 is enough (no sympy for integers)
+    if "$PYTHON3" "$SCRIPT_DIR/render_meta.py" "$WS_JSON"; then
+      record render-meta "PASS"
+      META_TEX="$(dirname "$WS_JSON")/meta_${STEM}.tex"
+      [[ -f "$META_TEX" ]] || META_TEX=""
+    else
+      fail render-meta
+    fi
+  else
+    echo "   no marker calls and no complete difficulty tagging — skipping."
+    record render-meta "SKIPPED(no difficulty tags)"
+  fi
+fi
+
+banner "quick-answer bank for the answer key"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record quick-answers "SKIPPED(--worksheet-only)"
+elif [[ ! -f "$SCRIPT_DIR/render_quick_answers.py" ]]; then
+  echo "   render_quick_answers.py not shipped — skipping."
+  record quick-answers "SKIPPED(renderer not shipped)"
+elif [[ -z "$SYMPY_PY" ]]; then
+  fail quick-answers
+else
+  # Regenerated EVERY build (the render-figures pattern): the gated path can
+  # never serve a stale bank, so no staleness lint exists to drift. The
+  # generator also preflights the ak_ source — a generated bank the key never
+  # \inputs, or a hand-rolled preamble, is a loud teaching failure here.
+  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX"; then
+    record quick-answers "PASS"
+  else
+    fail quick-answers
+  fi
+fi
+
+banner "layout check (figure scope + work space + answer location) on $(basename "$WS_TEX")"
 if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX" ${FIGS_TEX:+--figs "$FIGS_TEX"}; then
   record layout-ws "PASS"
 else
   fail layout-ws
+fi
+
+banner "answer-line binding (answer_unit) on $(basename "$WS_TEX")"
+if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
+  record answer-line-ws "PASS"
+else
+  fail answer-line-ws
 fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared
@@ -274,6 +419,7 @@ fi
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record answer-key-ak "SKIPPED(--worksheet-only)"
   record answer-key-ss "SKIPPED(--worksheet-only)"
+  record ss-structure "SKIPPED(--worksheet-only)"
 else
   banner "answer-key binding: $(basename "$AK_TEX") ↔ $JSON_BASE"
   if "$PYTHON3" "$TESTS_DIR/check_answer_key.py" "$AK_TEX" "$WS_JSON"; then
@@ -287,19 +433,51 @@ else
   else
     fail answer-key-ss
   fi
+  banner "study-guide structure (strategy steps) on $(basename "$SS_TEX")"
+  if "$PYTHON3" "$TESTS_DIR/check_study_guide.py" "$SS_TEX" "$SS_JSON"; then
+    record ss-structure "PASS"
+  else
+    fail ss-structure
+  fi
 fi
 
 banner "prose consistency on $(basename "$WS_TEX")"
-"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" ${FIGS_TEX:+--figs "$FIGS_TEX"}
+"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" \
+  ${FIGS_TEX:+--figs "$FIGS_TEX"} ${META_TEX:+--meta "$META_TEX"}
 rc=$?
 if [[ "$rc" -eq 0 ]]; then
   record prose-ws "PASS"
 elif [[ "$rc" -eq 2 ]]; then
-  # NOT a manual-review pass: exit 2 here means the checker parsed ZERO
-  # problem blocks, i.e. nothing was checked at all.
-  fail prose-ws "Error: check_prose_consistency parsed no problems — the worksheet must use \\problem{...} or an enumerate/\\item list. Nothing was checked, so this is a structural failure."
+  # NOT a manual-review pass: exit 2 here is structural — the checker parsed
+  # ZERO problem blocks, hit an unresolved/mis-indexed \probfig or
+  # \probmeta/\probpts marker (re-run scripts/render_figures.py /
+  # scripts/render_meta.py after JSON edits), or found a hand-typed effort
+  # marker. The checker's own output names the specific fault and fix.
+  fail prose-ws "Error: check_prose_consistency stopped on a structural fault — see its output above (zero parsed problems, an unresolved \\probfig/\\probmeta/\\probpts, a marker-binding fault, or a hand-typed effort marker)."
 else
   fail prose-ws
+fi
+
+# Study-guide prose binding: the ss is the one document the student learns
+# from FIRST and has no answer key to cross-check against — a drifted prose
+# given beside a correct expr is invisible to every other gate. Runs after
+# answer-key-ss (which hard-fails on box-count != problem_count), so the
+# order-based example↔entry mapping is sound whenever this runs. No --figs:
+# ss documents carry no \probfig, and if one ever appears the unresolved-
+# probfig branch exits 2 loudly, which is correct.
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record prose-ss "SKIPPED(--worksheet-only)"
+else
+  banner "prose consistency on $(basename "$SS_TEX")"
+  "$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$SS_TEX" "$SS_JSON"
+  rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    record prose-ss "PASS"
+  elif [[ "$rc" -eq 2 ]]; then
+    fail prose-ss "Error: check_prose_consistency parsed no worked examples — the study guide must keep one worked example per examplebox (SKILL.md: box count = problem_count). Nothing was checked, so this is a structural failure."
+  else
+    fail prose-ss
+  fi
 fi
 
 finish 0

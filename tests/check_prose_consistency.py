@@ -4,38 +4,74 @@ check_prose_consistency.py — flag numbers in worksheet prose that don't appear
 as givens in the verify JSON (the word-problem analog of the figure rule).
 
 Usage: python3 tests/check_prose_consistency.py <worksheet.tex> <verify.json>
-                [--figs <figs.tex>]
+                [--figs <figs.tex>] [--meta <meta.tex>]
 
-Matches worksheet \\problem{...} blocks to verify-JSON entries by order
-(problem i ↔ i-th JSON id). Heuristic by design — a report for graders and
-generators, not a hard gate. Exit 0 always unless files are unreadable, the
-parse comes up empty, or \\probfig{N} figures cannot be resolved (pass the
-figs file scripts/render_figures.py emitted via --figs, or the figure check
-runs blind).
+Recognized shapes: \\problem{...} blocks, an enumerate/\\item list, or
+examplebox/tryitbox environments (study guides — the ss path binds each box's
+prose givens to its positional verify_ss entry). Blocks match verify-JSON
+entries by order (block i ↔ i-th JSON id). Heuristic by design — a report for
+graders and generators, not a hard gate. Exit 0 always unless files are
+unreadable, the parse comes up empty, \\probfig{N} figures cannot be
+resolved (pass the figs file scripts/render_figures.py emitted via --figs, or
+the figure check runs blind), a problem embeds \\includegraphics (an image
+this check can never bind to the JSON — see includegraphics_problems), or the
+effort markers fail their binding (below).
+
+Study-guide noise control: worked examples print INTERMEDIATE values by
+design (10(0.642788)...), so a flagged prose token with >= 2 decimal places
+is auto-matched when it equals a SymPy subexpression of the entry's own
+approx expr at the token's printed precision. The >= 2-decimals guard keeps
+integer drift (a changed given) from being masked by nearby subexpression
+values. Story numbers unused by the computation remain expected flags.
+
+Effort markers (\\probmeta{N} stars / \\probpts{N} point values) are
+CONSTRUCTED by scripts/render_meta.py from the verified difficulty tags, so
+the only residue to lint is placement — and that residue is hard (exit 2):
+  * an unresolved call (no --meta, stale meta, or a tag gap) is an UNCHECKED
+    marker, mirroring the \\probfig rule;
+  * markers are all-or-nothing and index-bound: if any call appears, problem
+    block i must contain exactly its own \\probmeta{i} (or \\probpts{i}),
+    one mode for the whole document — swapped, duplicated, missing, or
+    mixed-mode calls fail naming the blocks;
+  * hand-typed literals (\\bigstar, the unicode star, "(3 pts)") are banned
+    unconditionally — markers come from the verified JSON or not at all,
+    the same rule hand-drawn valued figures already follow.
 """
 
 import json
+import os
 import re
 import sys
 
 from _probfig import CALL_RE, expand_probfigs, probfig_bodies
+from _probmeta import META_CALL_RE, PTS_CALL_RE, probmeta_ids
+from _tex_segments import _item_spans, blank_comments, box_spans
 
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
 
 def item_blocks(tex):
-    """Extract each \\item body inside an enumerate.
+    """Extract each top-level \\item body across every outermost enumerate.
 
     The shipped worksheet templates use enumerate/\\item rather than the
     \\problem{...} macro, so a generator that follows the templates produced
     ZERO parsed blocks here and the report still said "all consistent".
     Parsing both shapes is what makes this checker apply to real worksheets.
+
+    Depth-aware via _tex_segments._item_spans: a nested part-list's content
+    stays INSIDE its parent problem's block (the parts' numbers belong to
+    problem i's JSON entry), where the old non-greedy regex ended the outer
+    list at the first nested \\end{enumerate} — nested parts were promoted to
+    top-level problems and every real problem after them was never checked.
+    Comments are blanked (length-preserving) before the walk, so a
+    commented-out \\item can neither split a block nor leak numbers.
     """
+    btex = blank_comments(tex)
     blocks = []
-    for env in re.finditer(r"\\begin\{enumerate\}(.*?)\\end\{enumerate\}", tex, re.S):
-        body = env.group(1)
-        parts = re.split(r"\\item\b", body)[1:]
-        blocks.extend(p.strip() for p in parts if p.strip())
+    for s, e in _item_spans(btex) or []:
+        body = re.sub(r"^\\item\b", "", btex[s:e]).strip()
+        if body:
+            blocks.append(body)
     return blocks
 
 
@@ -58,7 +94,18 @@ def problem_blocks(tex):
     return blocks
 
 
-def prose_numbers(block):
+def examplebox_blocks(tex):
+    """Study-guide shape: one block per examplebox/tryitbox body, in document
+    order (positional binding, like check_answer_key). Comments are blanked
+    so a commented-out box cannot become a phantom block."""
+    spans = box_spans(tex)
+    if spans is None:
+        return []
+    blanked = blank_comments(tex)
+    return [blanked[a:b] for a, b, _ in spans]
+
+
+def _prose_stripped(block):
     # drop TikZ coordinates (not human-visible), but keep figure LABELS —
     # see figure_label_numbers, which is checked separately (CASE-21)
     block = re.sub(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", "", block,
@@ -66,9 +113,82 @@ def prose_numbers(block):
     # drop \probfig{N} calls — the braced arg is a problem INDEX, not a prose
     # value, and would otherwise be flagged as "missing from JSON" noise
     block = re.sub(r"\\probfig\{\d+\}", "", block)
+    # drop \probmeta{N}/\probpts{N} the same way — their bodies print digits
+    # ("(3 pts)") that are metadata, never prose values, so calls are
+    # STRIPPED rather than spliced (the opposite of the figs treatment)
+    block = re.sub(r"\\prob(?:meta|pts)\{\d+\}", "", block)
+    # drop \answerline unit arguments — "cm$^2$" would otherwise inject a
+    # phantom 2 into the scan (the unit itself is gated by check_answer_line)
+    block = re.sub(r"\\answerline\{[^{}]*\}", "", block)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
-    return {float(n) for n in NUM_RE.findall(block)}
+    # drop the tryitbox furniture the templates mandate: \rotatebox{180}'s
+    # angle argument and \\[2pt]-style line glue are markup, not prose values
+    # — without this every try-it box false-flags 180 and 2, training the
+    # reader to ignore the one report line that carries real drift
+    block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
+    block = re.sub(r"\\\\\[[\d.]+[a-z]{2}\]", "", block)
+    return block
+
+
+def prose_numbers(block):
+    return {float(n) for n in NUM_RE.findall(_prose_stripped(block))}
+
+
+def _approx_subexpr_values(entries):
+    """Float value of every SymPy subexpression of each approx entry's expr —
+    the values a worked example legitimately prints as intermediate steps
+    (sin(40*pi/180) → 0.642788…). Parsed with verify.safe_parse (the
+    sandboxed allowlist parser); anything unparseable or symbolic simply
+    contributes nothing, so suppression degrades to 'no suppression'."""
+    try:
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+        import sympy
+        import verify
+    except ImportError:
+        return []
+    vals = []
+    for e in entries:
+        if e.get("type") != "approx" or not isinstance(e.get("expr"), str):
+            continue
+        try:
+            parsed = verify.safe_parse(e["expr"])
+        except Exception:
+            continue
+        for sub in sympy.preorder_traversal(parsed):
+            try:
+                vals.append(float(sympy.N(sub, 15)))
+            except Exception:
+                pass
+    return vals
+
+
+def suppress_intermediates(block, missing, entries):
+    """Split `missing` into (still_missing, suppressed): a flagged value is
+    suppressed only when its printed token has >= 2 decimal places AND equals
+    a subexpression of the entry's own approx expr rounded to that printed
+    precision. The decimals guard is load-bearing: a drifted integer given
+    (c=12) must never be masked by a nearby subexpression value."""
+    if not missing:
+        return missing, []
+    tokens = NUM_RE.findall(_prose_stripped(block))
+    vals = None  # computed lazily: sympy costs ~1s and most blocks need none
+    still, suppressed = [], []
+    for p in missing:
+        toks = [t for t in tokens
+                if "." in t and len(t.split(".")[-1]) >= 2]
+        toks = [t for t in toks if float(t) == p]
+        hit = False
+        for t in toks:
+            d = len(t.split(".")[-1])
+            if vals is None:
+                vals = _approx_subexpr_values(entries)
+            if any(abs(round(v, d) - float(t)) < 1e-9 for v in vals):
+                hit = True
+                break
+        (suppressed if hit else still).append(p)
+    return still, suppressed
 
 
 def figure_label_numbers(block):
@@ -84,19 +204,38 @@ def figure_label_numbers(block):
         # swing figure labels its two apexes $B_1$/$B_2$
         label = re.sub(r"_\{?\d+\}?", "", label)
         nums |= {float(n) for n in NUM_RE.findall(label)}
-    for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):  # pic "$34^\circ$"
+    # pic "$34^\circ$" quotes: mirror contract with check_layout — its
+    # has_valued_figure scans pic quotes with THIS same extraction regex, so
+    # the two detectors cannot disagree about whether a pic label is a figure
+    # value (they once did: this branch counted pic numbers while check_layout
+    # was blind to them, a false PASS on the all-or-nothing scope rule there).
+    for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):
         nums |= {float(n) for n in NUM_RE.findall(m.group(1))}
     # macro-style figures (templates/figure-macros.tex): the mandatory braced
     # args ARE the printed labels, so their numbers are figure values; the
-    # optional [..] arg is scale/styling and excluded — mirrors
-    # check_layout.has_valued_figure so the two detectors cannot disagree
-    # about what counts as a figure value.
+    # optional [..] arg is scale/styling and excluded — the same mirror
+    # contract with check_layout.has_valued_figure's macro branch.
     for m in re.finditer(r"\\[a-zA-Z]*(?:rt|tri|fig)[a-zA-Z]*"
                          r"(?:\[[^\]]*\])?((?:\{[^{}]*\}){2,})", block):
         args = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2",
                       m.group(1))
         nums |= {float(n) for n in NUM_RE.findall(args)}
     return nums
+
+
+def includegraphics_problems(blocks):
+    """1-based indexes of problem blocks that embed \\includegraphics.
+
+    An external image is opaque to this checker: the values it shows cannot
+    be bound to the verify JSON — worse, digits in its FILENAME or options
+    leak into the prose scan and can read as consistent givens, so the report
+    looks healthy for a figure nobody verified. Like an unresolved \\probfig,
+    an uncheckable figure must never read as a pass (exit 2). Blocks are
+    comment-blanked here because problem_blocks slices raw text — a
+    commented-out \\includegraphics must not trip a hard gate.
+    """
+    return [i for i, b in enumerate(blocks, 1)
+            if re.search(r"\\includegraphics\b", blank_comments(b))]
 
 
 def json_numbers(entry):
@@ -114,10 +253,14 @@ def json_numbers(entry):
             for x in v:
                 walk(x)
         elif isinstance(v, dict):
-            for x in v.values():
-                walk(x)
+            # desc/note are prose ABOUT the problem at any depth (a trap's
+            # "used 3 instead of 4" must not donate 3 and 4 to the given set);
+            # a trap's expr/value ARE printed planted numbers and flow through.
+            for k2, x in v.items():
+                if k2 not in ("desc", "note"):
+                    walk(x)
 
-    walk({k: v for k, v in entry.items() if k not in ("id", "note", "desc")})
+    walk({k: v for k, v in entry.items() if k != "id"})
     return found
 
 
@@ -128,9 +271,14 @@ def main():
         i = argv.index("--figs")
         figs_path = argv[i + 1] if i + 1 < len(argv) else ""
         del argv[i:i + 2]
-    if len(argv) != 2 or figs_path == "":
+    meta_path = None
+    if "--meta" in argv:
+        i = argv.index("--meta")
+        meta_path = argv[i + 1] if i + 1 < len(argv) else ""
+        del argv[i:i + 2]
+    if len(argv) != 2 or figs_path == "" or meta_path == "":
         print("Usage: check_prose_consistency.py <worksheet.tex> <verify.json> "
-              "[--figs <figs.tex>]", file=sys.stderr)
+              "[--figs <figs.tex>] [--meta <meta.tex>]", file=sys.stderr)
         sys.exit(2)
     tex_path, json_path = argv
     tex = open(tex_path).read()
@@ -150,7 +298,73 @@ def main():
         print("    emitted:  --figs /tmp/figs_TOPIC_DATE.tex")
         print("    (and re-run scripts/render_figures.py if the JSON changed).")
         sys.exit(2)
-    blocks = problem_blocks(tex) or item_blocks(tex)
+    blocks = problem_blocks(tex) or item_blocks(tex) or examplebox_blocks(tex)
+    flagged = includegraphics_problems(blocks)
+    if flagged:
+        print(f"  ⚠ \\includegraphics in worksheet problem(s) {flagged}.")
+        print("    An external image cannot be bound to the verify JSON, so this check")
+        print("    cannot see the values it shows — like an unresolved \\probfig, an")
+        print("    uncheckable figure must never read as a pass. Generate the figure")
+        print("    with scripts/render_figures.py (triangle problems) or a TikZ figure")
+        print("    from references/latex-templates.md so its labels are checkable.")
+        sys.exit(2)
+
+    # ── Effort markers (construction lives in scripts/render_meta.py) ────────
+    # Comment-blanked text for the literal ban: a comment MENTIONING \bigstar
+    # is not a hand-typed marker.
+    clean = blank_comments(tex)
+    literal = []
+    if re.search(r"\\bigstar\b", clean):
+        literal.append("\\bigstar")
+    if "\u2605" in clean:
+        literal.append("a literal star glyph")
+    if re.search(r"\(\s*\d+\s*pts\s*\)", clean):
+        literal.append('"(N pts)"')
+    if literal:
+        # unconditional — even with no meta file in play, matching the
+        # hand-drawn-valued-figure precedent. Prose like "scored 78 points"
+        # is untouched: only the unambiguous marker patterns are banned.
+        print(f"  ❌ hand-typed effort marker(s): {', '.join(literal)}.")
+        print("    Effort markers must be constructed from the verify JSON — "
+              "run scripts/render_meta.py")
+        print("    and place \\probmeta{N} or \\probpts{N} (see SKILL.md step 3).")
+        sys.exit(2)
+    block_meta = [[int(n) for n in META_CALL_RE.findall(b)] for b in blocks]
+    block_pts = [[int(n) for n in PTS_CALL_RE.findall(b)] for b in blocks]
+    meta_flat = [n for c in block_meta for n in c]
+    pts_flat = [n for c in block_pts for n in c]
+    if meta_flat or pts_flat:
+        have = probmeta_ids(open(meta_path).read()) if meta_path else set()
+        unresolved_meta = sorted(set(meta_flat + pts_flat) - have)
+        if unresolved_meta:
+            # an unresolved marker is an UNCHECKED marker — same rule as
+            # \probfig above, never a silent pass
+            print(f"  ⚠ UNRESOLVED \\probmeta/\\probpts for problem(s) "
+                  f"{unresolved_meta}.")
+            print("    Marker bodies live in the generated meta file, so this "
+                  "check cannot see them.")
+            print("    Re-run with the file render_meta.py emitted:  "
+                  "--meta /tmp/meta_TOPIC_DATE.tex")
+            print("    (and re-run scripts/render_meta.py if the JSON changed).")
+            sys.exit(2)
+        if meta_flat and pts_flat:
+            stars_in = [i + 1 for i, c in enumerate(block_meta) if c]
+            pts_in = [i + 1 for i, c in enumerate(block_pts) if c]
+            print(f"  ❌ mixed marker modes: \\probmeta in block(s) {stars_in} "
+                  f"but \\probpts in block(s) {pts_in} — use ONE mode for the "
+                  "whole document (points for quizzes, stars for practice).")
+            sys.exit(2)
+        calls = block_meta if meta_flat else block_pts
+        macro = "\\probmeta" if meta_flat else "\\probpts"
+        bad_blocks = [i + 1 for i, c in enumerate(calls) if c != [i + 1]]
+        if bad_blocks:
+            print(f"  ❌ marker/problem binding failed in block(s) {bad_blocks}: "
+                  f"once any marker appears, problem block i must contain "
+                  f"exactly {macro}{{i}} — swapped, duplicated, or missing "
+                  "markers put the wrong effort label on a problem (all "
+                  "problems carry a marker or none do).")
+            sys.exit(2)
+
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}
     for e in data.get("problems", []):
@@ -167,6 +381,12 @@ def main():
         # 100·x style: a prose "20%" is 20 in prose but 0.2 or 20/100 in JSON
         given |= {g * 100 for g in given} | {g / 100 for g in given if g}
         missing = sorted(p for p in prose if p not in given)
+        # intermediate worked-example values (subexpressions of the entry's
+        # own approx expr, at printed >=2dp precision) count as matched —
+        # without this, a correct study guide flags most of its examples and
+        # trains the reader to ignore the one line that carries real drift
+        missing, _ = suppress_intermediates(block, missing,
+                                            by_id.get(i + 1, []))
         total_nums += len(prose)
         matched += len(prose) - len(missing)
         report.append((i + 1, sorted(prose), missing))
@@ -179,8 +399,9 @@ def main():
     print(f"Prose-consistency report: {tex_path}")
     if not blocks:
         print("\n  ⚠ PARSED ZERO PROBLEMS from this file.")
-        print("    Nothing was checked, so this is NOT a pass. The worksheet")
-        print("    must use \\problem{...} or an enumerate/\\item list.")
+        print("    Nothing was checked, so this is NOT a pass. The document")
+        print("    must use \\problem{...}, an enumerate/\\item list, or")
+        print("    examplebox environments (study guides).")
         sys.exit(2)
     for pid, prose, missing in report:
         flag = f"  ⚠ missing from JSON: {missing}" if missing else "  ok"
@@ -196,8 +417,9 @@ def main():
             print(f"  ⚠ problem {pid}: figure shows {miss}")
     else:
         print("Figure labels: all consistent with JSON givens.")
-    print("(heuristic — investigate misses; derived/rounded prose values and "
-          "dates are expected false flags)")
+    print("(heuristic — investigate misses; derived/rounded prose values, "
+          "dates, and story numbers unused by the computation are expected "
+          "false flags)")
 
 
 if __name__ == "__main__":

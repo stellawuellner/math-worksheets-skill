@@ -68,9 +68,25 @@ code, out = run("ak_bind_symbolic.tex", "ak_bind_symbolic.json")
 check("correct factored key passes (binary minus, audit ak_factor)", code == 0)
 
 code, out = run("ss_bind_good.tex", "ss_bind.json")
-check("examplebox study guide segments and passes", code == 0)
-check("study guide sees one segment per worked example",
-      "2 problem segments" in out)
+check("paired examplebox/tryitbox study guide segments and passes", code == 0)
+check("study guide sees one segment per box (example + try-it)",
+      "4 problem segments" in out)
+
+code, out = run("ss_bind_notryit.tex", "ss_bind.json")
+check("worked examples with zero try-its fail the pairing rule", code == 1)
+check("pairing failure teaches the tryitbox fix", "add a tryitbox" in out)
+
+code, out = run("ss_tryit_missing.tex", "ss_tryit.json")
+check("a section whose tryitbox is absent fails", code == 1)
+check("missing try-it is blamed on its examplebox", "has no try-it" in out)
+
+code, out = run("ss_tryit_wrongans.tex", "ss_tryit.json")
+check("a try-it printing 16 for verified 15 fails value binding", code == 1)
+check("wrong try-it answer names its problem", "problem 4" in out)
+
+code, out = run("ss_tryit_good.tex", "ss_tryit_roleswap.json")
+check("role tags on the wrong positions fail", code == 1)
+check("role mismatch names the entry and box", "role" in out and "tryit" in out)
 
 code, out = run("ak_bind_unstructured.tex", "ak_bind.json")
 check("unsegmentable key fails", code == 1)

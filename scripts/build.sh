@@ -33,14 +33,21 @@
 #                      hand-rolled shell)
 #    2 verify-ws       run_verify.sh on the worksheet JSON (2 = MANUAL, continue)
 #    3 verify-ss       run_verify.sh on the study-guide JSON
-#    4 render-figures  scripts/render_figures.py, when shipped AND the JSON
+#    4 coverage-ss     tests/check_ss_coverage.py — every "skill" the
+#                      worksheet tags must have a tagged study-guide entry
+#                      (zero/partial ws tagging is a FAIL, not a skip)
+#    5 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
-#    5 layout-ws       tests/check_layout.py (figure scope + work space)
-#    6 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
+#    6 layout-ws       tests/check_layout.py (figure scope + work space)
+#    7 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two)
-#    7 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
-#    8 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
+#    8 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
+#    9 ss-structure    tests/check_study_guide.py — every worked example opens
+#                      with a \step strategy line before any computation
+#   10 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
 #                      problems: a structural FAIL, not a manual-review pass)
+#   11 prose-ss        the same checker on the study guide (examplebox prose
+#                      givens bound to the ss JSON; same exit-2 semantics)
 #
 # EXIT CODES: 0 all gates green · 1 a gate failed (named in the verdict line)
 #             · 2 green but manual review needed (run_verify's 2 propagates).
@@ -106,8 +113,8 @@ fi
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
 GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
-       render-figures layout-ws compile-ws compile-ak compile-ss \
-       answer-key-ak answer-key-ss prose-ws)
+       coverage-ss render-figures layout-ws compile-ws compile-ak compile-ss \
+       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -248,6 +255,19 @@ else
   run_verify_gate verify-ss "$SS_JSON"
 fi
 
+# Skill coverage runs BEFORE anything renders or compiles: an uncovered skill
+# means the study guide must gain a section, so later gates would be wasted.
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record coverage-ss "SKIPPED(--worksheet-only)"
+else
+  banner "skill coverage: $JSON_BASE → $(basename "$SS_JSON")"
+  if "$PYTHON3" "$TESTS_DIR/check_ss_coverage.py" "$WS_JSON" "$SS_JSON"; then
+    record coverage-ss "PASS"
+  else
+    fail coverage-ss
+  fi
+fi
+
 banner "render figures"
 if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
   # Defensive: the renderer ships separately; its absence is not a fault.
@@ -301,6 +321,7 @@ fi
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record answer-key-ak "SKIPPED(--worksheet-only)"
   record answer-key-ss "SKIPPED(--worksheet-only)"
+  record ss-structure "SKIPPED(--worksheet-only)"
 else
   banner "answer-key binding: $(basename "$AK_TEX") ↔ $JSON_BASE"
   if "$PYTHON3" "$TESTS_DIR/check_answer_key.py" "$AK_TEX" "$WS_JSON"; then
@@ -313,6 +334,12 @@ else
     record answer-key-ss "PASS"
   else
     fail answer-key-ss
+  fi
+  banner "study-guide structure (strategy steps) on $(basename "$SS_TEX")"
+  if "$PYTHON3" "$TESTS_DIR/check_study_guide.py" "$SS_TEX" "$SS_JSON"; then
+    record ss-structure "PASS"
+  else
+    fail ss-structure
   fi
 fi
 
@@ -327,6 +354,28 @@ elif [[ "$rc" -eq 2 ]]; then
   fail prose-ws "Error: check_prose_consistency parsed no problems — the worksheet must use \\problem{...} or an enumerate/\\item list. Nothing was checked, so this is a structural failure."
 else
   fail prose-ws
+fi
+
+# Study-guide prose binding: the ss is the one document the student learns
+# from FIRST and has no answer key to cross-check against — a drifted prose
+# given beside a correct expr is invisible to every other gate. Runs after
+# answer-key-ss (which hard-fails on box-count != problem_count), so the
+# order-based example↔entry mapping is sound whenever this runs. No --figs:
+# ss documents carry no \probfig, and if one ever appears the unresolved-
+# probfig branch exits 2 loudly, which is correct.
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record prose-ss "SKIPPED(--worksheet-only)"
+else
+  banner "prose consistency on $(basename "$SS_TEX")"
+  "$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$SS_TEX" "$SS_JSON"
+  rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    record prose-ss "PASS"
+  elif [[ "$rc" -eq 2 ]]; then
+    fail prose-ss "Error: check_prose_consistency parsed no worked examples — the study guide must keep one worked example per examplebox (SKILL.md: box count = problem_count). Nothing was checked, so this is a structural failure."
+  else
+    fail prose-ss
+  fi
 fi
 
 finish 0

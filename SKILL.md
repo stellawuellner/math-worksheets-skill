@@ -93,7 +93,7 @@ Design problems appropriate to the student's level. Increase difficulty graduall
 
 See `references/problem-library.md` for topic-specific problem type menus.
 
-**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes), `"difficulty"` (1–5 per that file's ladders), and `"bloom"` (recall/apply/analyze/justify, same file). Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
+**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes), `"difficulty"` (1–5 per that file's ladders), `"bloom"` (recall/apply/analyze/justify, same file), and `"skill"` (a short stable name for the skill the problem exercises, e.g. `"right-triangle-trig"` — reuse the same name across problems of the same Part). Skill tags are all-or-nothing and GATING: the study guide must contain an entry tagged with each distinct worksheet skill, enforced by `build.sh`'s `coverage-ss` gate; a partially tagged sheet fails it. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, the skill mix (the set the study guide must cover), and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
 
 **Tiered worksheets (differentiation, on request):** when asked for tiers (support/on-level/challenge), build ONE set of problem skeletons, then re-parameterize per tier — same structure and standards, different givens and difficulty band (support: 1–2 with a hints box and a worked first step; core: 2–3; challenge: 3–5). Each tier gets its OWN verify JSON (the gate re-checks every tier) and file prefix: `wsS_`/`wsC_`/`wsX_` + matching keys. Because construction is JSON-first, a tier is a data change, not a rewrite.
 
@@ -106,16 +106,17 @@ Write **three** `.tex` files to `/tmp/`:
 - `ak_TOPIC_DATE.tex` — answer key (full step-by-step solutions)
 - `ss_TOPIC_DATE.tex` — skills summary / study guide (cheat sheet)
 
-The **skills summary** is a 1–2 page reference card the student can use while working through the worksheet or when studying. It contains:
-- One section per distinct skill tested (2–5 sections typical)
+The **skills summary** is a 1–2 page reference card the student can use while working through the worksheet or when studying. Per skill section: **formulabox → examplebox → tryitbox**. It contains:
+- One section per distinct skill tested (2–5 sections typical), tagged with the worksheet's `"skill"` names — `build.sh`'s `coverage-ss` gate fails the build if any worksheet skill lacks a tagged study-guide entry
 - A **formula/rule box** (blue) per skill — the key facts and formulas
-- A **mini worked example** (green) per skill — brief pattern demonstration, simpler than worksheet problems
+- A **mini worked example** (green) per skill — a `\step` strategy line naming why this tool applies, then the computation — fewer steps than worksheet problems, never a bare answer chain (see the exemplars in `references/latex-templates.md`)
+- A **try-it** (violet) per worked example — a re-parameterization of that section's example (same skeleton, new givens), printing ONLY the stem plus the verified answer upside down INSIDE the box via `\rotatebox{180}{\footnotesize check: $\ans{...}$}` — no worked steps; solving it is the student's job. Formula-only sections (no example) are legal and need no try-it
 - An optional **watch-out box** (orange) — common mistakes worth flagging
 - Optional **key vocabulary** section at the bottom
 
 See `references/latex-templates.md` → "Skills Summary / Study Guide Template" for the full shell and box macros.
 
-**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does. `check_answer_key.py` segments ss documents **by `examplebox`** — keep one worked example per box, one JSON entry per example (so box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate.
+**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation AND one per try-it. Entries MUST be listed in document order (example, try-it, example, try-it, …) because binding is positional; tag each try-it entry `"role": "tryit"` and each entry with the `"skill"` it demonstrates. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example or try-it with a printed result* does. `check_answer_key.py` segments ss documents **by box** (`examplebox`/`tryitbox`) — keep one worked example or try-it per box, one JSON entry per box (so total box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate. A try-it may be type `manual` only when its paired example is also `manual` (exit-2 visibility, never silent). The structure gate (`tests/check_study_guide.py`) additionally requires ≥2 `\step` lines and a boxed final answer per examplebox — the first step is the strategy sentence, capped at ONE sentence (page 1 fills fast and the guide is hard-capped at 2 pages).
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
@@ -292,18 +293,22 @@ bash "$SKILL_DIR/scripts/build.sh" /tmp/verify_TOPIC_DATE.json
 That single command replaces what used to be nine separate steps. It discovers `ws_`/`ak_`/`ss_TOPIC_DATE.tex` and `verify_ss_TOPIC_DATE.json` next to the JSON (student-name prefixes like `leo_ws_` and tier tokens `wsS_`/`wsC_`/`wsX_` included), then runs, fail-fast:
 
 1. `run_verify.sh` on the worksheet JSON, then the study-guide JSON
-2. figure rendering (when shipped and the JSON has figure/triangle problems)
-3. `check_layout.py` on the worksheet (figure scope + work space)
-4. `compile.sh` for all three documents (nothing compiles after a failed gate)
-5. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs
-6. `check_prose_consistency.py` on the worksheet
+2. `check_ss_coverage.py` — every worksheet `"skill"` has a tagged study-guide entry (zero/partial worksheet tagging fails)
+3. figure rendering (when shipped and the JSON has figure/triangle problems)
+4. `check_layout.py` on the worksheet (figure scope + work space)
+5. `compile.sh` for all three documents (nothing compiles after a failed gate)
+6. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (for `ss_`: pairing — every examplebox is followed by its tryitbox — and role/position agreement, then per-box value binding)
+7. `check_study_guide.py` — every worked example opens with a `\step` strategy line before any computation
+8. `check_prose_consistency.py` on the worksheet AND the study guide (examplebox prose givens are bound to the ss JSON; intermediate values that equal a subexpression of the entry's expr at printed precision are auto-matched; story numbers unused by the computation are expected flags)
 
 It ends with a gate-summary table and ONE verdict line. Exit 0 = all green with three PDF paths printed; exit 1 = a gate failed (named — fix and re-run); exit 2 = green with manual-review items. **Missing `ak_`/`ss_` documents are failures, not skips** — the skill mandates three documents (`--worksheet-only` exists for the rare single-document request). Default output directory is `~/Documents/Worksheets/` (`--outdir` to override; see the Prerequisites note about headless environments).
 
 Why the checkers exist (`build.sh` runs them for you):
 
 - `check_answer_key.py` binds **per problem**: it segments the key (`\problem{...}`, one enumerate `\item` per problem, or one `examplebox` per worked example), requires the segment count to equal `problem_count`, and fails unless every verified value appears in **its own problem's** `\boxed{}`/`\ans{}` at the printed precision — `4.52` never satisfies a verified `4.51`, while `5`, `5.0` and `5.00` are the same answer. A swapped key, a wrong boxed value (even with the correct number in the worked steps beside it), or an unsegmentable key all hard-fail; answer-bank keys degrade to a loud whole-document `⚠` check. **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
-- `check_prose_consistency.py` checks prose numbers and **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
+- `check_prose_consistency.py` checks prose numbers and **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged. On the study guide it parses per box, so a worked example whose prose says `c = 12` while the verified expr computes with 10 is caught.
+- `check_ss_coverage.py` requires a tagged study-guide entry for every worksheet `"skill"` — a guide that skips a tested skill fails before anything renders.
+- `check_study_guide.py` enforces the worked-example shape: ≥2 `\step` lines per examplebox, the first prose-first (the strategy slot), and a boxed final answer for machine-verified examples. It guarantees the slot exists; the quality of the strategy sentence stays with you.
 - `check_layout.py` enforces the figure-scope and work-space rules from step 3.
 - `--figs` splices the rendered `\probfig{N}` bodies back into the text so `check_prose_consistency.py` and `check_layout.py` see the figures the student sees; without it, a sheet using `\probfig` exits 2 (an unchecked figure must never read as a pass). A **stale** figs file rendered before a JSON edit is caught the same way — re-run step 4b.
 
@@ -350,9 +355,12 @@ Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json          # 0 pass · 1 fail · 2 manual-review
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex            # figure scope + work space
+python3 "$SKILL_DIR/tests/check_ss_coverage.py" /tmp/verify_TOPIC_DATE.json /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_study_guide.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
 bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Worksheets/   # also ak_/ss_
 ```
 

@@ -1,5 +1,5 @@
 {
-  "topic": "build.sh driver fixture \u2014 study-guide worked example + its try-it, entries in document order",
+  "topic": "build.sh driver fixture \u2014 study guide whose tags MISS the worksheet's quadratic-equations skill: coverage-ss must fail the build before any compile",
   "problem_count": 2,
   "problems": [
     {
@@ -19,7 +19,7 @@
         5
       ],
       "role": "tryit",
-      "skill": "quadratic-equations"
+      "skill": "right-triangle-trig"
     }
   ]
 }

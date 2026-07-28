@@ -111,6 +111,8 @@
 \definecolor{warnbg}{RGB}{255,243,230}
 \definecolor{exgreen}{RGB}{20,120,60}
 \definecolor{exgreenbg}{RGB}{230,248,238}
+\definecolor{tryviolet}{RGB}{110,60,160}
+\definecolor{tryvioletbg}{RGB}{243,236,250}
 
 % Formula/rule box
 \newmdenv[
@@ -121,14 +123,42 @@
   skipabove=6pt, skipbelow=4pt
 ]{formulabox}
 
-% Mini example box
+% Mini example box. The mdframed environment is the INNER shell: examplebox
+% itself is a wrapper that resets the step counter, so \step numbering starts
+% at 1 in every worked example without the author touching the counter.
 \newmdenv[
   backgroundcolor=exgreenbg,
   linecolor=exgreen, linewidth=1pt,
   innertopmargin=5pt, innerbottommargin=5pt,
   innerleftmargin=10pt, innerrightmargin=10pt,
   skipabove=4pt, skipbelow=4pt
-]{examplebox}
+]{exampleboxinner}
+\newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}}{\end{exampleboxinner}}
+
+% \step{...} — one auto-numbered line of a worked example. The FIRST \step of
+% every examplebox is the strategy line: one sentence, in words, naming what
+% you want, what you know, and why that picks this tool/ratio/method — the
+% computation starts in step 2. tests/check_study_guide.py enforces the shape
+% (>= 2 steps per worked example, prose-first opening step); the reasoning
+% move is what transfers, not the arithmetic.
+\newcounter{exstep}
+\newcommand{\step}[1]{\par\noindent\textbf{Step \stepcounter{exstep}\theexstep.}~#1}
+
+% Try-it box (violet): the student's first retrieval attempt, paired with the
+% worked example it re-parameterizes (same skeleton, new givens). Print ONLY
+% the stem plus the answer, upside down so the student attempts before
+% checking:  \rotatebox{180}{\footnotesize check: $\ans{...}$}
+% The answer must print INSIDE this box — an \ans placed outside every box
+% (footer/answer-bank style) degrades the whole document's per-example
+% binding in check_answer_key.py. (\rotatebox comes from graphicx, which
+% tikz already loads.)
+\newmdenv[
+  backgroundcolor=tryvioletbg,
+  linecolor=tryviolet, linewidth=1pt,
+  innertopmargin=5pt, innerbottommargin=5pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=4pt, skipbelow=4pt
+]{tryitbox}
 
 % Watch-out box
 \newmdenv[

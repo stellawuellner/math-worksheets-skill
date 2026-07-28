@@ -668,9 +668,15 @@ SCHEMAS = {
 }
 
 # Fields legal on ANY problem. "standard" (e.g. CCSS "8.EE.C.8"), "difficulty"
-# (1-5) and "bloom" are reporting tags, never gating. One constant shared by
+# (1-5) and "bloom" are reporting tags, never gating. "skill" (a short
+# free-string label) IS matched by the coverage-ss gate
+# (tests/check_ss_coverage.py) in full build.sh runs: every worksheet skill
+# must have a study-guide entry tagged with it. "role" marks a study-guide
+# entry as a try-it ("tryit" is the only allowed value); check_answer_key.py
+# matches it against tryitbox positions. One constant shared by
 # check_schema() and --schema so the enforcement and the reference cannot drift.
 _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
+                     "skill", "role",
                      # the declarative figure spec render_figures.py draws from
                      "figure"}
 
@@ -818,6 +824,14 @@ def check_schema(p):
     if unknown:
         raise VerifyInputError(
             f"type {ptype!r} has unknown field(s): {sorted(unknown)}")
+    # "role" tags a study-guide try-it and is position-matched against
+    # tryitbox segments by check_answer_key.py — any other value would bind
+    # to nothing, so it is a schema error, not a free string.
+    if "role" in p and p["role"] != "tryit":
+        raise VerifyInputError(
+            f"'role' must be \"tryit\" (the study-guide try-it tag), "
+            f"got {p['role']!r} — drop the field for ordinary problems and "
+            "worked examples")
     validate_figure(p, ptype)
     return ptype
 
@@ -1499,6 +1513,16 @@ def run_verification(json_path):
         print("bloom mix: " + ", ".join(f"{k}×{blooms[k]}" for k in order if k in blooms))
     if stds:
         print("standards: " + ", ".join(f"{k}×{v}" for k, v in sorted(stds.items())))
+    # Skill mix: the set of skills the study guide is obliged to cover (the
+    # coverage-ss gate enforces it later) — printed at verify time so the
+    # obligation is visible BEFORE the guide is written.
+    skills = {}
+    for p in problems:
+        if isinstance(p, dict) and isinstance(p.get("skill"), str) and p["skill"].strip():
+            key = p["skill"].strip().casefold()
+            skills[key] = skills.get(key, 0) + 1
+    if skills:
+        print("skill mix: " + ", ".join(f"{k}×{v}" for k, v in sorted(skills.items())))
     if diffs:
         ramp = [d for _, d in sorted(diffs, key=lambda x: x[0])]  # ids are ints
         drops = sum(1 for a, b in zip(ramp, ramp[1:]) if b < a - 1)

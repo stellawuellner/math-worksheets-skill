@@ -30,7 +30,7 @@ import os
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _tex_segments import segment_spans, blank_comments  # noqa: E402
+from _tex_segments import segment_spans, blank_comments, box_spans  # noqa: E402
 
 NUM = re.compile(r"-?\d+(?:\.\d+)?(?:/\d+)?")
 _FRAC = re.compile(r"\\[dt]?frac\s*\{?(-?\d+(?:\.\d+)?)\}?\s*\{?(-?\d+(?:\.\d+)?)\}?")
@@ -145,6 +145,62 @@ def json_expected_nums(entry):
     return found
 
 
+# ── Study-guide (box-segmented) structure rules ──────────────────────────────
+# These fire ONLY when the document segments by examplebox/tryitbox — never on
+# \problem or enumerate shapes — so answer keys are untouched.
+
+def box_pairing_errors(tex, kinds):
+    """Faded-scaffolding pairing (SKILL.md step 3): every examplebox is
+    immediately followed by its tryitbox in the SAME skill section, and every
+    tryitbox re-parameterizes the examplebox directly before it. A guide with
+    worked examples and no try-its fails here — the student's first retrieval
+    attempt must come before worksheet problem 1."""
+    errs = []
+    headings = [m.start() for m in re.finditer(r"\\skillheading", tex)]
+    for idx, (a, b, kind) in enumerate(kinds):
+        if kind == "examplebox":
+            nxt = kinds[idx + 1] if idx + 1 < len(kinds) else None
+            if nxt is None or nxt[2] != "tryitbox" \
+                    or any(b <= h < nxt[0] for h in headings):
+                errs.append(
+                    f"box {idx + 1} (examplebox) has no try-it: study guides "
+                    "pair every worked example with a try-it the student "
+                    "attempts before the worksheet — add a tryitbox per "
+                    "examplebox, in the same skill section (SKILL.md step 3).")
+        else:  # tryitbox
+            if idx == 0 or kinds[idx - 1][2] != "examplebox":
+                errs.append(
+                    f"box {idx + 1} (tryitbox) does not follow a worked "
+                    "example — a try-it re-parameterizes the examplebox "
+                    "directly before it (SKILL.md step 3).")
+    return errs
+
+
+def role_agreement_errors(kinds, by_id):
+    """Positional role check: the k-th box is a tryitbox iff the JSON entry
+    bound to position k carries \"role\": \"tryit\". A swapped tag would bind
+    a try-it's answer against a worked example's value (or vice versa), so a
+    mismatch is drift, not style."""
+    errs = []
+    for i in sorted(by_id):
+        if i - 1 >= len(kinds):
+            continue
+        kind = kinds[i - 1][2]
+        roles = {e.get("role") for e in by_id[i]}
+        is_tryit = "tryit" in roles
+        if is_tryit and kind != "tryitbox":
+            errs.append(
+                f"JSON entry {i} is tagged \"role\": \"tryit\" but box {i} "
+                f"is a {kind} — reorder the entries to document order "
+                "(example, try-it, example, try-it) or fix the tag.")
+        elif not is_tryit and kind == "tryitbox":
+            errs.append(
+                f"box {i} is a tryitbox but JSON entry {i} carries no "
+                "\"role\": \"tryit\" tag — tag the try-it's entry so its "
+                "answer binds to the right box.")
+    return errs
+
+
 def main():
     # comments are blanked (length-preserving) so a commented-out \boxed or
     # '% \problem{...}' remark can neither count as an answer nor split a
@@ -178,12 +234,30 @@ def main():
     segments = [tex[a:b] for a, b in spans]
     print(f"  {len(boxes)} boxed answers · {len(segments)} problem segments")
 
+    # Box-segmented (study-guide) documents only: the segmenter fell through
+    # to examplebox/tryitbox iff the box spans ARE the segment spans.
+    kinds = box_spans(tex)
+    box_mode = kinds is not None and [(a, b) for a, b, _ in kinds] == spans
+    if box_mode:
+        pairing = box_pairing_errors(tex, kinds)
+        if pairing:
+            for e in pairing:
+                print(f"  ❌ {e}")
+            sys.exit(1)
+
     if len(segments) != problem_count:
         print(f"  ❌ segment/problem count mismatch: the key splits into "
               f"{len(segments)} problem segment(s) but the verified JSON has "
               f"{problem_count} problems — give every problem its own "
               "segment (and boxed answer) so answers cannot shift.")
         sys.exit(1)
+
+    if box_mode:
+        role_errs = role_agreement_errors(kinds, by_id)
+        if role_errs:
+            for e in role_errs:
+                print(f"  ❌ {e}")
+            sys.exit(1)
 
     # The hard per-problem gate assumes every box belongs to a segment. A key
     # that prints answers outside the list (answer-bank style) degrades to

@@ -1,6 +1,6 @@
 {
-  "topic": "build.sh driver fixture \u2014 a minimal ws+ak+ss set that passes every gate",
-  "problem_count": 2,
+  "topic": "skill-coverage fixture: worksheet with PARTIAL skill tags \u2014 the untagged problems (2, 3) must be named in the failure",
+  "problem_count": 3,
   "problems": [
     {
       "id": 1,
@@ -12,13 +12,19 @@
     },
     {
       "id": 2,
+      "type": "approx",
+      "expr": "12*tan(28*pi/180)",
+      "expected": 6.38,
+      "tol": 0.01
+    },
+    {
+      "id": 3,
       "type": "solve",
       "expr": "x**2 - 5*x + 6",
       "expected": [
         2,
         3
-      ],
-      "skill": "quadratic-equations"
+      ]
     }
   ]
 }

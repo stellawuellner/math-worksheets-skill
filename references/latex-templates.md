@@ -37,7 +37,8 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 | `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule |
 | `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase |
 | `\sstitleblock{Topic}` | study-guide title block |
-| `formulabox` / `examplebox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / orange watch-out) |
+| `formulabox` / `examplebox` / `tryitbox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / violet try-it / orange watch-out) |
+| `\step{...}` | auto-numbered worked-example line; the counter resets at each `examplebox`. Step 1 is always the strategy sentence (why this tool), computation starts at step 2 |
 | `\skillheading{...}` | study-guide skill-section heading |
 
 ## Problem Patterns
@@ -522,10 +523,18 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \vspace{0.2cm}
 
 \begin{examplebox}
-\textbf{Example:} \quad Factor $x^2 - 7x + 12$\\[4pt]
-Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ $\checkmark$\\[2pt]
+\textbf{Example:} \quad Factor $x^2 - 7x + 12$
+\step{Product $+12$ with sum $-7$: both numbers are negative --- hunt for a negative factor pair of $12$.}
+\step{$-3$ and $-4$: \ $(-3)+(-4) = -7$, \ $(-3)(-4) = 12$ $\checkmark$}
 $\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
+
+\vspace{0.2cm}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Factor $x^2 - 9x + 20$\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{(x-4)(x-5)}$}
+\end{tryitbox}
 
 \vspace{0.2cm}
 
@@ -555,10 +564,18 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \vspace{0.2cm}
 
 \begin{examplebox}
-\textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$\\[4pt]
-$a = 2,\ b = -3,\ c = -5$\quad $\Delta = 9 + 40 = 49$\\[2pt]
-$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\ans{x = \tfrac{-4}{4} = -1}$
+\textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$
+\step{No obvious factor pair and $a \neq 1$ --- go straight to the quadratic formula.}
+\step{$a = 2,\ b = -3,\ c = -5$: \quad $\Delta = 9 + 40 = 49$, \quad $x = \dfrac{3 \pm 7}{4}$}
+$\Rightarrow\quad\ans{x = \tfrac{5}{2}}$ \quad or \quad $\ans{x = -1}$
 \end{examplebox}
+
+\vspace{0.2cm}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Solve $3x^2 - 5x - 2 = 0$\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{x = 2}$ or $\ans{x = -\tfrac{1}{3}}$}
+\end{tryitbox}
 
 % =================== KEY VOCABULARY ===================
 \vspace{0.3cm}
@@ -579,8 +596,11 @@ $x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5
 ### Usage guidance
 
 - Generate **one skill section per distinct skill** tested in the worksheet (typically 2–5 sections)
-- Each section should have: a formula/rule box + 1 mini example + optional watch-out
+- Each section should have: a formula/rule box + 1 mini example + 1 try-it + optional watch-out. Formula-only reference sections (no example) are legal and need no try-it
 - Keep the whole document to **1–2 pages max** — it's a reference card, not a lesson
 - Vocabulary section is optional — include only when there are ≥3 important terms
-- The mini examples should be **shorter and simpler** than the worksheet problems, to illustrate the pattern without being distracting
+- The mini examples have **fewer steps than worksheet problems, but the choose-the-tool step is always written out** — one sentence, before any computation, never a bare answer chain. `\step` 1 names what you want, what you know, and why that picks this tool/ratio/method; the computation starts in `\step` 2 and the result prints in `\ans{...}`. Two more exemplars:
+  - trig: `\step{Want the side opposite $A$, know the hypotenuse --- that is SOH: $\sin A = \text{opp}/\text{hyp}$.} \step{$a = 10\sin 40^\circ = 6.4279\ldots$}` then `$\ans{a \approx 6.43}$`
+  - definition recall (when the example just applies a definition, SAY so — don't pad): `\step{Want $\sin A$ --- sine is opposite over hypotenuse by definition.}`
+- The try-it re-parameterizes its section's worked example (same skeleton, new givens) and prints ONLY the stem plus the verified answer upside down INSIDE the box: `\rotatebox{180}{\footnotesize check: $\ans{...}$}`. No worked steps — solving it is the student's retrieval practice. The answer must stay inside the box: an `\ans` outside every box degrades the whole document's per-example binding
 - The watch-out box is optional per skill — only add if there's a genuinely common mistake worth flagging

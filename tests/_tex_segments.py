@@ -19,12 +19,19 @@ Shapes, tried in order:
      tokens belonging directly to an outermost enumerate start a segment.
      A naive regex split truncates at the first nested \\end{enumerate} and
      over-splits multi-part problems whose parts are their own nested list.
-  3. examplebox environments (study-guide template): one worked example per
-     box (SKILL.md: "one entry per worked example"), so ss_ documents bind
-     per example exactly like answer keys bind per problem.
+  3. examplebox/tryitbox environments (study-guide template): one worked
+     example or try-it per box, in DOCUMENT ORDER (SKILL.md: entries are
+     listed example, try-it, example, try-it — binding is positional), so
+     ss_ documents bind per box exactly like answer keys bind per problem.
 
 segment_spans(tex) -> list of (start, end) offsets into tex, or None when
 none of the three shapes appears — callers decide how loudly to fail.
+
+box_spans(tex) -> list of (start, end, kind) with kind "examplebox" or
+"tryitbox", or None. Public for the sibling checkers (check_answer_key's
+pairing/role rules, check_prose_consistency's study-guide path,
+check_study_guide) — comments are blanked here so a commented-out box can
+never create a phantom segment.
 """
 import re
 
@@ -84,14 +91,25 @@ def _item_spans(tex):
     return spans or None
 
 
-def _examplebox_spans(tex):
-    """One span per examplebox body — the study-guide worked-example unit."""
-    spans = [(m.start(1), m.end(1)) for m in re.finditer(
-        r"\\begin\{examplebox\}(.*?)\\end\{examplebox\}", tex, re.S)]
+def _box_spans(tex):
+    """One (start, end, kind) per examplebox OR tryitbox body, in document
+    position order — a single alternation regex so interleaved example/try-it
+    pairs come out exactly as printed, matching the positional JSON contract."""
+    spans = [(m.start(2), m.end(2), m.group(1)) for m in re.finditer(
+        r"\\begin\{(examplebox|tryitbox)\}(.*?)\\end\{\1\}", tex, re.S)]
     return spans or None
+
+
+def box_spans(tex):
+    """Public box segmentation: (start, end, kind) triples or None.
+    Blanks comments first (length-preserving, so spans stay valid against
+    the caller's original text)."""
+    return _box_spans(blank_comments(tex))
 
 
 def segment_spans(tex):
     """Per-problem (start, end) spans, or None if no known shape parses."""
     tex = blank_comments(tex)
-    return _problem_spans(tex) or _item_spans(tex) or _examplebox_spans(tex)
+    boxes = _box_spans(tex)
+    return (_problem_spans(tex) or _item_spans(tex)
+            or ([(a, b) for a, b, _ in boxes] if boxes else None))

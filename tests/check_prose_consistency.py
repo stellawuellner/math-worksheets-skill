@@ -6,19 +6,30 @@ as givens in the verify JSON (the word-problem analog of the figure rule).
 Usage: python3 tests/check_prose_consistency.py <worksheet.tex> <verify.json>
                 [--figs <figs.tex>]
 
-Matches worksheet \\problem{...} blocks to verify-JSON entries by order
-(problem i ↔ i-th JSON id). Heuristic by design — a report for graders and
-generators, not a hard gate. Exit 0 always unless files are unreadable, the
-parse comes up empty, or \\probfig{N} figures cannot be resolved (pass the
-figs file scripts/render_figures.py emitted via --figs, or the figure check
-runs blind).
+Recognized shapes: \\problem{...} blocks, an enumerate/\\item list, or
+examplebox/tryitbox environments (study guides — the ss path binds each box's
+prose givens to its positional verify_ss entry). Blocks match verify-JSON
+entries by order (block i ↔ i-th JSON id). Heuristic by design — a report for
+graders and generators, not a hard gate. Exit 0 always unless files are
+unreadable, the parse comes up empty, or \\probfig{N} figures cannot be
+resolved (pass the figs file scripts/render_figures.py emitted via --figs, or
+the figure check runs blind).
+
+Study-guide noise control: worked examples print INTERMEDIATE values by
+design (10(0.642788)...), so a flagged prose token with >= 2 decimal places
+is auto-matched when it equals a SymPy subexpression of the entry's own
+approx expr at the token's printed precision. The >= 2-decimals guard keeps
+integer drift (a changed given) from being masked by nearby subexpression
+values. Story numbers unused by the computation remain expected flags.
 """
 
 import json
+import os
 import re
 import sys
 
 from _probfig import CALL_RE, expand_probfigs, probfig_bodies
+from _tex_segments import blank_comments, box_spans
 
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
@@ -58,7 +69,18 @@ def problem_blocks(tex):
     return blocks
 
 
-def prose_numbers(block):
+def examplebox_blocks(tex):
+    """Study-guide shape: one block per examplebox/tryitbox body, in document
+    order (positional binding, like check_answer_key). Comments are blanked
+    so a commented-out box cannot become a phantom block."""
+    spans = box_spans(tex)
+    if spans is None:
+        return []
+    blanked = blank_comments(tex)
+    return [blanked[a:b] for a, b, _ in spans]
+
+
+def _prose_stripped(block):
     # drop TikZ coordinates (not human-visible), but keep figure LABELS —
     # see figure_label_numbers, which is checked separately (CASE-21)
     block = re.sub(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", "", block,
@@ -68,7 +90,67 @@ def prose_numbers(block):
     block = re.sub(r"\\probfig\{\d+\}", "", block)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
-    return {float(n) for n in NUM_RE.findall(block)}
+    return block
+
+
+def prose_numbers(block):
+    return {float(n) for n in NUM_RE.findall(_prose_stripped(block))}
+
+
+def _approx_subexpr_values(entries):
+    """Float value of every SymPy subexpression of each approx entry's expr —
+    the values a worked example legitimately prints as intermediate steps
+    (sin(40*pi/180) → 0.642788…). Parsed with verify.safe_parse (the
+    sandboxed allowlist parser); anything unparseable or symbolic simply
+    contributes nothing, so suppression degrades to 'no suppression'."""
+    try:
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+        import sympy
+        import verify
+    except ImportError:
+        return []
+    vals = []
+    for e in entries:
+        if e.get("type") != "approx" or not isinstance(e.get("expr"), str):
+            continue
+        try:
+            parsed = verify.safe_parse(e["expr"])
+        except Exception:
+            continue
+        for sub in sympy.preorder_traversal(parsed):
+            try:
+                vals.append(float(sympy.N(sub, 15)))
+            except Exception:
+                pass
+    return vals
+
+
+def suppress_intermediates(block, missing, entries):
+    """Split `missing` into (still_missing, suppressed): a flagged value is
+    suppressed only when its printed token has >= 2 decimal places AND equals
+    a subexpression of the entry's own approx expr rounded to that printed
+    precision. The decimals guard is load-bearing: a drifted integer given
+    (c=12) must never be masked by a nearby subexpression value."""
+    if not missing:
+        return missing, []
+    tokens = NUM_RE.findall(_prose_stripped(block))
+    vals = None  # computed lazily: sympy costs ~1s and most blocks need none
+    still, suppressed = [], []
+    for p in missing:
+        toks = [t for t in tokens
+                if "." in t and len(t.split(".")[-1]) >= 2]
+        toks = [t for t in toks if float(t) == p]
+        hit = False
+        for t in toks:
+            d = len(t.split(".")[-1])
+            if vals is None:
+                vals = _approx_subexpr_values(entries)
+            if any(abs(round(v, d) - float(t)) < 1e-9 for v in vals):
+                hit = True
+                break
+        (suppressed if hit else still).append(p)
+    return still, suppressed
 
 
 def figure_label_numbers(block):
@@ -150,7 +232,7 @@ def main():
         print("    emitted:  --figs /tmp/figs_TOPIC_DATE.tex")
         print("    (and re-run scripts/render_figures.py if the JSON changed).")
         sys.exit(2)
-    blocks = problem_blocks(tex) or item_blocks(tex)
+    blocks = problem_blocks(tex) or item_blocks(tex) or examplebox_blocks(tex)
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}
     for e in data.get("problems", []):
@@ -167,6 +249,12 @@ def main():
         # 100·x style: a prose "20%" is 20 in prose but 0.2 or 20/100 in JSON
         given |= {g * 100 for g in given} | {g / 100 for g in given if g}
         missing = sorted(p for p in prose if p not in given)
+        # intermediate worked-example values (subexpressions of the entry's
+        # own approx expr, at printed >=2dp precision) count as matched —
+        # without this, a correct study guide flags most of its examples and
+        # trains the reader to ignore the one line that carries real drift
+        missing, _ = suppress_intermediates(block, missing,
+                                            by_id.get(i + 1, []))
         total_nums += len(prose)
         matched += len(prose) - len(missing)
         report.append((i + 1, sorted(prose), missing))
@@ -179,8 +267,9 @@ def main():
     print(f"Prose-consistency report: {tex_path}")
     if not blocks:
         print("\n  ⚠ PARSED ZERO PROBLEMS from this file.")
-        print("    Nothing was checked, so this is NOT a pass. The worksheet")
-        print("    must use \\problem{...} or an enumerate/\\item list.")
+        print("    Nothing was checked, so this is NOT a pass. The document")
+        print("    must use \\problem{...}, an enumerate/\\item list, or")
+        print("    examplebox environments (study guides).")
         sys.exit(2)
     for pid, prose, missing in report:
         flag = f"  ⚠ missing from JSON: {missing}" if missing else "  ok"
@@ -196,8 +285,9 @@ def main():
             print(f"  ⚠ problem {pid}: figure shows {miss}")
     else:
         print("Figure labels: all consistent with JSON givens.")
-    print("(heuristic — investigate misses; derived/rounded prose values and "
-          "dates are expected false flags)")
+    print("(heuristic — investigate misses; derived/rounded prose values, "
+          "dates, and story numbers unused by the computation are expected "
+          "false flags)")
 
 
 if __name__ == "__main__":

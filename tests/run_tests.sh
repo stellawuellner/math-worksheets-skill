@@ -67,6 +67,7 @@ CASES=(
   "pass_bigtol_reason.json:2"
   "figs_demo.json:0"
   "fail_figure_schema.json:1"
+  "reject_role_value.json:1"
 )
 
 failures=0
@@ -208,6 +209,11 @@ AK_CASES=(
   "ak_bind_unstructured.tex:ak_bind.json:1"
   "ak_bind_shortkey.tex:ak_bind.json:1"
   "ak_bind_outside.tex:ak_bind.json:0"
+  "ss_bind_notryit.tex:ss_bind.json:1"
+  "ss_tryit_good.tex:ss_tryit.json:0"
+  "ss_tryit_missing.tex:ss_tryit.json:1"
+  "ss_tryit_wrongans.tex:ss_tryit.json:1"
+  "ss_tryit_good.tex:ss_tryit_roleswap.json:1"
 )
 for case in "${AK_CASES[@]}"; do
   IFS=: read -r texf jsonf want <<<"$case"
@@ -237,6 +243,129 @@ if echo "$output" | grep -qF "? problem segments"; then
   echo "❌ ak_bind_good.tex: report still prints the '?' segment placeholder"; exit 1
 fi
 echo "✅ check_answer_key reports real segment counts"
+# the pairing and role failures must TEACH the fix, not just fail
+output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/ss_bind_notryit.tex" "$FIXTURES/ss_bind.json" 2>&1)
+if ! echo "$output" | grep -q "add a tryitbox per examplebox"; then
+  echo "❌ ss_bind_notryit.tex: pairing failure did not teach the tryitbox fix"; exit 1
+fi
+echo "✅ check_answer_key teaches the example→try-it pairing"
+output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/ss_tryit_good.tex" "$FIXTURES/ss_tryit_roleswap.json" 2>&1)
+if ! echo "$output" | grep -q 'role.*tryit'; then
+  echo "❌ ss_tryit_roleswap: role/position mismatch not named"; exit 1
+fi
+echo "✅ check_answer_key names the role/position disagreement"
+
+# Study-guide structure (tests/check_study_guide.py): every worked example
+# opens with a prose strategy \step before computing. Fixture-driven both
+# ways — the one-liner answer chains of the pre-gate shape must FAIL, the
+# lintwash variant (steps present, first step pure math) must FAIL, and the
+# strategy-first guide (including a manual sketch box with no \ans) must PASS.
+echo
+sg_ran=0
+require_fixture ss_steps_good.tex ss_steps_missing.tex ss_steps_mathfirst.tex ss_steps.json
+output=$("$PYTHON" "$SCRIPT_DIR/check_study_guide.py" "$FIXTURES/ss_steps_good.tex" "$FIXTURES/ss_steps.json" 2>&1)
+if [ $? -eq 0 ]; then
+  echo "✅ check_study_guide passes the strategy-first guide"
+else
+  echo "❌ check_study_guide wrongly flagged ss_steps_good.tex"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+sg_ran=$((sg_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_study_guide.py" "$FIXTURES/ss_steps_missing.tex" "$FIXTURES/ss_steps.json" 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "no strategy step"; then
+  echo "✅ check_study_guide flags one-liner worked examples (no strategy step)"
+else
+  echo "❌ check_study_guide missed the stepless answer chains"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+sg_ran=$((sg_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_study_guide.py" "$FIXTURES/ss_steps_mathfirst.tex" "$FIXTURES/ss_steps.json" 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "computation, not strategy"; then
+  echo "✅ check_study_guide flags a math-only first step"
+else
+  echo "❌ check_study_guide accepted a computation as the strategy step"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+sg_ran=$((sg_ran + 1))
+
+# Skill coverage (tests/check_ss_coverage.py): every worksheet skill needs a
+# tagged study-guide entry, and tagging is all-or-nothing (audit-3b: an
+# optional gate is a vacuous gate). JSON-only, so it runs anywhere.
+echo
+cov_ran=0
+require_fixture sscov_ws_good.json sscov_ss_good.json sscov_ss_gap.json \
+                sscov_ws_untagged.json sscov_ws_partial.json
+output=$("$PYTHON" "$SCRIPT_DIR/check_ss_coverage.py" "$FIXTURES/sscov_ws_good.json" "$FIXTURES/sscov_ss_good.json" 2>&1)
+if [ $? -eq 0 ]; then
+  echo "✅ check_ss_coverage passes a covered pair (guide-only extras legal)"
+else
+  echo "❌ check_ss_coverage wrongly failed the covered pair"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+cov_ran=$((cov_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_ss_coverage.py" "$FIXTURES/sscov_ws_good.json" "$FIXTURES/sscov_ss_gap.json" 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "quadratic-equations"; then
+  echo "✅ check_ss_coverage names the uncovered skill"
+else
+  echo "❌ check_ss_coverage missed the coverage gap (or did not name it)"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+cov_ran=$((cov_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_ss_coverage.py" "$FIXTURES/sscov_ws_untagged.json" "$FIXTURES/sscov_ss_good.json" 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "NO worksheet problem"; then
+  echo "✅ check_ss_coverage fails an untagged worksheet (nothing checked ≠ pass)"
+else
+  echo "❌ check_ss_coverage let an untagged worksheet pass vacuously"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+cov_ran=$((cov_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_ss_coverage.py" "$FIXTURES/sscov_ws_partial.json" "$FIXTURES/sscov_ss_good.json" 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "\[2, 3\]"; then
+  echo "✅ check_ss_coverage names the untagged problem ids on partial tagging"
+else
+  echo "❌ check_ss_coverage partial-tagging failure missing or unnamed"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+cov_ran=$((cov_ran + 1))
+
+# Study-guide prose binding (check_prose_consistency's examplebox path).
+# The good fixture doubles as the known-bad test of the intermediate-value
+# suppression itself: it prints 10(0.642788), which only stays un-flagged
+# because 0.642788 equals a subexpression of the entry's expr at printed
+# precision — disable suppression and the no-flags assertion fails.
+echo
+prose_ran=0
+require_fixture ss_prose_good.tex ss_prose_drift.tex ss_prose.json
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ss_prose_good.tex" "$FIXTURES/ss_prose.json" 2>&1)
+rc=$?
+if [ "$rc" -eq 0 ] && ! echo "$output" | grep -q "missing from JSON"; then
+  echo "✅ check_prose parses exampleboxes and suppresses the printed intermediate"
+else
+  echo "❌ check_prose flagged the known-good study guide (suppression broken?)"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+prose_ran=$((prose_ran + 1))
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ss_prose_drift.tex" "$FIXTURES/ss_prose.json" 2>&1)
+if echo "$output" | grep -q "missing from JSON.*12"; then
+  echo "✅ check_prose flags the drifted study-guide given (c=12)"
+else
+  echo "❌ check_prose missed the drifted prose given"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+prose_ran=$((prose_ran + 1))
+# a study guide that drops the examplebox shape must fail LOUDLY (exit 2),
+# mirroring the worksheet zero-parse guard
+SS_ZERO="$(mktemp "${TMPDIR:-/tmp}/ss_zero.XXXXXX.tex")"
+printf '\\documentclass{article}\\begin{document}No boxes here\\end{document}\n' > "$SS_ZERO"
+"$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$SS_ZERO" "$FIXTURES/ss_prose.json" >/dev/null 2>&1
+zero_got=$?
+rm -f "$SS_ZERO"
+if [ "$zero_got" -eq 2 ]; then
+  echo "✅ check_prose exits 2 on a study guide with zero exampleboxes"
+else
+  echo "❌ check_prose ss zero-parse: expected exit 2, got $zero_got"; exit 1
+fi
+prose_ran=$((prose_ran + 1))
 
 log_ran=0
 
@@ -331,15 +460,15 @@ echo "stub tectonic: compiled $(basename "$tex")"
 EOS
   chmod +x "$WORK/bin/tectonic"
 
-  build_case() {  # name  expected-exit  json-to-use  [ak-override-file]
-    local name="$1" want="$2" json="$3" ak="${4:-ak_build_demo.tex}"
+  build_case() {  # name  expected-exit  json-to-use  [ak-override] [verify-ss-override]
+    local name="$1" want="$2" json="$3" ak="${4:-ak_build_demo.tex}" vss="${5:-verify_ss_build_demo.json}"
     local dir="$WORK/$name" out got
     mkdir -p "$dir"
     cp tests/fixtures/trio/ws_build_demo.tex "$dir/ws_build_demo.tex"
     cp "tests/fixtures/trio/$ak" "$dir/ak_build_demo.tex"
     cp tests/fixtures/trio/ss_build_demo.tex "$dir/ss_build_demo.tex"
     cp "tests/fixtures/trio/$json" "$dir/verify_build_demo.json"
-    cp tests/fixtures/trio/verify_ss_build_demo.json "$dir/verify_ss_build_demo.json"
+    cp "tests/fixtures/trio/$vss" "$dir/verify_ss_build_demo.json"
     export TECTONIC_MARKER="$dir/compile_calls"
     out=$(PATH="$WORK/bin:$PATH" bash scripts/build.sh "$dir/verify_build_demo.json" \
           --outdir "$dir/out" 2>&1)
@@ -357,6 +486,16 @@ EOS
     echo "❌ build.sh green: expected 3 compile invocations"; exit 1
   fi
   echo "✅ build.sh green: compiled all three documents"
+  # the skill-coverage gate must have RUN on the green build, not been skipped
+  out=$(PATH="$WORK/bin:$PATH" TECTONIC_MARKER="$WORK/green/compile_calls" \
+        bash scripts/build.sh "$WORK/green/verify_build_demo.json" \
+        --outdir "$WORK/green/out" 2>&1)
+  if echo "$out" | grep -q "coverage-ss.*PASS"; then
+    echo "✅ build.sh green: coverage-ss gate ran and passed"
+  else
+    echo "❌ build.sh green: coverage-ss PASS missing from the gate summary"
+    echo "$out" | sed 's/^/     /'; exit 1
+  fi
 
   # a failed verification must stop the run BEFORE any compile
   build_case broken-verify 1 verify_build_demo_broken.json
@@ -364,6 +503,14 @@ EOS
     echo "❌ build.sh broken-verify: compiled despite a failed verify gate"; exit 1
   fi
   echo "✅ build.sh broken-verify: zero compile invocations (fail-fast held)"
+
+  # an uncovered worksheet skill fails coverage-ss BEFORE any render/compile
+  build_case coverage-gap 1 verify_build_demo.json ak_build_demo.tex \
+             verify_ss_build_demo_uncovered.json
+  if [ -f "$WORK/coverage-gap/compile_calls" ]; then
+    echo "❌ build.sh coverage-gap: compiled despite an uncovered skill"; exit 1
+  fi
+  echo "✅ build.sh coverage-gap: zero compile invocations (fail-fast held)"
 
   # run_verify's exit 2 (manual review) must continue, and the build ends 2
   build_case manual 2 verify_build_demo_manual.json
@@ -462,4 +609,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures"

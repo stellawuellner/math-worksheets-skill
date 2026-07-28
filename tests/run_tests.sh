@@ -241,6 +241,21 @@ if [ -f "$FIXTURES/figs_demo.json" ]; then
   fi
 fi
 
+# ── Figure labelling convention (tests/test_figure_convention.py) ────────────
+# The value-free \refrt reference figure teaches the labelling students apply
+# to every renderer-built \probfig beside it, so the shipped macros, the doc
+# examples, and render_figures.py's RIGHT_ANGLE_VERTEX must all put the right
+# angle at the same vertex (the two once disagreed: \refrt at B, renderer at
+# C — one sheet, two contradictory conventions). Pure text parse, CI-safe.
+echo
+output=$("$PYTHON" "$SCRIPT_DIR/test_figure_convention.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_figure_convention.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_figure_convention.py (right-angle convention agreement)"
+
 # ── Facet plans, misconception traps, interleaving ───────────────────────────
 # The unit suite pins the gate messages and the window/run math; the blocks
 # below pin what only the CLI surfaces: report lines, the cross-file

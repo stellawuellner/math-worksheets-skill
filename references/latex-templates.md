@@ -151,7 +151,7 @@ $3$  & \\[0.5cm]\hline
 - **Triangle figures are generated, not hand-drawn**: `scripts/render_figures.py` renders every `triangle`-type problem (and `right_triangle` figure specs on `approx` problems) from the verify JSON as `\probfig{N}` macros — see SKILL.md step 4b. The triangle templates below document what the renderer emits; hand-built TikZ remains the pattern only for shapes the renderer doesn't cover (circles, sectors, solids, transversals).
 - **Effort markers are generated the same way**: `scripts/render_meta.py` renders `\probpts{N}` point values and `\probmeta{N}` difficulty stars (plus a computed `\totalpoints`) from the verified difficulty tags — see SKILL.md step 4c. Never hand-type `\bigstar` or "(N pts)"; the literal forms are banned by `check_prose_consistency.py`, exactly like hand-drawn valued figures.
 - **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
-- Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
+- Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses. In right triangles the right angle sits at $C$, so $c$ is the hypotenuse — the same convention `scripts/render_figures.py` constructs (its `right_triangle` figures imply the right angle at `C`); `tests/test_figure_convention.py` fails any macro or template example that marks it elsewhere.
 - **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
 - Wrap each figure in `\begin{center}...\end{center}`.
 
@@ -173,16 +173,18 @@ goes in the optional `[..]` argument — that contract is what lets
 `check_layout.py` and `check_prose_consistency.py` see macro figures.
 
 ```latex
-% right triangle (right angle at B); args = bottom-leg, right-leg, hypotenuse labels
+% right triangle (right angle at C, hypotenuse c — the renderer's convention);
+% args = bottom-leg (b), right-leg (a), hypotenuse (c) labels
 \rtfig{$8$}{$6$}{$x$}
-\rtfig[0.9]{$a = 8$}{$b = 6$}{$c$}
+\rtfig[0.9]{$b = 8$}{$a = 6$}{$c$}
 
 % general triangle, TO SCALE by construction (SAS): numeric args are the
 % ACTUAL givens c, b, A(deg); label args are what gets printed
 \trifig{7}{5}{34}{$c = 7$}{$b = 5$}{$a = ?$}{$34^\circ$}
 
 % the value-free reference figure (SKILL.md figure-scope rule): vertices
-% A/B/C, sides a/b/c opposite, caption baked in, zero numerals by construction
+% A/B/C, sides a/b/c opposite, right angle at C (hypotenuse c), caption baked
+% in, zero numerals by construction
 \refrt
 ```
 
@@ -191,17 +193,19 @@ macros do not cover (parallel lines, circles, solids, charts) and show what
 the macros do internally.
 
 ### Right triangle
+Right angle at $C$, hypotenuse $c = AB$ — the same labelling `render_figures.py`
+constructs and `\refrt` teaches, so a hand-built figure never contradicts them.
 ```latex
 \begin{center}
 \begin{tikzpicture}[scale=1.2]
   \coordinate (A) at (0,0);
-  \coordinate (B) at (4,0);
-  \coordinate (C) at (4,3);
-  \draw[thick] (A) -- (B) -- (C) -- cycle;
-  \draw (B) ++(-.25,0) -- ++(0,.25) -- ++(.25,0);  % right angle mark
+  \coordinate (B) at (4,3);
+  \coordinate (C) at (4,0);
+  \draw[thick] (A) -- (C) -- (B) -- cycle;
+  \draw (C) ++(-.25,0) -- ++(0,.25) -- ++(.25,0);  % right angle mark
   \node[below left] at (A) {$A$};
-  \node[below right] at (B) {$B$};
-  \node[above right] at (C) {$C$};
+  \node[above right] at (B) {$B$};
+  \node[below right] at (C) {$C$};
   \node[below] at (2,0) {$8$};
   \node[right] at (4,1.5) {$6$};
   \node[above left] at (2,1.5) {$x$};

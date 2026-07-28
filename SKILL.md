@@ -189,7 +189,12 @@ one problem list, either **every** problem gets its own valued figure or **none*
 Shared labelling conventions go in a single value-free reference figure placed with the
 directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How every
 triangle here is labelled. No values shown: use the numbers given in each problem."
-`tests/check_layout.py` enforces this.
+Use the shipped `\refrt` macro for it. Its convention is the renderer's: sides `a/b/c`
+opposite vertices `A/B/C`, right angle at `C`, hypotenuse `c` — the reference figure and
+the renderer-built `\probfig` figures share one page, so
+`tests/test_figure_convention.py` fails the build if the macro and
+`render_figures.py` ever mark the right angle at different vertices.
+`tests/check_layout.py` enforces the all-or-nothing scope.
 
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem

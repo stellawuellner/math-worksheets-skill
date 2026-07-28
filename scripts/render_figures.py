@@ -71,6 +71,16 @@ THIN_ANGLE = math.radians(25.0)    # thin-triangle rule, latex-templates.md
 THIN_SIDE_CM = 2.0                 # (any angle < 25 deg or drawn side < 2cm)
 RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
 
+# THE right-triangle labelling convention, shared with the shipped \rtfig and
+# \refrt macros (templates/figure-macros.tex): the right angle sits at vertex
+# C, so side c (= AB, opposite C) is the hypotenuse. A worksheet places the
+# value-free \refrt reference figure beside renderer-built \probfig figures,
+# so a disagreement here teaches students two contradictory labelings on one
+# page. tests/test_figure_convention.py parses this assignment and the macros'
+# "% right angle mark" lines and fails if they ever diverge — keep the
+# constant, and route any convention change through both files at once.
+RIGHT_ANGLE_VERTEX = "C"
+
 # side x connects the two vertices whose angles are NOT _OPP[x]
 _EDGES = {"a": ("B", "C"), "b": ("A", "C"), "c": ("A", "B")}
 
@@ -376,14 +386,14 @@ def _render_right_triangle_figure(pid, p):
                 "verifier never checked. Use the same literals in both.")
     sides = {k: float(given[k]) for k in "abc" if k in given}
     angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
-    angles["C"] = math.pi / 2
+    angles[RIGHT_ANGLE_VERTEX] = math.pi / 2
     sols = solve_triangle(sides, angles)
     if not sols:
         raise FigureError(
             f"problem {pid}: figure givens {given} do not form a right "
             "triangle (a leg cannot exceed the hypotenuse; A + B must be "
             "90 degrees). Fix the figure givens.")
-    side_labels, angle_marks = {}, {"C": ("right",)}
+    side_labels, angle_marks = {}, {RIGHT_ANGLE_VERTEX: ("right",)}
     for k in "abc":
         if k in given:
             side_labels[k] = "$" + _disp(given[k]) + "$"

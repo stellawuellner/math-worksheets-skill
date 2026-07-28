@@ -127,7 +127,7 @@ The **skills summary** is a 1–2 page reference card the student can use while 
 
 See `references/latex-templates.md` → "Skills Summary / Study Guide Template" for the full shell and box macros.
 
-**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation AND one per try-it. Entries MUST be listed in document order (example, try-it, example, try-it, …) because binding is positional; tag each try-it entry `"role": "tryit"` and each entry with the `"skill"` it demonstrates. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example or try-it with a printed result* does. `check_answer_key.py` segments ss documents **by box** (`examplebox`/`tryitbox`) — keep one worked example or try-it per box, one JSON entry per box (so total box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate. A try-it may be type `manual` only when its paired example is also `manual` (exit-2 visibility, never silent). The structure gate (`tests/check_study_guide.py`) additionally requires ≥2 `\step` lines and a boxed final answer per examplebox — the first step is the strategy sentence, capped at ONE sentence (page 1 fills fast and the guide is hard-capped at 2 pages).
+**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation AND one per try-it. Entries MUST be listed in document order (example, try-it, example, try-it, …) because binding is positional; tag each try-it entry `"role": "tryit"` and each entry with the `"skill"` it demonstrates. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example or try-it with a printed result* does. `check_answer_key.py` segments ss documents **by box** (`examplebox`/`tryitbox`) — keep one worked example or try-it per box, one JSON entry per box (so total box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate. A try-it may be type `manual` only when its paired example is also `manual` (exit-2 visibility, never silent). The structure gate (`tests/check_study_guide.py`) additionally requires ≥2 `\step` lines and a boxed final answer per examplebox — the first step is the strategy sentence, capped at ONE sentence (page 1 fills fast and the guide is hard-capped at 2 pages — enforced mechanically: the `compile-ss` gate reads the page count from the engine's log and fails a 3-page guide).
 
 **Subtitle from facets:** when `"facets"` is declared, write a top-level `"subtitle"` in the verify JSON composed from that facet list *first*, then copy it verbatim into the worksheet's title block. The facet-coverage gate (step 5) binds the two, so the title can never promise a skill the sheet doesn't plan.
 
@@ -189,11 +189,19 @@ one problem list, either **every** problem gets its own valued figure or **none*
 Shared labelling conventions go in a single value-free reference figure placed with the
 directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How every
 triangle here is labelled. No values shown: use the numbers given in each problem."
-`tests/check_layout.py` enforces this.
+Use the shipped `\refrt` macro for it. Its convention is the renderer's: sides `a/b/c`
+opposite vertices `A/B/C`, right angle at `C`, hypotenuse `c` — the reference figure and
+the renderer-built `\probfig` figures share one page, so
+`tests/test_figure_convention.py` fails the build if the macro and
+`render_figures.py` ever mark the right angle at different vertices.
+`tests/check_layout.py` enforces the all-or-nothing scope.
 
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem
-automatically, plus `approx` problems that declare a `"figure"` object. Reference them
+automatically, plus `approx` and `eval` problems that declare a `"figure"` object. A
+write-the-ratio problem ("write $\tan A$ as a fraction") is verified as `eval` and is
+renderer-figured like any other right triangle — the renderer covers it, so the
+hand-macro escape hatch never applies to it. Reference the macros
 in the worksheet instead of writing TikZ: hand-computed figure coordinates are exactly
 the retyping drift the JSON-first pipeline exists to prevent (the reference SSA swing
 figure itself shipped with wrong hand-computed constants until the renderer replaced
@@ -320,11 +328,16 @@ Figures are to scale (longest side ≈ 4.5cm), label **only** given values plus 
 ambiguous SSA case as the two-apex swing figure — both apexes computed, not retyped.
 
 - Every `type: "triangle"` problem renders automatically from its own `given` dict.
-- Right-triangle setups on `approx` problems opt in with a `"figure"` object:
+- Right-triangle setups on `approx` and `eval` problems opt in with a `"figure"` object:
   `{"kind": "right_triangle", "given": {"b": 9, "A": 35}, "solve_for": "a", "unknown": "x"}`
   (two of `a/b/c/A/B`; the right angle at `C` is implied). Every figure value must
-  appear as a literal in the problem's `expr` — verification hard-fails otherwise, so
-  the figure can only show numbers the arithmetic check actually used.
+  appear among the numbers the problem's own check used — a literal in `expr`, or one
+  of the `at` values on `eval` (the write-the-ratio shape: `"expr": "a/b"` with
+  `"at": {"a": 8, "b": 15}`, figure `"given": {"a": 8, "b": 15}`, `"solve_for": "A"`,
+  `"unknown": "A"` to mark the asked-about angle) — verification hard-fails otherwise,
+  so the figure can only show numbers the arithmetic check actually used. Other problem
+  types cannot carry a figure: they have no bindable single answer, and verification
+  rejects them with the rewrite (verify as `approx`/`eval`, or drop the figure).
 - In the worksheet: `\input{/tmp/figs_TOPIC_DATE.tex}` right after `\begin{document}`,
   then place `\probfig{N}` with problem N inside its minipage (figure-placement rules
   in `references/latex-templates.md`), keeping the work-space `\vspace` outside.
@@ -371,7 +384,7 @@ That single command replaces what used to be nine separate steps. It discovers `
 6. quick-answer bank regeneration (`render_quick_answers.py` on the answer key — every build, with the two preflight teaching failures)
 7. `check_layout.py` on the worksheet (figure scope + work space + answer location)
 8. `check_answer_line.py` on the worksheet (`answer_unit` ↔ `\answerline`)
-9. `compile.sh` for all three documents (nothing compiles after a failed gate)
+9. `compile.sh` for all three documents (nothing compiles after a failed gate). Each compile enforces a **page budget** read from the engine's own `Output written ... (N pages` log line (`check_log.py --max-pages`): the study guide is hard-capped at **2 pages** (its documented cap, above), and the worksheet (**8 pages**) and answer key (**6 pages**) get sanity ceilings sized from the real artifacts — the largest real 12-problem worksheet ran 7 pages with figures, so anything past the ceiling is a layout accident, not a bigger worksheet. Over budget: cut optional sections, tighten workspace, or split the sheet into two
 10. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (values and units; for `ss_`: pairing — every examplebox is followed by its tryitbox — and role/position agreement, then per-box value binding)
 11. `check_study_guide.py` — every worked example opens with a `\step` strategy line before any computation
 12. `check_prose_consistency.py` on the worksheet AND the study guide (`--figs`/`--meta` passed automatically; examplebox prose givens are bound to the ss JSON; intermediate values that equal a subexpression of the entry's expr at printed precision are auto-matched; story numbers unused by the computation are expected flags)
@@ -455,5 +468,6 @@ bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Workshee
 | LaTeX error on line N | Check paired `$...$`, matching `\begin{}/\end{}` |
 | Compile blocked: `Overfull \hbox (Npt too wide)` | Text physically overflows the printed page — shorten the line, allow a break point, or scale the figure. The log gate (`scripts/check_log.py`) blocks PDFs that would ship with off-page text; `OVERFULL_PT=5` relaxes the threshold if the overhang is verified harmless |
 | Compile blocked: undefined references | A `\ref` points at a missing or typo'd `\label` — the PDF would print `??` where the number belongs. Fix the pair and recompile |
+| Compile blocked: page budget exceeded | The document overran its cap (ss 2 · ws 8 · ak 6 pages, from the log's `Output written ... (N pages` line). Cut optional sections (watch-out box, vocabulary), tighten workspace, or split the sheet into two — never bypass the cap by compiling the engine directly |
 | pgfplots not rendering | Ensure `\pgfplotsset{compat=1.18}` is in preamble |
 | PDF not created | Read full tectonic output for the specific error |

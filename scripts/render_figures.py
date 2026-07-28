@@ -23,10 +23,13 @@ What renders:
     nothing; values inside it are rejected by verify.py so the givens can
     never be duplicated). Ambiguous SSA emits the two-triangle swing figure
     with BOTH computed apexes.
-  * `approx` problems carrying `"figure": {"kind": "right_triangle", "given":
+  * problems carrying `"figure": {"kind": "right_triangle", "given":
     {two of a/b/c/A/B}, "solve_for": ..., "unknown": "x"}` — the right angle
-    is at C; every figure value must appear as a literal in the problem's
-    `expr`, which binds the drawing to the arithmetic the verifier checked.
+    is at C. The renderer draws the figure object regardless of the problem's
+    verification type (verify.py gates WHICH types may carry one — approx and
+    eval); every figure value must appear as a literal in the problem's
+    `expr` or among its `at` values (eval's write-the-ratio shape), which
+    binds the drawing to the arithmetic the verifier checked.
 
 Emitted file: one `% >>> probfig N` marker + macro per figured problem and a
 single dispatcher `\\probfig{N}`. The worksheet `\\input`s the file and places
@@ -52,7 +55,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import sympy
-    from verify import VerifyInputError, parse_value, solve_triangle, _OPP, _SIDE_OF
+    from verify import (VerifyInputError, figure_bindable_numbers, parse_value,
+                        solve_triangle, _OPP, _SIDE_OF)
 except ModuleNotFoundError:
     # Same dependency story as run_verify.sh: the renderer deliberately reuses
     # verify.py's solver (one solver, one truth), which needs sympy.
@@ -70,6 +74,16 @@ TARGET_CM = 4.5                    # longest drawn side after normalization
 THIN_ANGLE = math.radians(25.0)    # thin-triangle rule, latex-templates.md
 THIN_SIDE_CM = 2.0                 # (any angle < 25 deg or drawn side < 2cm)
 RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
+
+# THE right-triangle labelling convention, shared with the shipped \rtfig and
+# \refrt macros (templates/figure-macros.tex): the right angle sits at vertex
+# C, so side c (= AB, opposite C) is the hypotenuse. A worksheet places the
+# value-free \refrt reference figure beside renderer-built \probfig figures,
+# so a disagreement here teaches students two contradictory labelings on one
+# page. tests/test_figure_convention.py parses this assignment and the macros'
+# "% right angle mark" lines and fails if they ever diverge — keep the
+# constant, and route any convention change through both files at once.
+RIGHT_ANGLE_VERTEX = "C"
 
 # side x connects the two vertices whose angles are NOT _OPP[x]
 _EDGES = {"a": ("B", "C"), "b": ("A", "C"), "c": ("A", "B")}
@@ -327,7 +341,6 @@ def _render_triangle_problem(pid, given, unit, solve_fors):
 
 
 _RT_KEYS = {"kind", "given", "solve_for", "unknown"}
-_NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
 
 def _render_right_triangle_figure(pid, p):
@@ -363,27 +376,30 @@ def _render_right_triangle_figure(pid, p):
     if not isinstance(expr, str):
         raise FigureError(
             f"problem {pid}: a right_triangle figure needs the problem's "
-            "'expr' (approx type) to bind the drawing to the checked "
+            "'expr' (approx/eval types) to bind the drawing to the checked "
             "arithmetic")
     # the figure <-> check binding: construction makes the drawing internally
-    # consistent, but only a literal match ties it to what verify.py verified
-    expr_nums = {float(t) for t in _NUM_RE.findall(expr)}
+    # consistent, but only a match against the numbers the check used ('expr'
+    # literals plus 'at' values — verify.figure_bindable_numbers, one source
+    # for gate and renderer) ties it to what verify.py verified
+    checked_nums = figure_bindable_numbers(p)
     for k, v in given.items():
-        if float(v) not in expr_nums:
+        if float(v) not in checked_nums:
             raise FigureError(
                 f"problem {pid}: figure value {k}={_disp(v)} does not appear "
-                f"in expr {expr!r} — the figure would show a number the "
-                "verifier never checked. Use the same literals in both.")
+                f"in expr {expr!r} or its 'at' values — the figure would show "
+                "a number the verifier never checked. Use the same numbers "
+                "in both.")
     sides = {k: float(given[k]) for k in "abc" if k in given}
     angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
-    angles["C"] = math.pi / 2
+    angles[RIGHT_ANGLE_VERTEX] = math.pi / 2
     sols = solve_triangle(sides, angles)
     if not sols:
         raise FigureError(
             f"problem {pid}: figure givens {given} do not form a right "
             "triangle (a leg cannot exceed the hypotenuse; A + B must be "
             "90 degrees). Fix the figure givens.")
-    side_labels, angle_marks = {}, {"C": ("right",)}
+    side_labels, angle_marks = {}, {RIGHT_ANGLE_VERTEX: ("right",)}
     for k in "abc":
         if k in given:
             side_labels[k] = "$" + _disp(given[k]) + "$"

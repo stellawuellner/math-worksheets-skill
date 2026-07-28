@@ -1,6 +1,6 @@
 {
   "topic": "rendered-figures demo fixture — one problem per renderer path, exit 0",
-  "problem_count": 5,
+  "problem_count": 6,
   "problems": [
     {
       "id": 1,
@@ -48,6 +48,20 @@
         "unknown": "x"
       },
       "note": "kind (b): figure values 9 and 35 are literals in expr"
+    },
+    {
+      "id": 6,
+      "type": "eval",
+      "expr": "a/b",
+      "at": {"a": 8, "b": 15},
+      "expected": "8/15",
+      "figure": {
+        "kind": "right_triangle",
+        "given": {"a": 8, "b": 15},
+        "solve_for": "A",
+        "unknown": "A"
+      },
+      "note": "write-the-ratio (tan A = 8/15) verified as eval — figure values bind through the 'at' dict, not expr literals"
     }
   ]
 }

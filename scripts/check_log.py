@@ -3,7 +3,7 @@ r"""
 check_log.py — gate the LaTeX log so a broken PDF cannot ship behind a green
 checkmark.
 
-Usage: python3 scripts/check_log.py <file.log>
+Usage: python3 scripts/check_log.py <file.log> [--max-pages N]
        OVERFULL_PT=<points> to tune the overfull threshold (default 2)
 
 An engine can exit 0 and produce *a* PDF while the output is unusable: an
@@ -28,8 +28,17 @@ Rules:
         \vbox warnings are noisy on fixed-height layouts (every nearly-full
         page emits one), so blocking on them would produce false alarms.
         Revisit if a sheet ever ships with visibly clipped columns.
+  FAIL  page count above --max-pages N              — read from the log's
+        "Output written on <file>.pdf (N pages" line (tectonic and pdflatex
+        both print it, so the count is the engine's own, never estimated).
+        build.sh passes the cap per role: SKILL.md hard-caps the study guide
+        at 2 pages, and worksheets/answer keys get sanity ceilings. Without
+        the flag the page gate is off — the cap is the caller's to declare.
+  LOUD  --max-pages set but no "Output written" line — exit 2, never a pass:
+        a budget the log cannot answer must fail loudly (same doctrine as an
+        unreadable file), or the cap silently goes unenforced.
 
-Exit 0 clean, 1 on any FAIL, 2 on usage/unreadable file.
+Exit 0 clean, 1 on any FAIL, 2 on usage/unreadable file/uncheckable budget.
 """
 import os
 import re
@@ -50,6 +59,16 @@ HARD_RULES = [
 ]
 HBOX_RE = re.compile(r"Overfull \\hbox \((\d+(?:\.\d+)?)pt too wide.*")
 VBOX_RE = re.compile(r"Overfull \\vbox \((\d+(?:\.\d+)?)pt too.*")
+# The engine's own final page count: "Output written on <file>.pdf (N pages,"
+# (singular "1 page," for one). Both tectonic (--keep-logs) and pdflatex end
+# their logs with this line, so the count is read, never estimated.
+OUTPUT_RE = re.compile(r"Output written on .*\((\d+) pages?[,)]")
+
+
+def page_count(log_text):
+    """Page count from the log's 'Output written' line, or None if absent."""
+    m = OUTPUT_RE.search(log_text)
+    return int(m.group(1)) if m else None
 
 
 def scan(log_text, overfull_pt):
@@ -75,15 +94,31 @@ def scan(log_text, overfull_pt):
 
 
 def main(argv):
-    if len(argv) != 2:
-        print("Usage: check_log.py <file.log>   (OVERFULL_PT=<points> to tune)",
-              file=sys.stderr)
+    args = list(argv[1:])
+    max_pages = None
+    if "--max-pages" in args:
+        i = args.index("--max-pages")
+        try:
+            max_pages = int(args[i + 1])
+        except (IndexError, ValueError):
+            print("check_log: --max-pages needs a positive integer (a page "
+                  "budget, e.g. --max-pages 2)", file=sys.stderr)
+            return 2
+        if max_pages < 1:
+            print("check_log: --max-pages must be at least 1 — a zero/negative "
+                  "budget can never pass and means the caller is misconfigured",
+                  file=sys.stderr)
+            return 2
+        del args[i:i + 2]
+    if len(args) != 1:
+        print("Usage: check_log.py <file.log> [--max-pages N]   "
+              "(OVERFULL_PT=<points> to tune)", file=sys.stderr)
         return 2
     try:
         # LaTeX logs are not reliably UTF-8 (raw bytes from fonts/engines)
-        log_text = open(argv[1], encoding="utf-8", errors="replace").read()
+        log_text = open(args[0], encoding="utf-8", errors="replace").read()
     except OSError as e:
-        print(f"check_log: cannot read {argv[1]}: {e}", file=sys.stderr)
+        print(f"check_log: cannot read {args[0]}: {e}", file=sys.stderr)
         return 2
 
     try:
@@ -93,17 +128,43 @@ def main(argv):
         return 2
 
     failures, warnings = scan(log_text, overfull_pt)
+
+    pages = None
+    if max_pages is not None:
+        pages = page_count(log_text)
+        if pages is None:
+            # The cap must never be silently unenforced: a truncated log (or a
+            # changed engine format) that hides the page count is exit 2, the
+            # same loud-not-a-pass doctrine as an unreadable file.
+            print("check_log: --max-pages is set but the log has no 'Output "
+                  "written on <file>.pdf (N pages' line, so the page budget "
+                  "CANNOT be checked. Recompile with a full log (tectonic "
+                  "--keep-logs; pdflatex writes it by default) and re-run.",
+                  file=sys.stderr)
+            return 2
+        if pages > max_pages:
+            failures.append((
+                f"Output written: {pages} pages (budget: {max_pages})",
+                f"the document runs {pages} pages against its {max_pages}-page "
+                "budget — SKILL.md hard-caps the study guide at 2 pages, and "
+                "worksheets/answer keys get sanity ceilings (build.sh sets "
+                "them). Cut the optional sections (watch-out box, vocabulary), "
+                "tighten workspace, or split the sheet into two"))
+
     for line, advice in warnings:
         print(f"  ⚠ {line}\n    ({advice})")
     for line, advice in failures:
         print(f"  ❌ {line}\n    → {advice}")
     if failures:
         print(f"\n❌ {len(failures)} log fault(s): this PDF would ship with "
-              "'??' references, missing glyphs, or text running off the page. "
-              "Fix the LaTeX and recompile.")
+              "'??' references, missing glyphs, text running off the page, "
+              "or too many pages. Fix the LaTeX and recompile.")
         return 1
+    budget_note = ""
+    if max_pages is not None:
+        budget_note = f" {pages} page(s), within the {max_pages}-page budget."
     print("✅ log clean — no undefined references, missing characters, or "
-          f"overfull lines above {overfull_pt}pt.")
+          f"overfull lines above {overfull_pt}pt.{budget_note}")
     return 0
 
 

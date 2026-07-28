@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # compile.sh — Compile a LaTeX file to PDF using tectonic
 # Usage: compile.sh <input.tex> [output-dir]
+#        MAX_PAGES=<n> to enforce a page budget on the compiled PDF (read from
+#        the log's "Output written ... (N pages" line by check_log.py; same
+#        env-var interface as OVERFULL_PT). build.sh sets role-appropriate
+#        caps — ss 2 (SKILL.md's hard cap), ws 8 / ak 6 (sanity ceilings).
 #
 # Requirements: tectonic (brew install tectonic)
 # Tectonic auto-downloads any missing LaTeX packages on first use.
@@ -34,7 +38,10 @@ scan_log() {
     rm -f "$LOGFILE"
     return 0
   fi
-  if ! "$PY" "$SCRIPT_DIR/check_log.py" "$LOGFILE"; then
+  # MAX_PAGES rides through as --max-pages: the page count lives ONLY in the
+  # log too, so the budget gate belongs to the same scan (and check_log is
+  # LOUD — exit 2 — if the cap is set but the log hides the count).
+  if ! "$PY" "$SCRIPT_DIR/check_log.py" "$LOGFILE" ${MAX_PAGES:+--max-pages "$MAX_PAGES"}; then
     # keep the log on failure: the gate names line numbers, and deleting the
     # file it names forces a manual recompile just to read the fault
     echo "❌ The PDF compiled but would ship broken — fix the log faults above and recompile." >&2

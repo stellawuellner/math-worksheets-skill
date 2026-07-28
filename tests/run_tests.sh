@@ -67,6 +67,7 @@ CASES=(
   "pass_bigtol_reason.json:2"
   "figs_demo.json:0"
   "fail_figure_schema.json:1"
+  "reject_figure_type.json:1"
   "reject_role_value.json:1"
   "pass_traps.json:0"
   "fail_trap_indistinct.json:1"
@@ -239,7 +240,34 @@ if [ -f "$FIXTURES/figs_demo.json" ]; then
   else
     echo "❌ check_layout wrongly flagged the all-\\probfig sheet"; exit 1
   fi
+
+  # figure-type allowlist: a figure on a type with no bindable numbers (a
+  # solve root list) must be rejected TEACHING the rewrite — the allowed
+  # types and the "verify as approx/eval or drop the figure" path
+  output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/reject_figure_type.json" 2>&1)
+  if echo "$output" | grep -qF "['approx', 'eval']" \
+     && echo "$output" | grep -q "or drop the figure"; then
+    echo "✅ figure-on-solve rejection names the allowed types and the fix"
+  else
+    echo "❌ figure-on-solve rejection does not teach the rewrite"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
 fi
+
+# ── Figure labelling convention (tests/test_figure_convention.py) ────────────
+# The value-free \refrt reference figure teaches the labelling students apply
+# to every renderer-built \probfig beside it, so the shipped macros, the doc
+# examples, and render_figures.py's RIGHT_ANGLE_VERTEX must all put the right
+# angle at the same vertex (the two once disagreed: \refrt at B, renderer at
+# C — one sheet, two contradictory conventions). Pure text parse, CI-safe.
+echo
+output=$("$PYTHON" "$SCRIPT_DIR/test_figure_convention.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_figure_convention.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_figure_convention.py (right-angle convention agreement)"
 
 # ── Facet plans, misconception traps, interleaving ───────────────────────────
 # The unit suite pins the gate messages and the window/run math; the blocks
@@ -871,6 +899,37 @@ else
   echo "❌ check_log wrongly flagged texlog_ok.log"; exit 1
 fi
 
+# Page budget (check_log.py --max-pages, wired through compile.sh MAX_PAGES):
+# SKILL.md hard-caps the study guide at 2 pages, but a 3-page guide shipped
+# through every gate green — a documented rule with no check. The count comes
+# from the log's own "Output written ... (N pages" line (both engines print
+# it), so this stays CI-safe: log text only, no engine. A 3-page log must
+# FAIL the cap teaching the fix, a 2-page log must PASS AT it, and a log with
+# no "Output written" line must be LOUD (exit 2) — a cap that silently goes
+# unchecked is the same false-green class.
+require_fixture texlog_pages_over.log texlog_pages_at.log texlog_pages_missing.log
+output=$("$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_pages_over.log" --max-pages 2 2>&1)
+if [ $? -eq 1 ] && echo "$output" | grep -q "split the sheet"; then
+  echo "✅ check_log fails a 3-page log against --max-pages 2 (and teaches the cut/split fix)"
+  log_ran=$((log_ran + 1))
+else
+  echo "❌ check_log let a 3-page log through --max-pages 2 (or the message doesn't teach)"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+if "$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_pages_at.log" --max-pages 2 >/dev/null 2>&1; then
+  echo "✅ check_log passes a 2-page log AT --max-pages 2 (the cap is inclusive)"
+  log_ran=$((log_ran + 1))
+else
+  echo "❌ check_log wrongly failed a log exactly at the cap"; exit 1
+fi
+"$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_pages_missing.log" --max-pages 2 >/dev/null 2>&1
+if [ $? -eq 2 ]; then
+  echo "✅ check_log is LOUD (exit 2) when --max-pages is set but the log hides the count"
+  log_ran=$((log_ran + 1))
+else
+  echo "❌ check_log silently unenforced the page budget on a truncated log"; exit 1
+fi
+
 # ── build.sh driver + template staging + python finder ───────────────────────
 # The driver's contract is its exit-code map, so that is what gets fixture-
 # tested: run_verify's 2 must CONTINUE (manual review) while a verify FAIL
@@ -891,6 +950,11 @@ while [ $# -gt 0 ]; do
 done
 echo "$tex" >> "${TECTONIC_MARKER:?}"
 touch "$out/$(basename "${tex%.tex}").pdf"
+# emit the kept log (--keep-logs) the page-budget gate reads: check_log takes
+# the count from "Output written ... (N pages"; TECTONIC_PAGES (default 1)
+# lets a test claim any page count without a real engine
+printf 'Output written on %s.pdf (%s pages, 12345 bytes).\n' \
+  "$(basename "${tex%.tex}")" "${TECTONIC_PAGES:-1}" > "$out/$(basename "${tex%.tex}").log"
 # compile.sh pipes engine output through grep -v under pipefail: emit at least
 # one non-filtered line so the stub's silence is not mistaken for a failure
 echo "stub tectonic: compiled $(basename "$tex")"
@@ -1012,6 +1076,29 @@ EOS
     echo "❌ build.sh handrolled: compiled despite a hand-rolled shell"; exit 1
   fi
   echo "✅ build.sh handrolled: exit 1 at template-ws, zero compile invocations"
+
+  # ── page budget through the driver ─────────────────────────────────────────
+  # The proven false green: a 3-page study guide shipped through all gates.
+  # With the stub reporting 3 pages everywhere, ws (≤8) and ak (≤6) stay
+  # within their sanity ceilings but the ss compile must fail its 2-page
+  # SKILL.md cap — and the verdict must name the gate. (The green build_case
+  # above already proves the budgets pass 1-page documents.)
+  dir="$WORK/pagebudget"; mkdir -p "$dir"
+  cp tests/fixtures/trio/ws_build_demo.tex "$dir/ws_build_demo.tex"
+  cp tests/fixtures/trio/ak_build_demo.tex "$dir/ak_build_demo.tex"
+  cp tests/fixtures/trio/ss_build_demo.tex "$dir/ss_build_demo.tex"
+  cp tests/fixtures/trio/verify_build_demo.json "$dir/verify_build_demo.json"
+  cp tests/fixtures/trio/verify_ss_build_demo.json "$dir/verify_ss_build_demo.json"
+  export TECTONIC_MARKER="$dir/compile_calls"
+  out=$(PATH="$WORK/bin:$PATH" TECTONIC_PAGES=3 bash scripts/build.sh \
+        "$dir/verify_build_demo.json" --outdir "$dir/out" 2>&1)
+  got=$?
+  if [ "$got" -eq 1 ] && echo "$out" | grep -q "gate: compile-ss"; then
+    echo "✅ build.sh page budget: a 3-page study guide fails at compile-ss (2-page cap enforced)"
+  else
+    echo "❌ build.sh page budget: 3-page study guide did not fail at compile-ss (exit $got)"
+    echo "$out" | sed 's/^/     /'; exit 1
+  fi
 
   # ── compile.sh template staging ────────────────────────────────────────────
   # A .tex that \inputs a shipped template gets the templates copied beside

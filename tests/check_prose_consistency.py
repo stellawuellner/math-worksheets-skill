@@ -122,6 +122,12 @@ def _prose_stripped(block):
     block = re.sub(r"\\answerline\{[^{}]*\}", "", block)
     # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
     block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
+    # drop the tryitbox furniture the templates mandate: \rotatebox{180}'s
+    # angle argument and \\[2pt]-style line glue are markup, not prose values
+    # — without this every try-it box false-flags 180 and 2, training the
+    # reader to ignore the one report line that carries real drift
+    block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
+    block = re.sub(r"\\\\\[[\d.]+[a-z]{2}\]", "", block)
     return block
 
 

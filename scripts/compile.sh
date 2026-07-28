@@ -35,8 +35,10 @@ scan_log() {
     return 0
   fi
   if ! "$PY" "$SCRIPT_DIR/check_log.py" "$LOGFILE"; then
-    rm -f "$LOGFILE"
+    # keep the log on failure: the gate names line numbers, and deleting the
+    # file it names forces a manual recompile just to read the fault
     echo "❌ The PDF compiled but would ship broken — fix the log faults above and recompile." >&2
+    echo "   (full log kept at $LOGFILE)" >&2
     exit 1
   fi
   rm -f "$LOGFILE"

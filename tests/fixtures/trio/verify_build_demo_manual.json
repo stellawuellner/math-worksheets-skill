@@ -1,0 +1,8 @@
+{
+  "topic": "build.sh driver fixture — one manual problem: run_verify exits 2, build.sh must CONTINUE and finish with exit 2 (green with manual review)",
+  "problem_count": 2,
+  "problems": [
+    {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01},
+    {"id": 2, "type": "manual", "desc": "Explain which factoring strategy applies and why."}
+  ]
+}

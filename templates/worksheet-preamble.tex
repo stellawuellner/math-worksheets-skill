@@ -1,0 +1,154 @@
+% worksheet-preamble.tex — the shipped preamble every generated document
+% \input's. SOURCE OF TRUTH: this file. references/latex-templates.md documents
+% these macros but no longer serves as the text agents transcribe — retyping a
+% ~130-line preamble per document, three documents per run, is exactly the
+% transcription-drift error class the rest of the pipeline exists to catch.
+%
+% Usage (compile.sh stages this file beside your .tex automatically):
+%   \documentclass[12pt]{article}
+%   \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+%   \input{worksheet-preamble}
+%   \input{figure-macros}          % when using the shipped figure macros
+%
+% geometry stays in the document, NOT here: worksheets use margin=1in
+% (top/bottom 0.75in) while study guides use margin=0.85in (top/bottom 0.7in),
+% and geometry options cannot be re-issued once the package is loaded.
+%
+% ASCII only in this file: pdflatex (the fallback engine) cannot typeset
+% literal Unicode symbols, so documents must compile identically under both
+% tectonic and pdflatex.
+
+% ── Required packages (superset of the worksheet and study-guide shells; a
+% worksheet loading mdframed it does not use costs nothing, one shared file
+% that cannot drift is worth it) ─────────────────────────────────────────────
+\usepackage{amsmath, amssymb}
+\usepackage{tikz, pgfplots}
+\usepackage{enumitem, fancyhdr, multicol, array, booktabs}
+\usepackage{mdframed, xcolor}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure macros
+
+% ── Problem numbering ───────────────────────────────────────────────────────
+\newcounter{prob}
+% \problem[workspace]{stem} — number, stem, and workspace live in ONE minipage
+% because LaTeX discards \vspace glue at page/column breaks: workspace left
+% outside the box vanishes exactly when a problem lands at a page bottom, and
+% on a multi-page sheet that hits several problems per sheet. The minipage is
+% unbreakable, so stem + workspace always move to the next page together.
+% Default 0pt: answer keys and study guides reuse \problem and must not
+% inherit worksheet-sized gaps.
+\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\end{minipage}\par}
+
+% ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
+% down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
+% comes from graphicx, which tikz already loads.) ────────────────────────────
+\newlength{\fittedw}
+\newcommand{\fittedtitle}[1]{%
+  \settowidth{\fittedw}{\LARGE\bfseries #1}%
+  \ifdim\fittedw>\linewidth\resizebox{\linewidth}{!}{\bfseries #1}%
+  \else{\LARGE\bfseries #1}\fi}
+
+% ── Running headers. Keep the left title SHORT (<= ~28 chars, e.g. "Triangle
+% Trig Practice", not the full course name) — it shares the header line with
+% the Name/Date blanks and a long title overlaps them. ──────────────────────
+% \wsheader{Short Title} — student worksheet
+\newcommand{\wsheader}[1]{%
+  \pagestyle{fancy}\fancyhf{}%
+  \fancyhead[L]{\textbf{\small #1}}%
+  \fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}%
+  \fancyfoot[C]{\thepage}%
+  \renewcommand{\headrulewidth}{0.4pt}}
+
+% \akheader{Short Topic} — answer key
+\newcommand{\akheader}[1]{%
+  \pagestyle{fancy}\fancyhf{}%
+  \fancyhead[L]{\textbf{\small #1 --- Answer Key}}%
+  \fancyhead[R]{\textit{\small For instructor/parent use}}%
+  \fancyfoot[C]{\thepage}%
+  \renewcommand{\headrulewidth}{0.4pt}}
+
+% \ssheader{Topic} — skills summary / study guide
+\newcommand{\ssheader}[1]{%
+  \pagestyle{fancy}\fancyhf{}%
+  \fancyhead[L]{\textbf{Skills Summary: #1}}%
+  \fancyhead[R]{\small\textit{Study Guide \& Reference}}%
+  \fancyfoot[C]{\thepage}%
+  \renewcommand{\headrulewidth}{0.4pt}}
+
+% ── Title blocks ────────────────────────────────────────────────────────────
+% \wstitleblock{Title}{Course}{Date}
+\newcommand{\wstitleblock}[3]{%
+  \begin{center}
+    \fittedtitle{#1}\\[0.3cm]
+    {\large #2 \quad $\bullet$ \quad #3}
+  \end{center}
+  \noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}}
+
+% \aktitleblock{Topic}{Course}{Date} — "Answer Key" is a subtitle BENEATH the
+% topic, never appended to it: a long topic would wrap mid-phrase.
+\newcommand{\aktitleblock}[3]{%
+  \begin{center}
+    \fittedtitle{#1}\\[0.15cm]
+    {\Large\bfseries Answer Key}\\[0.25cm]
+    {\large #2 \quad $\bullet$ \quad #3}
+  \end{center}}
+
+% \sstitleblock{Topic}
+\newcommand{\sstitleblock}[1]{%
+  \begin{center}
+    {\LARGE\textbf{Skills Summary}}\\[0.2cm]
+    {\large\textbf{#1}}\\[0.1cm]
+    {\small\textit{Use this reference while completing your worksheet or when studying.}}
+  \end{center}
+  \vspace{0.1cm}
+  \noindent\rule{\linewidth}{1.5pt}
+  \vspace{0.3cm}}
+
+% ── Study-guide color palette and boxes ─────────────────────────────────────
+\definecolor{skillblue}{RGB}{30,100,180}
+\definecolor{skillbluebg}{RGB}{235,244,255}
+\definecolor{warnorange}{RGB}{200,90,0}
+\definecolor{warnbg}{RGB}{255,243,230}
+\definecolor{exgreen}{RGB}{20,120,60}
+\definecolor{exgreenbg}{RGB}{230,248,238}
+
+% Formula/rule box
+\newmdenv[
+  backgroundcolor=skillbluebg,
+  linecolor=skillblue, linewidth=1.5pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=6pt, skipbelow=4pt
+]{formulabox}
+
+% Mini example box
+\newmdenv[
+  backgroundcolor=exgreenbg,
+  linecolor=exgreen, linewidth=1pt,
+  innertopmargin=5pt, innerbottommargin=5pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=4pt, skipbelow=4pt
+]{examplebox}
+
+% Watch-out box
+\newmdenv[
+  backgroundcolor=warnbg,
+  linecolor=warnorange, linewidth=1pt,
+  innertopmargin=5pt, innerbottommargin=5pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  skipabove=4pt, skipbelow=4pt
+]{watchoutbox}
+
+% \ans{...} — the printed final answer of a worked example. check_answer_key.py
+% binds study guides through this macro (and \boxed); a result set in bare
+% \boldsymbol is invisible to the gate, so every worked example ends in \ans.
+\newcommand{\ans}[1]{\fbox{$#1$}}
+
+% Skill section heading
+\newcommand{\skillheading}[1]{%
+  \vspace{0.4cm}
+  {\large\textbf{\textcolor{skillblue}{#1}}}
+  \vspace{0.1cm}
+  \hrule height 1pt
+  \vspace{0.2cm}
+}

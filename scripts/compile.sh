@@ -76,6 +76,28 @@ fi
 
 mkdir -p "$OUT_DIR"
 
+# ── Stage shipped templates beside the target ─────────────────────────────────
+# Generated documents \input the shipped templates (templates/*.tex) instead of
+# re-transcribing the preamble each run. Neither engine knows about $SKILL_DIR:
+# tectonic resolves \input against the source file's directory, pdflatex
+# (kpathsea) against the process cwd. Copying the templates next to the .tex
+# satisfies both, so a /tmp compile just works.
+TEX_DIR="$(cd "$(dirname "$TEX_FILE")" && pwd)"
+TPL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/templates"
+if grep -qE '\\input\{(worksheet-preamble|figure-macros)(\.tex)?\}' "$TEX_FILE"; then
+  if [[ ! -d "$TPL_DIR" ]]; then
+    echo "Error: $(basename "$TEX_FILE") \\inputs a shipped template, but" >&2
+    echo "$TPL_DIR does not exist (partial checkout?). Restore the skill's" >&2
+    echo "templates/ directory, or inline the preamble following" >&2
+    echo "references/latex-templates.md." >&2
+    exit 1
+  fi
+  # skip the copy when compiling inside templates/ itself (cp same-file error)
+  if [[ "$TPL_DIR" != "$TEX_DIR" ]]; then
+    cp -f "$TPL_DIR"/*.tex "$TEX_DIR/"
+  fi
+fi
+
 echo "Compiling: $(basename "$TEX_FILE") → $OUT_DIR/"
 if [[ -n "$TECTONIC" ]]; then
   "$TECTONIC" "$TEX_FILE" --outdir "$OUT_DIR" --keep-logs 2>&1 | grep -v "^note: downloading"
@@ -84,9 +106,14 @@ if [[ -n "$TECTONIC" ]]; then
   scan_log "${OUT_DIR}/$(basename "${TEX_FILE%.tex}").log"
 else
   LOG="$(mktemp)"
+  # Run pdflatex FROM the source's directory: kpathsea resolves \input against
+  # the process cwd, so a staged template beside the .tex would be invisible
+  # when compile.sh is invoked from anywhere else. (tectonic resolves against
+  # the input file's directory and needs no such help.)
+  OUT_DIR_ABS="$(cd "$OUT_DIR" && pwd)"
   pdflatex_pass() {
-    "$PDFLATEX" -interaction=nonstopmode -halt-on-error \
-      -output-directory "$OUT_DIR" "$TEX_FILE" > "$LOG" 2>&1
+    (cd "$TEX_DIR" && "$PDFLATEX" -interaction=nonstopmode -halt-on-error \
+      -output-directory "$OUT_DIR_ABS" "$(basename "$TEX_FILE")") > "$LOG" 2>&1
   }
   if ! pdflatex_pass; then
     echo "pdflatex failed — last lines of log:" >&2

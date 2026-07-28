@@ -1,0 +1,94 @@
+% figure-macros.tex — shipped geometric figure macros. SOURCE OF TRUTH: this
+% file; references/latex-templates.md documents usage. Requires the tikz
+% libraries loaded by worksheet-preamble.tex (calc, angles, quotes), so
+% \input worksheet-preamble first.
+%
+% CONTRACT with the layout/prose checkers (do not break it):
+%   - Macro names contain rt/tri/fig — that is how tests/check_layout.py and
+%     tests/check_prose_consistency.py recognize a macro-style figure.
+%   - Mandatory arguments are FLAT braces only (no nested {} inside an arg);
+%     the checkers' arg scanners match [^{}]* per group.
+%   - Value-bearing args carry exactly the printed label text; scale/styling
+%     goes in the single optional [..] argument, which the checkers ignore
+%     (so scale=1.2 is never mistaken for a figure value).
+%
+% Figure conventions (from SKILL.md / latex-templates.md): every number
+% printed in a figure must come from the problem's verify JSON; vertices are
+% A/B/C with sides a/b/c OPPOSITE them — the same convention verify.py's
+% triangle type uses.
+%
+% ASCII only: pdflatex (the fallback engine) cannot typeset literal Unicode.
+
+% ── \rtfig[scale]{bottom-leg label}{right-leg label}{hypotenuse label} ──────
+% Right triangle, right angle at B. A=(0,0), B=(4,0), C=(4,3): the 3-4-5
+% shape keeps every label clear of the drawn lines at default scale.
+% Example: \rtfig{$8$}{$6$}{$x$}   or   \rtfig[0.9]{$a = 8$}{$b = 6$}{$c$}
+\newcommand{\rtfig}[4][1.2]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \coordinate (A) at (0,0);
+    \coordinate (B) at (4,0);
+    \coordinate (C) at (4,3);
+    \draw[thick] (A) -- (B) -- (C) -- cycle;
+    \draw (B) ++(-.25,0) -- ++(0,.25) -- ++(.25,0);  % right angle mark
+    \node[below left] at (A) {$A$};
+    \node[below right] at (B) {$B$};
+    \node[above right] at (C) {$C$};
+    \node[below] at (2,0) {#2};
+    \node[right] at (4,1.5) {#3};
+    \node[above left] at (2,1.5) {#4};
+  \end{tikzpicture}
+  \end{center}}
+
+% ── \trifig[scale]{c}{b}{A-deg}{c-label}{b-label}{a-label}{angle-label} ─────
+% General triangle, TO SCALE by construction (SAS): A at the origin, B on the
+% x-axis at distance c, C computed from side b and angle A (TikZ trig takes
+% degrees). Numeric args #2-#4 are the ACTUAL given values, so the drawing
+% cannot disagree with the math; label args #5-#8 carry what is printed.
+% Example: \trifig{7}{5}{34}{$c = 7$}{$b = 5$}{$a = ?$}{$34^\circ$}
+\newcommand{\trifig}[8][0.6]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \coordinate (A) at (0,0);
+    \coordinate (B) at (#2,0);
+    \coordinate (C) at ({#3*cos(#4)},{#3*sin(#4)});
+    \draw[thick] (A) -- (B) -- (C) -- cycle;
+    \node[below left]  at (A) {$A$};
+    \node[below right] at (B) {$B$};
+    \node[above]       at (C) {$C$};
+    \node[below]       at ($(A)!0.5!(B)$) {#5};
+    \node[above left]  at ($(A)!0.5!(C)$) {#6};
+    \node[above right] at ($(B)!0.5!(C)$) {#7};
+    \pic [draw, angle radius=7mm, angle eccentricity=1.6, "#8"] {angle = B--A--C};
+  \end{tikzpicture}
+  \end{center}}
+
+% ── \refrt — the value-free reference figure ────────────────────────────────
+% SKILL.md's figure-scope rule requires shared labelling conventions to live
+% in ONE value-free reference figure placed with the directions; until now no
+% template for it existed, so every generation invented one — and an invented
+% figure that accidentally carried a number would itself trip the
+% all-or-nothing figure rule it exists to satisfy. This macro has zero
+% numerals in its output by construction (it takes no arguments and prints
+% only letters), and the caption is baked in verbatim so the figure cannot be
+% mistaken for a problem's givens. Right angle at B, so sides read: a = BC
+% (opposite A), b = AC (opposite B, the hypotenuse), c = AB (opposite C).
+\newcommand{\refrt}{%
+  \begin{center}
+  \begin{tikzpicture}[scale=1.0]
+    \coordinate (A) at (0,0);
+    \coordinate (B) at (3.6,0);
+    \coordinate (C) at (3.6,2.7);
+    \draw[thick] (A) -- (B) -- (C) -- cycle;
+    \draw (B) ++(-.25,0) -- ++(0,.25) -- ++(.25,0);  % right angle mark
+    \node[below left] at (A) {$A$};
+    \node[below right] at (B) {$B$};
+    \node[above right] at (C) {$C$};
+    \node[below] at (1.8,0) {$c$};
+    \node[right] at (3.6,1.35) {$a$};
+    \node[above left] at (1.8,1.35) {$b$};
+    \pic [draw, angle radius=6mm, angle eccentricity=1.7, "$A$"] {angle = B--A--C};
+  \end{tikzpicture}\\
+  {\small\textit{How every triangle here is labelled. No values shown: use the
+  numbers given in each problem.}}
+  \end{center}}

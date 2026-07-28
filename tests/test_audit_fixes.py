@@ -110,7 +110,9 @@ print("CASE-42 second adversarial audit (newer types):")
 check("#1 definite_integral rejects wrong oscillatory key",
       status({"id": 1, "type": "definite_integral", "expr": "sin(x**2)", "from": 0, "to": 40, "expected": -1.1487, "tol": 0.01}) == "FAIL")
 check("#1 definite_integral accepts correct value",
-      status({"id": 1, "type": "definite_integral", "expr": "sin(x**2)", "from": 0, "to": 40, "expected": 0.6341, "tol": 0.01}) == "PASS")
+      # tol 0.005 not 0.01: the audit-#9 clamp caps explicit tol at 1% of
+      # |expected| (0.0063 here) — the old 0.01 was over the ceiling
+      status({"id": 1, "type": "definite_integral", "expr": "sin(x**2)", "from": 0, "to": 40, "expected": 0.6341, "tol": 0.005}) == "PASS")
 check("#2 solve_interval finds tangent root (empty key not PASS)",
       status({"id": 1, "type": "solve_interval", "expr": "exp(x) - 1 - x", "var": "x", "interval": [-1, 2], "expected": []}) != "PASS")
 check("#2 solve_interval accepts the tangent root",

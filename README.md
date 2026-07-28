@@ -129,10 +129,15 @@ math-worksheets/
 ├── SKILL.md                          ← workflow and instructions
 ├── LICENSE                           ← MIT
 ├── scripts/
+│   ├── build.sh                     ← ONE command: full gate chain + three compiles, fail-fast
 │   ├── check_reasoning_model.sh     ← auto-detects best available model (local only)
-│   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper
+│   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper (stages templates/)
+│   ├── find_python.sh               ← shared finder: first python3 that can import sympy
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
-│   └── verify.py                    ← the fixed, audited verifier (24 check types)
+│   └── verify.py                    ← the fixed, audited verifier (26 check types; --schema)
+├── templates/
+│   ├── worksheet-preamble.tex       ← the \input-able preamble (headers, boxes, \problem)
+│   └── figure-macros.tex            ← \rtfig / \trifig / \refrt figure macros
 ├── references/
 │   ├── latex-templates.md           ← LaTeX patterns (planes, figures, charts, answer key)
 │   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC

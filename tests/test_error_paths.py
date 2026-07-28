@@ -39,6 +39,10 @@ rejects("boolean expected", {"id": 1, "type": "eval", "expr": "x", "at": {"x": 1
 print("Tolerances / values:")
 rejects("negative tol", {"id": 1, "type": "approx", "expr": "1", "expected": 1, "tol": -1})
 rejects("bool tol", {"id": 1, "type": "approx", "expr": "1", "expected": 1, "tol": True})
+# an explicit tol above the 1%/half-ulp ceiling is a one-field gate bypass
+# (audit #9) — rejected without a tol_reason acknowledgement
+rejects("oversize tol", {"id": 1, "type": "approx", "expr": "1", "expected": 1.0, "tol": 5})
+rejects("oversize tol, blank reason", {"id": 1, "type": "approx", "expr": "1", "expected": 1.0, "tol": 5, "tol_reason": ""})
 rejects("approx with variable", {"id": 1, "type": "approx", "expr": "x + 1", "expected": 1})
 
 print("Geometry:")

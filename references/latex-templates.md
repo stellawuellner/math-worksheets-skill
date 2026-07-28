@@ -1,54 +1,44 @@
 # LaTeX Templates Reference
 
+> **Source of truth:** the preamble, header/title macros, study-guide boxes,
+> and figure macros ship as `\input`-able files in `templates/`
+> (`worksheet-preamble.tex`, `figure-macros.tex`). This page documents how to
+> USE them — never re-transcribe macro bodies from a markdown code block;
+> transcription drift is exactly the error class the pipeline exists to
+> catch. `compile.sh` stages the template files beside your `.tex`
+> automatically, so `/tmp` compiles just work.
+
 ## Document Shell
 
 ```latex
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
-\usepackage{amsmath, amssymb, tikz, pgfplots, enumitem, fancyhdr, multicol, array, booktabs}
-\pgfplotsset{compat=1.18}
-\usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure templates
-
-\pagestyle{fancy}
-\fancyhf{}
-% Keep the left title SHORT ($\leq$ ~28 chars, e.g. "Triangle Trig Practice", not the
-% full course name) --- it shares the header line with the Name/Date blanks and a
-% long title overlaps them. \small buys extra margin.
-\fancyhead[L]{\textbf{\small TOPIC Practice}}
-\fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-
-\newcounter{prob}
-% \problem[workspace]{stem} --- number, stem, and workspace live in ONE minipage
-% because LaTeX discards \vspace glue at page/column breaks: workspace left
-% outside the box vanishes exactly when a problem lands at a page bottom, and
-% on a multi-page sheet that hits several problems per sheet. The minipage is
-% unbreakable, so stem + workspace always move to the next page together.
-% Default 0pt: answer keys and study guides reuse \problem and must not
-% inherit worksheet-sized gaps.
-\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\end{minipage}\par}
-
-% Shrink-to-fit title: use \LARGE when it fits on one line, otherwise scale
-% down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
-% comes from graphicx, which tikz already loads.)
-\newlength{\fittedw}
-\newcommand{\fittedtitle}[1]{%
-  \settowidth{\fittedw}{\LARGE\bfseries #1}%
-  \ifdim\fittedw>\linewidth\resizebox{\linewidth}{!}{\bfseries #1}%
-  \else{\LARGE\bfseries #1}\fi}
+\input{worksheet-preamble}
+\input{figure-macros}       % when using the shipped figure macros
+\wsheader{TOPIC Practice}
 
 \begin{document}
-\begin{center}
-  \fittedtitle{TOPIC Practice Worksheet}\\[0.3cm]
-  {\large COURSE \quad $\bullet$ \quad DATE}
-\end{center}
-\noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}
+\wstitleblock{TOPIC Practice Worksheet}{COURSE}{DATE}
 
 % [problems here]
 
 \end{document}
 ```
+
+Macro reference (defined in `templates/worksheet-preamble.tex`):
+
+| Macro | Purpose |
+|---|---|
+| `\problem{...}` | numbered problem stem (steps the `prob` counter) |
+| `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
+| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
+| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
+| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic" / "Study Guide \& Reference") |
+| `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule |
+| `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase |
+| `\sstitleblock{Topic}` | study-guide title block |
+| `formulabox` / `examplebox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / orange watch-out) |
+| `\skillheading{...}` | study-guide skill-section heading |
 
 ## Problem Patterns
 
@@ -164,6 +154,32 @@ $3$  & \\[0.5cm]\hline
 - After composing a figure, mentally trace each label's bounding box against every drawn line; if in doubt, add a 2pt shift. A worksheet with an unreadable figure fails the student even when the math is right.
 - **Keep a problem, its figure, AND its workspace on the same page**: wrap all three in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \par\vspace*{5cm} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Put the work-space `\vspace*` *inside* the minipage too: `\vspace` glue outside the box is silently discarded when it falls at a page break, which is exactly when a bottom-of-page problem needs its room. Pages fill less tightly this way — that is the honest cost of not stealing the student's workspace.
 - **ASCII only in templates**: pdflatex (the fallback engine) cannot typeset literal Unicode symbols like ⚠ or →. Use LaTeX macros or ASCII markers — `(!)`, `$\rightarrow$`, `$^\circ$` — so documents compile identically under both engines.
+
+### Shipped figure macros — use these before hand-writing TikZ
+
+`templates/figure-macros.tex` (staged beside your `.tex` by `compile.sh`)
+covers the two most common figures plus the mandatory reference figure. The
+mandatory arguments take flat braces only (no nested `{}`); scale/styling
+goes in the optional `[..]` argument — that contract is what lets
+`check_layout.py` and `check_prose_consistency.py` see macro figures.
+
+```latex
+% right triangle (right angle at B); args = bottom-leg, right-leg, hypotenuse labels
+\rtfig{$8$}{$6$}{$x$}
+\rtfig[0.9]{$a = 8$}{$b = 6$}{$c$}
+
+% general triangle, TO SCALE by construction (SAS): numeric args are the
+% ACTUAL givens c, b, A(deg); label args are what gets printed
+\trifig{7}{5}{34}{$c = 7$}{$b = 5$}{$a = ?$}{$34^\circ$}
+
+% the value-free reference figure (SKILL.md figure-scope rule): vertices
+% A/B/C, sides a/b/c opposite, caption baked in, zero numerals by construction
+\refrt
+```
+
+The raw TikZ patterns below remain the documented path for figure kinds the
+macros do not cover (parallel lines, circles, solids, charts) and show what
+the macros do internally.
 
 ### Right triangle
 ```latex
@@ -410,22 +426,17 @@ Sphere:
 
 ## Answer Key Patterns
 
-### Answer key document header
+### Answer key header and title block
+Use the shipped macros (defined in `templates/worksheet-preamble.tex`):
 ```latex
-\fancyhead[L]{\textbf{\small TOPIC --- Answer Key}}   % keep TOPIC short (≤28 chars)
-\fancyhead[R]{\textit{\small For instructor/parent use}}
+\akheader{TOPIC}                       % keep TOPIC short (under ~28 chars)
+...
+\aktitleblock{TOPIC}{COURSE}{DATE}
 ```
-
-### Answer key title block
-Put the topic on its own line (shrink-to-fit) and **"Answer Key" as a subtitle beneath it** — never append "--- Answer Key" to the big title, or a long topic wraps mid-phrase.
-```latex
-\begin{center}
-  \fittedtitle{TOPIC}\\[0.15cm]
-  {\Large\bfseries Answer Key}\\[0.25cm]
-  {\large COURSE \quad $\bullet$ \quad DATE}
-\end{center}
-```
-The skills-summary title uses the same pattern with `Study Guide` as the subtitle.
+`\aktitleblock` puts the topic on its own line (shrink-to-fit) and **"Answer
+Key" as a subtitle beneath it** — never append "--- Answer Key" to the big
+title, or a long topic wraps mid-phrase. The skills summary uses
+`\ssheader`/`\sstitleblock` the same way.
 
 ### Step-by-step solution
 ```latex
@@ -477,78 +488,19 @@ This is the **third document** generated alongside every worksheet. It's a one-t
 
 ### Document shell
 
+The colors, box environments (`formulabox`/`examplebox`/`watchoutbox`), and
+`\skillheading` all live in `templates/worksheet-preamble.tex` — the same
+file the worksheet inputs. Only the geometry margins differ:
+
 ```latex
 \documentclass[12pt]{article}
 \usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
-\usepackage{amsmath, amssymb, tikz, enumitem, fancyhdr, multicol, mdframed, xcolor}
-
-% Color palette
-\definecolor{skillblue}{RGB}{30,100,180}
-\definecolor{skillbluebg}{RGB}{235,244,255}
-\definecolor{warnorange}{RGB}{200,90,0}
-\definecolor{warnbg}{RGB}{255,243,230}
-\definecolor{exgreen}{RGB}{20,120,60}
-\definecolor{exgreenbg}{RGB}{230,248,238}
-
-% Formula/rule box
-\newmdenv[
-  backgroundcolor=skillbluebg,
-  linecolor=skillblue, linewidth=1.5pt,
-  innertopmargin=6pt, innerbottommargin=6pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=6pt, skipbelow=4pt
-]{formulabox}
-
-% Mini example box
-\newmdenv[
-  backgroundcolor=exgreenbg,
-  linecolor=exgreen, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
-]{examplebox}
-
-% Watch-out box
-\newmdenv[
-  backgroundcolor=warnbg,
-  linecolor=warnorange, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
-]{watchoutbox}
-
-% Skill section heading
-\newcommand{\skillheading}[1]{%
-  \vspace{0.4cm}
-  {\large\textbf{\textcolor{skillblue}{#1}}}
-  \vspace{0.1cm}
-  \hrule height 1pt
-  \vspace{0.2cm}
-}
-
-% Verified-result marker. check_answer_key.py binds each examplebox's printed
-% result to the verify_ss JSON through \ans{...}/\boxed{...}; bare
-% \boldsymbol is invisible to that gate, so every worked example's final
-% answer goes through \ans (it keeps the bold look).
-\newcommand{\ans}[1]{\boldsymbol{#1}}
-
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\textbf{Skills Summary: TOPIC}}
-\fancyhead[R]{\small\textit{Study Guide \& Reference}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
+\input{worksheet-preamble}
+\ssheader{TOPIC}
 
 \begin{document}
 
-\begin{center}
-  {\LARGE\textbf{Skills Summary}}\\[0.2cm]
-  {\large\textbf{TOPIC}}\\[0.1cm]
-  {\small\textit{Use this reference while completing your worksheet or when studying.}}
-\end{center}
-\vspace{0.1cm}
-\noindent\rule{\linewidth}{1.5pt}
-\vspace{0.3cm}
+\sstitleblock{TOPIC}
 
 % =================== SKILL 1 ===================
 \skillheading{Skill 1 Name --- e.g. Factoring Trinomials (a = 1)}

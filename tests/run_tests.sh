@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# run_tests.sh — Regression tests for scripts/verify.py
+# run_tests.sh — Regression tests for scripts/verify.py and the binding
+# checkers (check_layout.py, check_answer_key.py).
 #
 # Each fixture encodes an expected exit code:
 #   0 = all checks pass    1 = failures (wrong answers, bad schema, injection)
@@ -8,12 +9,18 @@
 # The injection fixture additionally asserts that no injected command output
 # appears — i.e. disallowed expressions are rejected, not executed.
 #
-# Usage: bash tests/run_tests.sh
-# Exit 0 = all tests pass.
+# Usage: bash tests/run_tests.sh   (from any cwd)
+# Exit 0 = all tests pass. A missing fixture is a hard FAILURE, never a skip:
+# the layout block once sat behind a cwd-relative [ -f ... ] guard and
+# silently vanished when the suite ran from outside the repo root, printing
+# a false "All tests passed" — the exact false-green class this suite exists
+# to kill. The final summary counts what actually ran.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# anchor every path: relative references can never silently miss again
+cd "$SCRIPT_DIR/.." || exit 1
 VERIFY_PY="${SCRIPT_DIR}/../scripts/verify.py"
 FIXTURES="${SCRIPT_DIR}/fixtures"
 
@@ -26,6 +33,16 @@ if ! "$PYTHON" -c "import sympy" 2>/dev/null; then
   echo "Error: sympy is not installed (pip3 install sympy)" >&2
   exit 1
 fi
+
+require_fixture() {
+  # a deleted/renamed fixture must fail the suite loudly, not shrink it
+  for f in "$@"; do
+    if [[ ! -f "$FIXTURES/$f" ]]; then
+      echo "❌ missing fixture $FIXTURES/$f — its suite cannot run" >&2
+      exit 1
+    fi
+  done
+}
 
 # fixture:expected_exit
 CASES=(
@@ -49,10 +66,12 @@ CASES=(
 )
 
 failures=0
+verify_ran=0
 
 for case in "${CASES[@]}"; do
   fixture="${case%%:*}"
   want="${case##*:}"
+  require_fixture "$fixture"
   output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/$fixture" 2>&1)
   got=$?
   if [[ "$got" -ne "$want" ]]; then
@@ -62,6 +81,7 @@ for case in "${CASES[@]}"; do
   else
     echo "✅ $fixture: exit $got"
   fi
+  verify_ran=$((verify_ran + 1))
   # -x: the marker alone on a line means `echo` actually ran; the rejection
   # message quotes the expression inline, which must not count as a failure.
   if [[ "$fixture" == "reject_injection.json" ]] && echo "$output" | grep -qx "PWNED-MARKER"; then
@@ -70,25 +90,77 @@ for case in "${CASES[@]}"; do
   fi
 done
 
-echo
 if [[ "$failures" -gt 0 ]]; then
+  echo
   echo "❌ $failures test(s) failed"
   exit 1
 fi
-echo "✅ All tests passed"
 
 # Layout rules (figure scope + work space). Fixture-driven: a known-bad sheet
 # must fail and a known-good one must pass, so the checker itself is tested.
-if [ -f tests/fixtures/layout_bad.tex ]; then
-  echo
-  if python3 tests/check_layout.py tests/fixtures/layout_bad.tex >/dev/null 2>&1; then
-    echo "❌ check_layout did NOT flag layout_bad.tex"; exit 1
-  else
-    echo "✅ check_layout flags layout_bad.tex"
-  fi
-  if python3 tests/check_layout.py tests/fixtures/layout_good.tex >/dev/null 2>&1; then
-    echo "✅ check_layout passes layout_good.tex"
-  else
-    echo "❌ check_layout wrongly flagged layout_good.tex"; exit 1
-  fi
+echo
+layout_ran=0
+require_fixture layout_bad.tex layout_good.tex
+if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_bad.tex" >/dev/null 2>&1; then
+  echo "❌ check_layout did NOT flag layout_bad.tex"; exit 1
+else
+  echo "✅ check_layout flags layout_bad.tex"
 fi
+layout_ran=$((layout_ran + 1))
+if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_good.tex" >/dev/null 2>&1; then
+  echo "✅ check_layout passes layout_good.tex"
+else
+  echo "❌ check_layout wrongly flagged layout_good.tex"; exit 1
+fi
+layout_ran=$((layout_ran + 1))
+
+# Answer-key binding (per-problem \boxed gate — audit B1/B2/B3). Same fixture
+# discipline: shuffled, masked, and precision-drift keys must FAIL; template
+# shapes (enumerate, nested multi-part, \problem{}, examplebox study guide)
+# must segment per problem and PASS.
+echo
+ak_ran=0
+# tex_fixture:json_fixture:expected_exit
+AK_CASES=(
+  "ak_bind_good.tex:ak_bind.json:0"
+  "ak_bind_shuffled.tex:ak_bind.json:1"
+  "ak_bind_masked.tex:ak_bind.json:1"
+  "ak_bind_precision.tex:ak_bind.json:1"
+  "ak_bind_nested.tex:ak_bind_nested.json:0"
+  "ak_bind_symbolic.tex:ak_bind_symbolic.json:0"
+  "ss_bind_good.tex:ss_bind.json:0"
+  "ak_bind_unstructured.tex:ak_bind.json:1"
+  "ak_bind_shortkey.tex:ak_bind.json:1"
+  "ak_bind_outside.tex:ak_bind.json:0"
+)
+for case in "${AK_CASES[@]}"; do
+  IFS=: read -r texf jsonf want <<<"$case"
+  require_fixture "$texf" "$jsonf"
+  output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/$texf" "$FIXTURES/$jsonf" 2>&1)
+  got=$?
+  if [[ "$got" -ne "$want" ]]; then
+    echo "❌ $texf: expected exit $want, got $got"
+    echo "$output" | sed 's/^/     /'
+    exit 1
+  fi
+  echo "✅ $texf: exit $got"
+  ak_ran=$((ak_ran + 1))
+done
+# a failing key must NAME the problem so the fix is findable
+output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/ak_bind_masked.tex" "$FIXTURES/ak_bind.json" 2>&1)
+if ! echo "$output" | grep -q "problem 2"; then
+  echo "❌ ak_bind_masked.tex: failure did not name problem 2"; exit 1
+fi
+echo "✅ check_answer_key names the drifted problem"
+# template-style keys must segment per problem — never the old '?' placeholder
+output=$("$PYTHON" "$SCRIPT_DIR/check_answer_key.py" "$FIXTURES/ak_bind_good.tex" "$FIXTURES/ak_bind.json" 2>&1)
+if ! echo "$output" | grep -q "3 problem segments"; then
+  echo "❌ ak_bind_good.tex: expected '3 problem segments' in the report"; exit 1
+fi
+if echo "$output" | grep -qF "? problem segments"; then
+  echo "❌ ak_bind_good.tex: report still prints the '?' segment placeholder"; exit 1
+fi
+echo "✅ check_answer_key reports real segment counts"
+
+echo
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $ak_ran answer-key fixtures"

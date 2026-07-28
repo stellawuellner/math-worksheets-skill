@@ -118,7 +118,7 @@ See `references/latex-templates.md` → "Skills Summary / Study Guide Template" 
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
 ```
-Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does.
+Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does. `check_answer_key.py` segments ss documents **by `examplebox`** — keep one worked example per box, one JSON entry per example (so box count = `problem_count`), and print each result with `\ans{...}` (defined in the study-guide shell); a result set in bare `\boldsymbol` is invisible to the gate.
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
@@ -249,7 +249,7 @@ python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex               
 python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
 ```
 
-- `check_answer_key.py` exits 1 if a verified answer value is printed **nowhere** in the key (transcription drift) — fix the `.tex` and re-run. Soft `⚠` alignment notes are heuristic; eyeball them.
+- `check_answer_key.py` binds **per problem**: it segments the key (`\problem{...}`, one enumerate `\item` per problem, or one `examplebox` per worked example), requires the segment count to equal `problem_count`, and exits 1 unless every verified value appears in **its own problem's** `\boxed{}`/`\ans{}` at the printed precision — `4.52` never satisfies a verified `4.51`, while `5`, `5.0` and `5.00` are the same answer. A swapped key, a wrong boxed value (even with the correct number in the worked steps beside it), or an unsegmentable key all hard-fail. Keys that box answers outside every segment (answer-bank style) degrade to a whole-document presence check with a loud `⚠` — those soft alignment notes are heuristic; eyeball them.
 - **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
 - `check_prose_consistency.py` also now checks **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
 

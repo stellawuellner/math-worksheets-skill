@@ -513,6 +513,12 @@ This is the **third document** generated alongside every worksheet. It's a one-t
   \vspace{0.2cm}
 }
 
+% Verified-result marker. check_answer_key.py binds each examplebox's printed
+% result to the verify_ss JSON through \ans{...}/\boxed{...}; bare
+% \boldsymbol is invisible to that gate, so every worked example's final
+% answer goes through \ans (it keeps the bold look).
+\newcommand{\ans}[1]{\boldsymbol{#1}}
+
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\textbf{Skills Summary: TOPIC}}
@@ -544,7 +550,7 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \begin{examplebox}
 \textbf{Example:} \quad Factor $x^2 - 7x + 12$\\[4pt]
 Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ $\checkmark$\\[2pt]
-$\Rightarrow\quad x^2 - 7x + 12 = \boldsymbol{(x-3)(x-4)}$
+$\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
 
 \vspace{0.2cm}
@@ -577,7 +583,7 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \begin{examplebox}
 \textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$\\[4pt]
 $a = 2,\ b = -3,\ c = -5$\quad $\Delta = 9 + 40 = 49$\\[2pt]
-$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\boldsymbol{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\boldsymbol{x = \tfrac{-4}{4} = -1}$
+$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\ans{x = \tfrac{-4}{4} = -1}$
 \end{examplebox}
 
 % =================== KEY VOCABULARY ===================

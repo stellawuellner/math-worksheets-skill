@@ -40,7 +40,7 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 
 ## Trust model
 
-**Guaranteed** — every problem with a machine-checkable answer is CAS-verified; the mandatory coverage gate (`problem_count`) means no worksheet problem is silently skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values. Validated on GSM8K and MATH — **0 false accepts on 6,993 checks**.
+**Guaranteed** — every problem with a machine-checkable answer is CAS-verified; the mandatory coverage gate (`problem_count`) means no worksheet problem is silently skipped; a fully hand-checked sheet fails unless explicitly acknowledged; and `check_answer_key.py` / `check_prose_consistency.py` bind the printed worksheet, figures, and answer key back to the verified values — the key **per problem**: every verified answer must appear in its own problem's `\boxed{}`/`\ans{}` at the printed precision, so a swapped or mis-boxed key fails even when every number appears somewhere in the document. Validated on GSM8K and MATH — **0 false accepts on 6,993 checks**.
 
 **Human review still required** — `manual`-typed problems (proofs, constructions, "explain why", matrices/vectors), the soft alignment warnings from the binding checkers, and any problem whose *statement* is ambiguous. An optional [LLM-judge review aid](references/manual-review-aid.md) flags likely errors in that content first, but does not gate it. Verification proves the math and its transcription — it does not prove pedagogical intent.
 
@@ -48,7 +48,7 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 
 - **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary cheat sheet with formula boxes and worked mini-examples (all three verified).
 - **24 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
-- **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON.
+- **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
 - **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
 - **Auto model detection** — finds the best available reasoning model from the host agent's config; fully local, no network calls.

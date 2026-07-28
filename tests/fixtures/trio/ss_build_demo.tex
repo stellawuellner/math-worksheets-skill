@@ -1,0 +1,12 @@
+% build.sh driver fixture: study guide. The worked example's result is boxed
+% so check_answer_key can bind it to verify_ss_build_demo.json. examplebox is
+% stubbed inline so the fixture also compiles under a real engine.
+\documentclass{article}
+\usepackage{amsmath}
+\newenvironment{examplebox}{}{}
+\begin{document}
+\section*{Build-demo study guide}
+\begin{examplebox}
+\textbf{Example:} for $f(x) = 2x + 1$, evaluate $f(2)$: \quad $f(2) = \boxed{5}$
+\end{examplebox}
+\end{document}

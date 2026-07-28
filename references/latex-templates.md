@@ -1,64 +1,67 @@
 # LaTeX Templates Reference
 
+> **Source of truth:** the preamble, header/title macros, study-guide boxes,
+> and figure macros ship as `\input`-able files in `templates/`
+> (`worksheet-preamble.tex`, `figure-macros.tex`). This page documents how to
+> USE them — never re-transcribe macro bodies from a markdown code block;
+> transcription drift is exactly the error class the pipeline exists to
+> catch. `compile.sh` stages the template files beside your `.tex`
+> automatically, so `/tmp` compiles just work.
+
 ## Document Shell
 
 ```latex
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
-\usepackage{amsmath, amssymb, tikz, pgfplots, enumitem, fancyhdr, multicol, array, booktabs}
-\pgfplotsset{compat=1.18}
-\usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure templates
-
-\pagestyle{fancy}
-\fancyhf{}
-% Keep the left title SHORT ($\leq$ ~28 chars, e.g. "Triangle Trig Practice", not the
-% full course name) --- it shares the header line with the Name/Date blanks and a
-% long title overlaps them. \small buys extra margin.
-\fancyhead[L]{\textbf{\small TOPIC Practice}}
-\fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-
-\newcounter{prob}
-\newcommand{\problem}[1]{\stepcounter{prob}\vspace{0.4cm}\noindent\textbf{\large\theprob.}\quad #1\vspace{0.3cm}}
-
-% Shrink-to-fit title: use \LARGE when it fits on one line, otherwise scale
-% down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
-% comes from graphicx, which tikz already loads.)
-\newlength{\fittedw}
-\newcommand{\fittedtitle}[1]{%
-  \settowidth{\fittedw}{\LARGE\bfseries #1}%
-  \ifdim\fittedw>\linewidth\resizebox{\linewidth}{!}{\bfseries #1}%
-  \else{\LARGE\bfseries #1}\fi}
+\input{worksheet-preamble}
+\input{figure-macros}       % when using the shipped figure macros
+\wsheader{TOPIC Practice}
 
 \begin{document}
-\begin{center}
-  \fittedtitle{TOPIC Practice Worksheet}\\[0.3cm]
-  {\large COURSE \quad $\bullet$ \quad DATE}
-\end{center}
-\noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}
+\wstitleblock{TOPIC Practice Worksheet}{COURSE}{DATE}
 
 % [problems here]
 
 \end{document}
 ```
 
+Macro reference (defined in `templates/worksheet-preamble.tex`):
+
+| Macro | Purpose |
+|---|---|
+| `\problem{...}` | numbered problem stem (steps the `prob` counter) |
+| `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
+| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
+| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
+| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic" / "Study Guide \& Reference") |
+| `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule |
+| `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase |
+| `\sstitleblock{Topic}` | study-guide title block |
+| `formulabox` / `examplebox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / orange watch-out) |
+| `\skillheading{...}` | study-guide skill-section heading |
+
 ## Problem Patterns
 
 ### Simple algebraic problem
+The workspace is the macro's optional argument — never a trailing `\vspace`,
+which is glue outside the unbreakable box and is discarded at a page break.
 ```latex
-\problem{Solve for $x$: \quad $2x^2 - 5x - 3 = 0$}
-\vspace{6cm}
+\problem[6cm]{Solve for $x$: \quad $2x^2 - 5x - 3 = 0$}
 ```
 
 ### Two-column layout (shorter problems)
+Workspace rides inside each item's `minipage[t]`, not in `itemsep`: itemsep
+glue is discarded at every column break (twice per page in two columns), so an
+itemsep-spaced sheet loses the workspace of the last item in each column.
+3.9cm rather than 4cm keeps the last item from overhanging the bottom margin.
 ```latex
 \begin{multicols}{2}
-\begin{enumerate}[label=\textbf{\arabic*.}, itemsep=4cm]
-  \item $3x + 7 = 22$
-  \item $-2(x - 5) = 14$
-  \item $\dfrac{x}{4} + 3 = 9$
-  \item $5x - 3 = 2x + 9$
+\raggedcolumns
+\begin{enumerate}[label=\textbf{\arabic*.}, itemsep=0pt]
+  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.9cm}\end{minipage}
 \end{enumerate}
 \end{multicols}
 ```
@@ -138,6 +141,7 @@ $3$  & \\[0.5cm]\hline
 ## Geometric Figures
 
 **Figure conventions** (apply to every figure):
+- **Triangle figures are generated, not hand-drawn**: `scripts/render_figures.py` renders every `triangle`-type problem (and `right_triangle` figure specs on `approx` problems) from the verify JSON as `\probfig{N}` macros — see SKILL.md step 4b. The triangle templates below document what the renderer emits; hand-built TikZ remains the pattern only for shapes the renderer doesn't cover (circles, sectors, solids, transversals).
 - **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
 - Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
 - **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
@@ -149,8 +153,34 @@ $3$  & \\[0.5cm]\hline
 - In thin or small triangles (any angle < 25° or any side rendered < 2cm), move that side's label fully outside with an explicit shift, e.g. `\node[below=2pt] at ...`, and prefer `font=\small` for all labels in the figure.
 - Vertex labels take anchors pointing *away* from the triangle interior (e.g. `below left` for a bottom-left vertex).
 - After composing a figure, mentally trace each label's bounding box against every drawn line; if in doubt, add a 2pt shift. A worksheet with an unreadable figure fails the student even when the math is right.
-- **Keep a problem and its figure on the same page**: wrap the statement + figure in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Leave the work-space `\vspace` *outside* the minipage so pages can still fill naturally.
+- **Keep a problem, its figure, AND its workspace on the same page**: wrap all three in `\noindent\begin{minipage}{\linewidth} \problem{...} \begin{center}\begin{tikzpicture}...\end{tikzpicture}\end{center} \par\vspace*{5cm} \end{minipage}` — LaTeX won't break inside a minipage, so a figure can never be orphaned from its problem across a page break. Put the work-space `\vspace*` *inside* the minipage too: `\vspace` glue outside the box is silently discarded when it falls at a page break, which is exactly when a bottom-of-page problem needs its room. Pages fill less tightly this way — that is the honest cost of not stealing the student's workspace.
 - **ASCII only in templates**: pdflatex (the fallback engine) cannot typeset literal Unicode symbols like ⚠ or →. Use LaTeX macros or ASCII markers — `(!)`, `$\rightarrow$`, `$^\circ$` — so documents compile identically under both engines.
+
+### Shipped figure macros — use these before hand-writing TikZ
+
+`templates/figure-macros.tex` (staged beside your `.tex` by `compile.sh`)
+covers the two most common figures plus the mandatory reference figure. The
+mandatory arguments take flat braces only (no nested `{}`); scale/styling
+goes in the optional `[..]` argument — that contract is what lets
+`check_layout.py` and `check_prose_consistency.py` see macro figures.
+
+```latex
+% right triangle (right angle at B); args = bottom-leg, right-leg, hypotenuse labels
+\rtfig{$8$}{$6$}{$x$}
+\rtfig[0.9]{$a = 8$}{$b = 6$}{$c$}
+
+% general triangle, TO SCALE by construction (SAS): numeric args are the
+% ACTUAL givens c, b, A(deg); label args are what gets printed
+\trifig{7}{5}{34}{$c = 7$}{$b = 5$}{$a = ?$}{$34^\circ$}
+
+% the value-free reference figure (SKILL.md figure-scope rule): vertices
+% A/B/C, sides a/b/c opposite, caption baked in, zero numerals by construction
+\refrt
+```
+
+The raw TikZ patterns below remain the documented path for figure kinds the
+macros do not cover (parallel lines, circles, solids, charts) and show what
+the macros do internally.
 
 ### Right triangle
 ```latex
@@ -256,14 +286,22 @@ Keep the geometry honest: the inscribed angle must be half the central angle (he
 
 ### Ambiguous SSA case — two-triangle "swing" figure
 Both possible triangles from the same SSA data (here $a=6$, $b=8$, $A=40^\circ$): the swinging side $a$ is drawn solid to $C_1$ (acute $B_1$) and dashed to $C_2$ (obtuse $B_2$). Compute both apex points from the actual solutions so the figure is to scale; keep the shared-side label below and each swing label on its own side of the apex to avoid collisions.
+
+**Don't hand-compute this figure** — `scripts/render_figures.py` emits exactly
+this construction as `\probfig{N}`, with both apexes computed by the same
+`solve_triangle` that verifies the problem (SKILL.md step 4b). That is the
+point: an earlier revision of this very example shipped hand-computed constants
+`9.24`/`3.05` where the true values are `9.220`/`3.037` — transcription drift
+in the skill's own reference figure. The template below documents what the
+renderer emits.
 ```latex
 \begin{center}
 \begin{tikzpicture}[scale=0.55]
   \coordinate (A) at (0,0);
   % B1 = 58.99$^\circ$, B2 = 121.01$^\circ$, C = 180 - 40 - B. Place base along x-axis:
-  % c1 = a·sin(C1)/sin(A) ≈ 9.24, c2 = a·sin(C2)/sin(A) ≈ 3.05
-  \coordinate (B1) at (9.24,0);
-  \coordinate (B2) at (3.05,0);
+  % c1 = a·sin(C1)/sin(A) = 9.220, c2 = a·sin(C2)/sin(A) = 3.037
+  \coordinate (B1) at (9.220,0);
+  \coordinate (B2) at (3.037,0);
   \coordinate (C)  at ({8*cos(40)},{8*sin(40)});   % b = 8 from A at 40$^\circ$
   \draw[thick] (A) -- (B1) -- (C) -- cycle;
   \draw[thick, dashed] (C) -- (B2);
@@ -397,22 +435,17 @@ Sphere:
 
 ## Answer Key Patterns
 
-### Answer key document header
+### Answer key header and title block
+Use the shipped macros (defined in `templates/worksheet-preamble.tex`):
 ```latex
-\fancyhead[L]{\textbf{\small TOPIC --- Answer Key}}   % keep TOPIC short (≤28 chars)
-\fancyhead[R]{\textit{\small For instructor/parent use}}
+\akheader{TOPIC}                       % keep TOPIC short (under ~28 chars)
+...
+\aktitleblock{TOPIC}{COURSE}{DATE}
 ```
-
-### Answer key title block
-Put the topic on its own line (shrink-to-fit) and **"Answer Key" as a subtitle beneath it** — never append "--- Answer Key" to the big title, or a long topic wraps mid-phrase.
-```latex
-\begin{center}
-  \fittedtitle{TOPIC}\\[0.15cm]
-  {\Large\bfseries Answer Key}\\[0.25cm]
-  {\large COURSE \quad $\bullet$ \quad DATE}
-\end{center}
-```
-The skills-summary title uses the same pattern with `Study Guide` as the subtitle.
+`\aktitleblock` puts the topic on its own line (shrink-to-fit) and **"Answer
+Key" as a subtitle beneath it** — never append "--- Answer Key" to the big
+title, or a long topic wraps mid-phrase. The skills summary uses
+`\ssheader`/`\sstitleblock` the same way.
 
 ### Step-by-step solution
 ```latex
@@ -464,72 +497,19 @@ This is the **third document** generated alongside every worksheet. It's a one-t
 
 ### Document shell
 
+The colors, box environments (`formulabox`/`examplebox`/`watchoutbox`), and
+`\skillheading` all live in `templates/worksheet-preamble.tex` — the same
+file the worksheet inputs. Only the geometry margins differ:
+
 ```latex
 \documentclass[12pt]{article}
 \usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
-\usepackage{amsmath, amssymb, tikz, enumitem, fancyhdr, multicol, mdframed, xcolor}
-
-% Color palette
-\definecolor{skillblue}{RGB}{30,100,180}
-\definecolor{skillbluebg}{RGB}{235,244,255}
-\definecolor{warnorange}{RGB}{200,90,0}
-\definecolor{warnbg}{RGB}{255,243,230}
-\definecolor{exgreen}{RGB}{20,120,60}
-\definecolor{exgreenbg}{RGB}{230,248,238}
-
-% Formula/rule box
-\newmdenv[
-  backgroundcolor=skillbluebg,
-  linecolor=skillblue, linewidth=1.5pt,
-  innertopmargin=6pt, innerbottommargin=6pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=6pt, skipbelow=4pt
-]{formulabox}
-
-% Mini example box
-\newmdenv[
-  backgroundcolor=exgreenbg,
-  linecolor=exgreen, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
-]{examplebox}
-
-% Watch-out box
-\newmdenv[
-  backgroundcolor=warnbg,
-  linecolor=warnorange, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
-]{watchoutbox}
-
-% Skill section heading
-\newcommand{\skillheading}[1]{%
-  \vspace{0.4cm}
-  {\large\textbf{\textcolor{skillblue}{#1}}}
-  \vspace{0.1cm}
-  \hrule height 1pt
-  \vspace{0.2cm}
-}
-
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\textbf{Skills Summary: TOPIC}}
-\fancyhead[R]{\small\textit{Study Guide \& Reference}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
+\input{worksheet-preamble}
+\ssheader{TOPIC}
 
 \begin{document}
 
-\begin{center}
-  {\LARGE\textbf{Skills Summary}}\\[0.2cm]
-  {\large\textbf{TOPIC}}\\[0.1cm]
-  {\small\textit{Use this reference while completing your worksheet or when studying.}}
-\end{center}
-\vspace{0.1cm}
-\noindent\rule{\linewidth}{1.5pt}
-\vspace{0.3cm}
+\sstitleblock{TOPIC}
 
 % =================== SKILL 1 ===================
 \skillheading{Skill 1 Name --- e.g. Factoring Trinomials (a = 1)}
@@ -544,7 +524,7 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \begin{examplebox}
 \textbf{Example:} \quad Factor $x^2 - 7x + 12$\\[4pt]
 Find two numbers that \textit{add to} $-7$ and \textit{multiply to} $12$: \quad $-3$ and $-4$ $\checkmark$\\[2pt]
-$\Rightarrow\quad x^2 - 7x + 12 = \boldsymbol{(x-3)(x-4)}$
+$\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
 
 \vspace{0.2cm}
@@ -577,7 +557,7 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \begin{examplebox}
 \textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$\\[4pt]
 $a = 2,\ b = -3,\ c = -5$\quad $\Delta = 9 + 40 = 49$\\[2pt]
-$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\boldsymbol{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\boldsymbol{x = \tfrac{-4}{4} = -1}$
+$x = \dfrac{3 \pm 7}{4}$\quad $\Rightarrow\quad\ans{x = \tfrac{10}{4} = \tfrac{5}{2}}$ \quad or \quad $\ans{x = \tfrac{-4}{4} = -1}$
 \end{examplebox}
 
 % =================== KEY VOCABULARY ===================

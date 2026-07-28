@@ -1,0 +1,13 @@
+% build.sh driver fixture: BROKEN answer key — problem 1's boxed answer is
+% wrong and the verified value appears nowhere (not even here: the checker
+% scans raw text, comments included), so check_answer_key must fail and
+% build.sh must exit 1 at the answer-key-ak gate.
+\documentclass{article}
+\usepackage{amsmath}
+\begin{document}
+\section*{Build-demo answer key}
+\begin{enumerate}
+  \item $9\tan(35^\circ)$: \quad $\boxed{9.99}$
+  \item $x^2 - 5x + 6 = (x-2)(x-3)$: \quad $\boxed{x = 2 \text{ or } x = 3}$
+\end{enumerate}
+\end{document}

@@ -57,9 +57,10 @@ Supported types:
   manual         — flagged for human review, never fails automatically
 
 Universal optional fields: "var" (default x), "note", "standard", "difficulty",
-"bloom". Top-level "problem_count" is REQUIRED (coverage gate). Unknown types or
-fields are HARD FAILURES. A sheet with zero machine checks fails unless
-"allow_all_manual": true.
+"bloom", "figure" (declarative figure spec — scripts/render_figures.py draws it
+from these same givens). Top-level "problem_count" is REQUIRED (coverage gate).
+Unknown types or fields are HARD FAILURES. A sheet with zero machine checks
+fails unless "allow_all_manual": true.
 
 Exit codes: 0 all passed · 1 a check FAILED (or gate violation) · 2 manual review
 needed (safe to compile).
@@ -67,6 +68,7 @@ needed (safe to compile).
 
 import cmath
 import collections
+import difflib
 import itertools
 import json
 import math
@@ -76,9 +78,21 @@ import statistics
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 
-import sympy
-import mpmath
-from sympy import Symbol, simplify, trigsimp, nsimplify
+# Teach the fix instead of dumping a traceback (mirrors compile.sh's
+# no-engine message). Naming sys.executable matters: machines routinely have
+# several pythons, and a bare `pip3 install sympy` often installs into a
+# DIFFERENT interpreter than the one that just failed (audit D1b).
+try:
+    import sympy
+    import mpmath
+    from sympy import Symbol, simplify, trigsimp, nsimplify
+except ImportError as e:
+    sys.stderr.write(
+        "Error: verify.py needs the sympy library, which this python "
+        f"({sys.executable}) cannot import ({e}).\n"
+        f"Fix: {sys.executable} -m pip install sympy\n"
+        "Or run via scripts/run_verify.sh, which picks a python that has sympy.\n")
+    sys.exit(1)
 
 
 class VerifyInputError(Exception):
@@ -106,6 +120,48 @@ _VARS = {v: Symbol(v, real=True) for v in
 
 _ALLOWED_NAMES = set(_FUNCS) | set(_CONSTS) | set(_VARS)
 _SYMPY_LOCALS = {**_FUNCS, **_CONSTS, **_VARS}
+
+# Known near-misses → the accepted idiom. A rejection that only names the
+# problem sends the author into the source to discover e.g. the 65*pi/180
+# convention (audit D2 — it happened in a real session); the message should
+# hand over the fix. Pinned by tests/test_pipeline_fixes.py: these hints are
+# contract, not decoration.
+_HINTS = {
+    "rad":      'work in radians: write the angle as <deg>*pi/180 (e.g. '
+                '65*pi/180); for degree-mode trig equations use '
+                'solve_interval with "unit": "deg"',
+    "radians":  'work in radians: write the angle as <deg>*pi/180 (e.g. '
+                '65*pi/180); for degree-mode trig equations use '
+                'solve_interval with "unit": "deg"',
+    "deg":      "convert radians to degrees by multiplying by 180/pi",
+    "degrees":  "convert radians to degrees by multiplying by 180/pi",
+    "arcsin":   "use 'asin'",
+    "arccos":   "use 'acos'",
+    "arctan":   "use 'atan'",
+    "cosec":    "use 'csc'",
+    "e":        "use 'E' (capital) for Euler's number",
+    "inf":      "use 'oo' for infinity",
+    "infinity": "use 'oo' for infinity",
+    "Pi":       "use lowercase 'pi'",
+    "PI":       "use lowercase 'pi'",
+}
+
+
+def _reject_name(name):
+    """Raise the allowlist rejection WITH the fix: a known-idiom hint or a
+    close-match suggestion, plus the full allowed vocabulary in one line."""
+    detail = _HINTS.get(name)
+    if detail is None:
+        close = difflib.get_close_matches(name, sorted(_ALLOWED_NAMES),
+                                          n=3, cutoff=0.6)
+        if close:
+            detail = "did you mean " + " or ".join(repr(c) for c in close) + "?"
+    raise VerifyInputError(
+        f"name {name!r} is not an allowed function or variable"
+        + (f" — {detail}" if detail else "")
+        + f". Allowed functions: {' '.join(sorted(_FUNCS))}; "
+        f"constants: {' '.join(sorted(_CONSTS))}; "
+        f"variables: {' '.join(sorted(_VARS))}")
 
 # Tokens: numbers (including leading-decimal like .5), names, ** or ^,
 # arithmetic operators, parens, commas, space.
@@ -143,8 +199,7 @@ def safe_parse(expr_str):
 
     for name in names:
         if name not in _ALLOWED_NAMES:
-            raise VerifyInputError(
-                f"name {name!r} is not an allowed function or variable")
+            _reject_name(name)
 
     normalized = expr_str.replace("^", "**")
     try:
@@ -288,6 +343,43 @@ def approx_equal(computed, expected, tol):
     return abs(c - e) <= tol
 
 
+# Problems that passed only thanks to an explicitly widened tolerance,
+# acknowledged via "tol_reason". Tallied in the summary and routed to exit 2
+# so a wide-tol pass is never invisible. Reset per run_verification() call —
+# the test suites call the checker repeatedly in-process.
+WIDE_TOLS = []
+
+
+def _cap_explicit_tol(p, tol):
+    """Reject an oversized EXPLICIT tol unless the author owns it in writing.
+
+    An unbounded tol is a one-field bypass of the whole gate (audit #9: a
+    triangle answer 18% wrong sailed through green with "tol": 2.0). The
+    ceiling — max(1% of |expected|, half a unit in the expected value's last
+    written place) — is wide enough for legitimate rounding chains and tight
+    enough that a wrong answer cannot hide. "tol_reason" is the documented
+    pressure valve for genuine estimation problems; using it is tallied in
+    the summary and turns a clean run into exit 2, never a silent pass.
+    """
+    expected_raw = p.get("expected")
+    try:
+        e = abs(float(sympy.N(parse_value(expected_raw))))
+    except Exception:
+        return   # malformed / non-numeric expected is validated elsewhere
+    ceiling = max(0.01 * e, 0.5 * 10 ** -_decimals_of(expected_raw))
+    if tol <= ceiling:
+        return
+    reason = p.get("tol_reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise VerifyInputError(
+            f"'tol' {tol:g} is too loose for expected {expected_raw!r} — it "
+            f"would accept answers more than 1% off (max sane tol here: "
+            f"{ceiling:g}). Tighten 'tol', or add \"tol_reason\": \"<why>\" "
+            "if this is a genuine estimation problem (widened tolerances are "
+            "tallied in the summary and the run exits 2 for review).")
+    WIDE_TOLS.append((p.get("id"), tol, reason.strip()))
+
+
 def get_tol(p, default=None):
     """Validated EXPLICIT tolerance; None means fall back to default logic."""
     tol = p.get("tol", default)
@@ -295,7 +387,17 @@ def get_tol(p, default=None):
         return None
     if isinstance(tol, bool) or not isinstance(tol, (int, float)) or tol <= 0:
         raise VerifyInputError("'tol' must be a positive number")
-    return float(tol)
+    tol = float(tol)
+    if "tol" in p:   # cap only an explicit tol — default paths are scale-aware
+        _cap_explicit_tol(p, tol)
+    return tol
+
+
+def _tol_note(tol):
+    """Detail-line suffix making an explicit tolerance visible. Every check
+    that honors 'tol' must print it — a widened comparison the report never
+    shows is exactly how audit #9's bypass stayed invisible."""
+    return f", tol {tol:g}" if tol is not None else ""
 
 
 def _decimals_of(expected_raw):
@@ -547,26 +649,150 @@ SCHEMAS = {
     "limit":          ({"expr", "to", "expected"}, {"var", "dir"}),
     "equiv":          ({"expr", "expected"}, set()),
     "solve_interval": ({"expr", "interval", "expected"}, {"var", "unit"}),
-    "approx":         ({"expr", "expected"}, {"tol"}),
-    "distance":       ({"points", "expected"}, {"tol"}),
+    "approx":         ({"expr", "expected"}, {"tol", "tol_reason"}),
+    "distance":       ({"points", "expected"}, {"tol", "tol_reason"}),
     "midpoint":       ({"points", "expected"}, set()),
-    "slope":          ({"points", "expected"}, {"tol"}),
-    "polygon_area":   ({"points", "expected"}, {"tol"}),
-    "triangle":       ({"given", "solve_for", "expected"}, {"tol", "unit"}),
+    "slope":          ({"points", "expected"}, {"tol", "tol_reason"}),
+    "polygon_area":   ({"points", "expected"}, {"tol", "tol_reason"}),
+    "triangle":       ({"given", "solve_for", "expected"}, {"tol", "tol_reason", "unit"}),
     "system":         ({"equations", "vars", "expected"}, set()),
     "series":         ({"term", "from", "to", "expected"}, {"var"}),
     "inequality":     ({"expr", "relation", "expected"}, {"var"}),
-    "stats":          ({"data", "measure", "expected"}, {"tol"}),
+    "stats":          ({"data", "measure", "expected"}, {"tol", "tol_reason"}),
     "probability":    ({"favorable", "total", "expected"}, set()),
-    "read_data":      ({"data", "query", "expected"}, {"key", "tol"}),
-    "definite_integral": ({"expr", "from", "to", "expected"}, {"var", "tol"}),
+    "read_data":      ({"data", "query", "expected"}, {"key", "tol", "tol_reason"}),
+    "definite_integral": ({"expr", "from", "to", "expected"}, {"var", "tol", "tol_reason"}),
     "estimate":       ({"expr", "place", "expected"}, set()),
     "compare":        ({"values", "expected"}, {"order"}),
     "manual":         ({"desc"}, set()),
 }
 
+# Fields legal on ANY problem. "standard" (e.g. CCSS "8.EE.C.8"), "difficulty"
+# (1-5) and "bloom" are reporting tags, never gating. One constant shared by
+# check_schema() and --schema so the enforcement and the reference cannot drift.
+_UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
+                     # the declarative figure spec render_figures.py draws from
+                     "figure"}
+
+# One canonical, WORKING example per type — printed by --schema and executed
+# by tests/test_pipeline_fixes.py (each must pass check_schema + check_problem),
+# so the documentation is verified data, never illustration.
+EXAMPLES = {
+    "solve":          {"id": 1, "type": "solve", "expr": "x**2 - 5*x + 6", "expected": [2, 3]},
+    "zeros":          {"id": 1, "type": "zeros", "expr": "x*(x-3)**2", "expected": [0, 3]},
+    "factor":         {"id": 1, "type": "factor", "expr": "x**2 - 7*x + 12", "expected": "(x-3)*(x-4)"},
+    "expand":         {"id": 1, "type": "expand", "expr": "(x+2)**2", "expected": "x**2 + 4*x + 4"},
+    "eval":           {"id": 1, "type": "eval", "expr": "(x-1)*(x+2)", "at": {"x": 0}, "expected": -2},
+    "diff":           {"id": 1, "type": "diff", "expr": "x**3 - 4*x", "expected": "3*x**2 - 4"},
+    "integrate":      {"id": 1, "type": "integrate", "expr": "6*x**2", "expected": "2*x**3"},
+    "limit":          {"id": 1, "type": "limit", "expr": "sin(x)/x", "to": 0, "expected": 1},
+    "equiv":          {"id": 1, "type": "equiv", "expr": "sin(2*x)", "expected": "2*sin(x)*cos(x)"},
+    "solve_interval": {"id": 1, "type": "solve_interval", "expr": "2*sin(t) - 1", "var": "t",
+                       "interval": [0, 360], "unit": "deg", "expected": [30, 150]},
+    "approx":         {"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)", "expected": 6.30, "tol": 0.01},
+    "distance":       {"id": 1, "type": "distance", "points": [[1, 2], [4, 6]], "expected": 5},
+    "midpoint":       {"id": 1, "type": "midpoint", "points": [[2, -3], [8, 7]], "expected": [5, 2]},
+    "slope":          {"id": 1, "type": "slope", "points": [[2, 1], [2, 9]], "expected": "undefined"},
+    "polygon_area":   {"id": 1, "type": "polygon_area", "points": [[0, 0], [5, 0], [6, 4], [1, 3]], "expected": 17},
+    "triangle":       {"id": 1, "type": "triangle", "given": {"a": 7, "b": 11, "C": 34},
+                       "solve_for": "c", "expected": 6.51},
+    "system":         {"id": 1, "type": "system", "equations": ["x + y - 5", "x - y - 1"],
+                       "vars": ["x", "y"], "expected": {"x": 3, "y": 2}},
+    "series":         {"id": 1, "type": "series", "term": "1/2**n", "from": 0, "to": "oo",
+                       "var": "n", "expected": 2},
+    "inequality":     {"id": 1, "type": "inequality", "expr": "x - 4", "relation": ">",
+                       "expected": [4, "oo", "open"]},
+    "stats":          {"id": 1, "type": "stats", "data": [3, 7, 5], "measure": "mean", "expected": 5},
+    "probability":    {"id": 1, "type": "probability", "favorable": 3, "total": 8, "expected": "3/8"},
+    "read_data":      {"id": 1, "type": "read_data", "data": {"Mon": 12, "Tue": 8},
+                       "query": "total", "expected": 20},
+    "definite_integral": {"id": 1, "type": "definite_integral", "expr": "x**2", "from": 0, "to": 3,
+                          "expected": 9},
+    "estimate":       {"id": 1, "type": "estimate", "expr": "47 + 32", "place": "ten", "expected": 80},
+    "compare":        {"id": 1, "type": "compare", "values": ["1/2", "0.6"], "order": "relation",
+                       "expected": "<"},
+    "manual":         {"id": 1, "type": "manual", "desc": "Graph sketch — verify visually"},
+}
+
 _RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
               ">": sympy.StrictGreaterThan, ">=": sympy.GreaterThan}
+
+
+def validate_figure(p, ptype):
+    """Validate the optional 'figure' object scripts/render_figures.py draws.
+
+    The whole point of rendered figures is a SINGLE source of givens, so on a
+    'triangle' problem the figure may only be the opt-in marker — any value
+    inside it would be a second copy of the givens, i.e. the retyping drift
+    this pipeline exists to prevent. A 'right_triangle' figure carries its own
+    givens (the approx expr has no structure to draw from), so those are
+    geometry-checked here through the same solve_triangle that verifies
+    triangle problems, and literal-checked against 'expr' so the drawing can
+    only show numbers the arithmetic check actually used.
+    """
+    fig = p.get("figure")
+    if fig is None:
+        return
+    if not isinstance(fig, dict):
+        raise VerifyInputError(
+            "'figure' must be an object like {\"kind\": \"triangle\"}")
+    kind = fig.get("kind")
+    if kind not in ("triangle", "right_triangle"):
+        raise VerifyInputError(
+            f"figure 'kind' must be 'triangle' or 'right_triangle', got {kind!r}")
+    if ptype == "triangle":
+        if kind != "triangle" or set(fig) != {"kind"}:
+            raise VerifyInputError(
+                "on a 'triangle' problem, 'figure' must be exactly "
+                '{"kind": "triangle"} — render_figures.py draws from the '
+                "problem's own 'given' dict, never from a second copy")
+        return
+    if kind == "triangle":
+        raise VerifyInputError(
+            "figure kind 'triangle' only applies to type 'triangle' problems "
+            "(they render automatically from their 'given' dict)")
+    if ptype != "approx":
+        raise VerifyInputError(
+            "figure kind 'right_triangle' only applies to 'approx' problems — "
+            "the figure values are literal-checked against 'expr'")
+    unknown = set(fig) - {"kind", "given", "solve_for", "unknown"}
+    if unknown:
+        raise VerifyInputError(
+            f"figure has unknown field(s): {sorted(unknown)}")
+    given = fig.get("given")
+    if (not isinstance(given, dict) or len(given) != 2
+            or set(given) - {"a", "b", "c", "A", "B"}):
+        raise VerifyInputError(
+            "figure 'given' must hold exactly two of a/b/c/A/B "
+            "(the right angle C is implied)")
+    for k, v in given.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise VerifyInputError(
+                f"figure given {k!r} must be a plain number so it can be "
+                "literal-matched against 'expr'")
+    solve_for = fig.get("solve_for")
+    if solve_for not in {"a", "b", "c", "A", "B"} or solve_for in given:
+        raise VerifyInputError(
+            "figure 'solve_for' must be one of a/b/c/A/B and not already given")
+    unk = fig.get("unknown", "?")
+    if not isinstance(unk, str) or not re.fullmatch(r"[A-Za-z?]{1,3}", unk):
+        raise VerifyInputError(
+            "figure 'unknown' must be a short letter name like \"x\"")
+    expr_nums = {float(t) for t in
+                 re.findall(r"\d+(?:\.\d+)?|\.\d+", str(p.get("expr", "")))}
+    for k, v in given.items():
+        if float(v) not in expr_nums:
+            raise VerifyInputError(
+                f"figure value {k}={v} does not appear as a literal in expr "
+                f"{p.get('expr')!r} — the figure would print a number this "
+                "check never verified")
+    sides = {k: float(given[k]) for k in "abc" if k in given}
+    angles = {k: math.radians(float(given[k])) for k in "AB" if k in given}
+    angles["C"] = math.pi / 2
+    if not solve_triangle(sides, angles):
+        raise VerifyInputError(
+            f"figure givens {given} do not form a right triangle "
+            "(a leg cannot exceed the hypotenuse)")
 
 
 def check_schema(p):
@@ -583,9 +809,7 @@ def check_schema(p):
         raise VerifyInputError(
             f"unknown problem type {ptype!r} — allowed types: {sorted(SCHEMAS)}")
     required, optional = SCHEMAS[ptype]
-    # "standard" (e.g. CCSS "8.EE.C.8" / AP "CHA-3.A") and "difficulty" (1-5)
-    # are universal optional tags — reported in the summary, never gating
-    fields = set(p) - {"id", "type", "note", "standard", "difficulty", "bloom"}
+    fields = set(p) - _UNIVERSAL_FIELDS
     missing = required - fields
     if missing:
         raise VerifyInputError(
@@ -594,6 +818,7 @@ def check_schema(p):
     if unknown:
         raise VerifyInputError(
             f"type {ptype!r} has unknown field(s): {sorted(unknown)}")
+    validate_figure(p, ptype)
     return ptype
 
 
@@ -617,9 +842,11 @@ def check_problem(p, ptype):
         (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
         computed = sympy.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         expected = parse_value(p["expected"])
-        ok = compare_value(computed, expected, get_tol(p))
+        tol = get_tol(p)
+        ok = compare_value(computed, expected, tol)
         return ("PASS" if ok else "FAIL",
-                f"distance{tuple(p['points'])} → {computed} (expected {p['expected']})")
+                f"distance{tuple(p['points'])} → {computed} "
+                f"(expected {p['expected']}{_tol_note(tol)})")
 
     if ptype == "midpoint":
         (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
@@ -644,9 +871,11 @@ def check_problem(p, ptype):
                     f"{'undefined' if vertical else (y2 - y1) / (x2 - x1)} "
                     f"(expected {expected_raw})")
         computed = (y2 - y1) / (x2 - x1)
-        ok = compare_value(computed, parse_value(expected_raw), get_tol(p))
+        tol = get_tol(p)
+        ok = compare_value(computed, parse_value(expected_raw), tol)
         return ("PASS" if ok else "FAIL",
-                f"slope{tuple(p['points'])} → {computed} (expected {expected_raw})")
+                f"slope{tuple(p['points'])} → {computed} "
+                f"(expected {expected_raw}{_tol_note(tol)})")
 
     if ptype == "polygon_area":
         pts = parse_points(p["points"], at_least=3)
@@ -655,10 +884,11 @@ def check_problem(p, ptype):
                        for i in range(len(pts)))
         computed = sympy.Abs(shoelace) / 2
         expected = parse_value(p["expected"])
-        ok = compare_value(computed, expected, get_tol(p))
+        tol = get_tol(p)
+        ok = compare_value(computed, expected, tol)
         return ("PASS" if ok else "FAIL",
                 f"polygon_area({len(pts)} points) → {computed} "
-                f"(expected {p['expected']})")
+                f"(expected {p['expected']}{_tol_note(tol)})")
 
     if ptype == "triangle":
         given = p["given"]
@@ -791,7 +1021,8 @@ def check_problem(p, ptype):
         else:
             ok = compare_value(result, expected, None)
         return ("PASS" if ok else "FAIL",
-                f"{measure}({data}) → {result} (expected {p['expected']})")
+                f"{measure}({data}) → {result} "
+                f"(expected {p['expected']}{_tol_note(tol)})")
 
     if ptype == "probability":
         fav, tot = parse_value(p["favorable"]), parse_value(p["total"])
@@ -921,9 +1152,11 @@ def check_problem(p, ptype):
         else:
             raise VerifyInputError("read_data 'data' must be an object or a list")
         expected = parse_value(p["expected"])
-        ok = compare_value(result, expected, get_tol(p))
+        tol = get_tol(p)
+        ok = compare_value(result, expected, tol)
         return ("PASS" if ok else "FAIL",
-                f"{query}({data}) → {result} (expected {p['expected']})")
+                f"{query}({data}) → {result} "
+                f"(expected {p['expected']}{_tol_note(tol)})")
 
     if ptype == "definite_integral":
         var = get_var(p)
@@ -1178,6 +1411,7 @@ def check_problem(p, ptype):
 # ── Driver ────────────────────────────────────────────────────────────────────
 
 def run_verification(json_path):
+    WIDE_TOLS.clear()   # the test suites call this repeatedly in-process
     try:
         with open(json_path) as f:
             data = json.load(f)
@@ -1238,6 +1472,15 @@ def run_verification(json_path):
 
     print(f"\n{len(passes)} passed · {len(failures)} failed · {len(manuals)} manual")
 
+    # Widened tolerances are never invisible: tally them even when everything
+    # "passed", and route the run through exit 2 below (audit #9).
+    if WIDE_TOLS:
+        print(f"⚠ {len(WIDE_TOLS)} problem(s) used a widened tolerance "
+              "(explicit 'tol' above the 1%/half-ulp ceiling, acknowledged "
+              "by 'tol_reason'):")
+        for pid, tol, reason in WIDE_TOLS:
+            print(f"    problem {pid}: tol {tol:g} — {reason}")
+
     # Tag report: standards coverage + difficulty ramp (informational)
     stds = {}
     diffs = []
@@ -1279,13 +1522,57 @@ def run_verification(json_path):
         print(f"\n👁  {len(manuals)} problem(s) need manual review "
               f"({machine_checked} machine-verified) — safe to compile.")
         return 2
+    if WIDE_TOLS:
+        print(f"\n👁  {len(WIDE_TOLS)} widened-tolerance problem(s) to review "
+              "(see the ⚠ tally above) — safe to compile.")
+        return 2
     print("\n✅ All checks passed — safe to compile.")
     return 0
 
 
+def print_schema(mode="table"):
+    """Live schema reference generated from the SAME dicts check_schema()
+    enforces, so it cannot go stale (the only always-current field reference
+    used to be the source itself — audit backlog #11)."""
+    if mode not in ("table", "json"):
+        print(f"Usage: {sys.argv[0]} --schema [json]", file=sys.stderr)
+        return 1
+    universal = sorted(_UNIVERSAL_FIELDS - {"id", "type"})
+    if mode == "json":
+        print(json.dumps({
+            "types": {t: {"required": sorted(req), "optional": sorted(opt),
+                          "example": EXAMPLES[t]}
+                      for t, (req, opt) in sorted(SCHEMAS.items())},
+            "universal_required": ["id", "type"],
+            "universal_optional": universal,
+            "functions": sorted(_FUNCS),
+            "constants": sorted(_CONSTS),
+            "variables": sorted(_VARS),
+        }, indent=2))
+        return 0
+    print(f"# verify.py problem types ({len(SCHEMAS)}) — generated from the "
+          "enforced schema\n")
+    print("| type | required | optional |")
+    print("|---|---|---|")
+    for t, (req, opt) in sorted(SCHEMAS.items()):
+        print(f"| {t} | {', '.join(sorted(req))} | {', '.join(sorted(opt)) or '-'} |")
+    print(f"\nEvery problem: 'id' (integer) and 'type' required; "
+          f"universal optional fields: {', '.join(universal)}")
+    print(f"Allowed functions: {' '.join(sorted(_FUNCS))}")
+    print(f"Allowed constants: {' '.join(sorted(_CONSTS))}")
+    print(f"Allowed variables: {' '.join(sorted(_VARS))}")
+    print("\nOne canonical example per type (each is run by the test suite):")
+    for t in sorted(SCHEMAS):
+        print(f"  {json.dumps(EXAMPLES[t])}")
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) >= 2 and sys.argv[1] == "--schema":
+        sys.exit(print_schema(sys.argv[2] if len(sys.argv) > 2 else "table"))
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <verify_TOPIC_DATE.json>", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <verify_TOPIC_DATE.json> | --schema [json]",
+              file=sys.stderr)
         sys.exit(1)
 
     json_path = sys.argv[1]

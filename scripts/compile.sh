@@ -7,8 +7,40 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 TEX_FILE="${1:-}"
 OUT_DIR="${2:-$(dirname "$TEX_FILE")}"
+
+# Gate the real TeX log before declaring success: an engine can exit 0 while
+# the PDF prints '??' for a broken \ref, silently drops glyphs ("Missing
+# character"), or runs text 10cm off the page (Overfull \hbox). Those signals
+# exist ONLY in the .log — tectonic even deletes it without --keep-logs — so
+# check_log.py scans the kept log (same format from both engines) and this
+# script refuses to ship on failure. The outdir is a deliverable, so the log
+# is always removed afterwards, pass or fail (faults are echoed first).
+scan_log() {
+  local LOGFILE="$1"
+  if [[ ! -f "$LOGFILE" ]]; then
+    echo "⚠ expected LaTeX log not found at $LOGFILE — log hygiene not checked" >&2
+    echo "  (tectonic too old for --keep-logs? upgrade tectonic)" >&2
+    return 0
+  fi
+  local PY
+  PY="$(command -v python3 2>/dev/null || true)"
+  if [[ -z "$PY" ]]; then
+    echo "⚠ python3 not found — log hygiene not checked (install python3;" >&2
+    echo "  it is already required for answer verification, see SKILL.md)" >&2
+    rm -f "$LOGFILE"
+    return 0
+  fi
+  if ! "$PY" "$SCRIPT_DIR/check_log.py" "$LOGFILE"; then
+    rm -f "$LOGFILE"
+    echo "❌ The PDF compiled but would ship broken — fix the log faults above and recompile." >&2
+    exit 1
+  fi
+  rm -f "$LOGFILE"
+}
 
 if [[ -z "$TEX_FILE" ]]; then
   echo "Usage: compile.sh <input.tex> [output-dir]" >&2
@@ -44,13 +76,46 @@ fi
 
 mkdir -p "$OUT_DIR"
 
+# ── Stage shipped templates beside the target ─────────────────────────────────
+# Generated documents \input the shipped templates (templates/*.tex) instead of
+# re-transcribing the preamble each run. Neither engine knows about $SKILL_DIR:
+# tectonic resolves \input against the source file's directory, pdflatex
+# (kpathsea) against the process cwd. Copying the templates next to the .tex
+# satisfies both, so a /tmp compile just works.
+TEX_DIR="$(cd "$(dirname "$TEX_FILE")" && pwd)"
+TPL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/templates"
+if grep -qE '\\input\{(worksheet-preamble|figure-macros)(\.tex)?\}' "$TEX_FILE"; then
+  if [[ ! -d "$TPL_DIR" ]]; then
+    echo "Error: $(basename "$TEX_FILE") \\inputs a shipped template, but" >&2
+    echo "$TPL_DIR does not exist (partial checkout?). Restore the skill's" >&2
+    echo "templates/ directory, or inline the preamble following" >&2
+    echo "references/latex-templates.md." >&2
+    exit 1
+  fi
+  # skip the copy when compiling inside templates/ itself (cp same-file error)
+  if [[ "$TPL_DIR" != "$TEX_DIR" ]]; then
+    cp -f "$TPL_DIR"/*.tex "$TEX_DIR/"
+  fi
+fi
+
 echo "Compiling: $(basename "$TEX_FILE") → $OUT_DIR/"
 if [[ -n "$TECTONIC" ]]; then
-  "$TECTONIC" "$TEX_FILE" --outdir "$OUT_DIR" 2>&1 | grep -v "^note: downloading"
+  "$TECTONIC" "$TEX_FILE" --outdir "$OUT_DIR" --keep-logs 2>&1 | grep -v "^note: downloading"
+  # tectonic reruns internally until stable, so the kept log is the FINAL
+  # pass — valid \ref documents scan clean, real drift scans dirty
+  scan_log "${OUT_DIR}/$(basename "${TEX_FILE%.tex}").log"
 else
   LOG="$(mktemp)"
-  if ! "$PDFLATEX" -interaction=nonstopmode -halt-on-error \
-       -output-directory "$OUT_DIR" "$TEX_FILE" > "$LOG" 2>&1; then
+  # Run pdflatex FROM the source's directory: kpathsea resolves \input against
+  # the process cwd, so a staged template beside the .tex would be invisible
+  # when compile.sh is invoked from anywhere else. (tectonic resolves against
+  # the input file's directory and needs no such help.)
+  OUT_DIR_ABS="$(cd "$OUT_DIR" && pwd)"
+  pdflatex_pass() {
+    (cd "$TEX_DIR" && "$PDFLATEX" -interaction=nonstopmode -halt-on-error \
+      -output-directory "$OUT_DIR_ABS" "$(basename "$TEX_FILE")") > "$LOG" 2>&1
+  }
+  if ! pdflatex_pass; then
     echo "pdflatex failed — last lines of log:" >&2
     tail -25 "$LOG" >&2
     if grep -q "\.sty' not found" "$LOG"; then
@@ -61,10 +126,19 @@ else
     exit 1
   fi
   rm -f "$LOG"
-  # pdflatex (unlike tectonic) drops .aux/.log next to the PDF — the output
-  # directory is a deliverable, keep only the PDF
   JOB="$(basename "${TEX_FILE%.tex}")"
-  rm -f "${OUT_DIR}/${JOB}.aux" "${OUT_DIR}/${JOB}.log" "${OUT_DIR}/${JOB}.out"
+  # \ref numbers resolve from the .aux of a PREVIOUS pass, and the aux is
+  # deleted below — so a single pass always logs a valid \ref as undefined.
+  # Rerun once, exactly when the log says references are unresolved, so the
+  # scan below fails only on genuine \ref/\label drift.
+  if grep -qE 'Rerun to get cross-references|There were undefined references' \
+       "${OUT_DIR}/${JOB}.log" 2>/dev/null; then
+    pdflatex_pass || true   # pass 1 compiled; the scan + PDF check still gate
+  fi
+  scan_log "${OUT_DIR}/${JOB}.log"
+  # pdflatex (unlike tectonic) drops .aux next to the PDF — the output
+  # directory is a deliverable, keep only the PDF
+  rm -f "${OUT_DIR}/${JOB}.aux" "${OUT_DIR}/${JOB}.out"
 fi
 
 PDF="${OUT_DIR}/$(basename "${TEX_FILE%.tex}").pdf"

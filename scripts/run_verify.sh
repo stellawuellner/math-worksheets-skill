@@ -30,26 +30,12 @@ if [[ ! -f "$JSON_FILE" ]]; then
   exit 1
 fi
 
-# ── Find Python 3 ─────────────────────────────────────────────────────────────
-PYTHON=""
-for candidate in "/opt/homebrew/bin/python3" "/usr/local/bin/python3" "$(command -v python3 2>/dev/null || true)"; do
-  if [[ -x "$candidate" ]]; then
-    PYTHON="$candidate"
-    break
-  fi
-done
-
-if [[ -z "$PYTHON" ]]; then
-  echo "Error: python3 not found. Install Python 3 to use verification." >&2
-  exit 1
-fi
-
-# ── Check sympy is available ──────────────────────────────────────────────────
-if ! "$PYTHON" -c "import sympy" 2>/dev/null; then
-  echo "Error: sympy is not installed." >&2
-  echo "Run: pip3 install sympy" >&2
-  exit 1
-fi
+# ── Find a Python 3 that has sympy ────────────────────────────────────────────
+# Shared finder (scripts/find_python.sh): prefers the first candidate that can
+# `import sympy` instead of the first that merely exists — the old loop picked
+# a sympy-less python and gave up while a working one sat next in line.
+source "${SCRIPT_DIR}/find_python.sh"
+PYTHON="$(find_sympy_python)" || exit 1
 
 # ── Run the fixed verification script ────────────────────────────────────────
 "$PYTHON" "$VERIFY_PY" "$JSON_FILE"

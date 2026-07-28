@@ -13,7 +13,7 @@ Throughout this document, `$SKILL_DIR` means the directory containing this SKILL
 
 ## Model Selection (Automatic, Best-Effort)
 
-Reasoning models (o1, o3, DeepSeek R1, Gemini DeepThink) work through math step-by-step and make significantly fewer errors than standard models. This skill tries to detect the best available model and delegate problem generation to it. **Every branch degrades gracefully** — if detection or delegation isn't possible on the current platform, generate the problems yourself; the SymPy verification gate (Step 4) catches most errors regardless.
+Reasoning models (o1, o3, DeepSeek R1, Gemini DeepThink) work through math step-by-step and make significantly fewer errors than standard models. This skill tries to detect the best available model and delegate problem generation to it. **Every branch degrades gracefully** — if detection or delegation isn't possible on the current platform, generate the problems yourself; the SymPy verification gate (steps 4–5) catches most errors regardless.
 
 Rankings are bundled in `references/model-rankings.json` (human-readable notes in `references/model-rankings.md`) and updated with each skill release. Detection is fully local — no network calls.
 
@@ -69,7 +69,7 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 # or download a release binary: https://github.com/tectonic-typesetting/tectonic/releases
 ```
 
-**python3 + sympy** for answer verification: `pip3 install sympy`
+**python3 + sympy** for answer verification: `pip3 install sympy`. The scripts pick the first python3 that can actually `import sympy` (machines often carry several pythons); pin one with `MWS_PYTHON_CANDIDATES=/path/to/python3` if needed.
 
 **No tectonic?** `scripts/compile.sh` falls back to `pdflatex` automatically. Unlike tectonic, pdflatex does not download packages — install the full set up front: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra` (the last one supplies `enumitem`, `mdframed`, and friends used by the templates).
 
@@ -97,6 +97,8 @@ See `references/problem-library.md` for topic-specific problem type menus.
 
 **Tiered worksheets (differentiation, on request):** when asked for tiers (support/on-level/challenge), build ONE set of problem skeletons, then re-parameterize per tier — same structure and standards, different givens and difficulty band (support: 1–2 with a hints box and a worked first step; core: 2–3; challenge: 3–5). Each tier gets its OWN verify JSON (the gate re-checks every tier) and file prefix: `wsS_`/`wsC_`/`wsX_` + matching keys. Because construction is JSON-first, a tier is a data change, not a rewrite.
 
+**Tier naming for the build driver:** give each tier its own *stem* — `verify_factoring_S_2026-07-27.json` with `wsS_factoring_S_2026-07-27.tex` (or plain `ws_factoring_S_...`; both are discovered). What matters is that two tiers never share a stem in one directory: `scripts/build.sh` derives the document names from the verify JSON's stem, and two candidates for one role is a hard discovery error, not a guess.
+
 ### 3. Write LaTeX source
 
 Write **three** `.tex` files to `/tmp/`:
@@ -113,24 +115,18 @@ The **skills summary** is a 1–2 page reference card the student can use while 
 
 See `references/latex-templates.md` → "Skills Summary / Study Guide Template" for the full shell and box macros.
 
-**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation — and run it through `run_verify.sh` exactly like the worksheet's, then bind its printed answers with `check_answer_key.py`:
-```bash
-bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
-python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
-```
-Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does.
+**Verify the study guide too.** Its worked mini-examples are math the student learns from first, so they must not be exempt from the gate (audit 3c). Write a second verification file `/tmp/verify_ss_TOPIC_DATE.json` — one entry per worked example's computation. The build driver (step 5) verifies it and binds its printed answers automatically; a missing `ss_` document or `verify_ss_` JSON is a **build failure**, not a skip. Formula boxes (no computed answer) need no entry; every *worked example with a printed result* does.
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
-**Required packages** (include in every document):
+**Preamble — \input the shipped template, never retype it.** Start every document with:
 ```latex
-\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
-\usepackage{amsmath, amssymb}
-\usepackage{tikz, pgfplots}
-\usepackage{enumitem, fancyhdr, multicol, array, booktabs}
-\pgfplotsset{compat=1.18}
-\usetikzlibrary{calc, angles, quotes}
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}  % ss_: margin=0.85in, top/bottom 0.7in
+\input{worksheet-preamble}
+\input{figure-macros}    % when using the shipped figure macros (\rtfig, \trifig, \refrt)
 ```
+`$SKILL_DIR/templates/worksheet-preamble.tex` carries the packages, `\problem`, `\fittedtitle`, the `\wsheader`/`\akheader`/`\ssheader` + title-block macros, and the study-guide box environments; `templates/figure-macros.tex` carries the figure macros. `compile.sh` (and therefore `build.sh`) stages both files beside your `.tex` automatically, so `/tmp` compiles just work — but only when you compile through the scripts, never by invoking the engine directly. Only `geometry` stays in the document (margins differ between worksheets and study guides).
 
 **Work space defaults**: `\vspace{5cm}` per problem; `8cm` for multi-step; `10cm+` for graphs.
 These are a floor, not a suggestion: `tests/check_layout.py` fails a worksheet whose
@@ -147,13 +143,11 @@ directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How
 triangle here is labelled. No values shown: use the numbers given in each problem."
 `tests/check_layout.py` enforces this.
 
-### 4. Write and run the verification file
+### 4. Write the verification file
 
-Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file describing each problem and its expected answer. The bundled `scripts/verify.py` evaluates this using SymPy. No generated code is ever executed.
+Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file describing each problem and its expected answer. The bundled `scripts/verify.py` evaluates this using SymPy. No generated code is ever executed. The build driver (step 5) runs it first and fail-fast; to iterate on verification alone, see "Debugging individual gates" below.
 
-```bash
-bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
-```
+**Field reference that cannot go stale:** `python3 "$SKILL_DIR/scripts/verify.py" --schema` prints every type's required/optional fields, the allowed functions/constants/variables, and one working example per type, generated live from the enforced schema (`--schema json` for machine-readable output).
 
 **JSON format** — always set `problem_count` to the number of problems on the worksheet; verification hard-fails unless every problem id 1..N has at least one check (use `manual` for the unverifiable ones), so a partially-verified answer key can never slip through:
 ```json
@@ -198,7 +192,7 @@ bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json
 | `limit` | ✅ | Limit of expr as var → `to`; optional `dir`: `"+"`, `"-"`, `"+-"` (default) |
 | `equiv` | ✅ | expr and expected are the same function (trig identities, simplification) |
 | `solve_interval` | ✅ | Roots of expr=0 on `[a, b)`; `"unit": "deg"` for degree-mode trig equations |
-| `approx` | ✅ | Numeric expr recomputed exactly, compared within `tol` (default 0.01) — for rounded answers |
+| `approx` | ✅ | Numeric expr recomputed exactly, compared within `tol` (default: scale-aware — accepts what rounds to the written precision) — for rounded answers |
 | `distance` | ✅ | Distance between two `points`; exact, or within `tol` if given |
 | `midpoint` | ✅ | Midpoint of two `points`; expected is an `[x, y]` pair |
 | `slope` | ✅ | Slope through two `points`; expected value or `"undefined"` for vertical |
@@ -235,31 +229,34 @@ Use `manual` for: graph sketches, sign charts, word problem setups, two-column p
 
 **Strict schema:** an unknown `type`, a misspelled field, or a missing required field is a hard failure (exit 1) — never a silent skip. If you need an unverifiable problem, declare it `manual` explicitly.
 
+**Explicit `tol` is capped.** A `tol` wider than max(1% of |expected|, half a unit in the expected value's last written place) is rejected — an unbounded tolerance is a one-field bypass of the whole gate. For genuine estimation problems, add `"tol_reason": "<why>"` to acknowledge the widened tolerance: the run then passes with exit 2 and a visible `⚠` tally, never silently.
+
 **If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 
 **Trust boundary of `approx`:** it confirms the *arithmetic of the formula you wrote* matches `expected` — it cannot confirm the formula is the right one for the stated problem. Keep the `approx` `expr` a faithful transcription of the problem's givens, and rely on the prose/figure/answer-key checkers below to bind the story to the math.
 
-### 4b. Bind the printed documents to the verified JSON
-
-Verification proves the JSON is correct; these checkers prove the **PDFs the student receives** match it. Run all three before compiling and resolve every hard flag:
+### 5. Run the gate chain and compile — one command
 
 ```bash
-python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # worksheet prose + figure labels ↔ JSON givens
-python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex                                  # figure scope + work space (exit 1 = fix before shipping)
-python3 "$SKILL_DIR/tests/check_answer_key.py"        /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json   # every verified answer appears in the key
+bash "$SKILL_DIR/scripts/build.sh" /tmp/verify_TOPIC_DATE.json
 ```
 
-- `check_answer_key.py` exits 1 if a verified answer value is printed **nowhere** in the key (transcription drift) — fix the `.tex` and re-run. Soft `⚠` alignment notes are heuristic; eyeball them.
-- **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
-- `check_prose_consistency.py` also now checks **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
+That single command replaces what used to be nine separate steps. It discovers `ws_`/`ak_`/`ss_TOPIC_DATE.tex` and `verify_ss_TOPIC_DATE.json` next to the JSON (student-name prefixes like `leo_ws_` and tier tokens `wsS_`/`wsC_`/`wsX_` included), then runs, fail-fast:
 
-### 5. Compile
+1. `run_verify.sh` on the worksheet JSON, then the study-guide JSON
+2. figure rendering (when shipped and the JSON has figure/triangle problems)
+3. `check_layout.py` on the worksheet (figure scope + work space)
+4. `compile.sh` for all three documents (nothing compiles after a failed gate)
+5. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs
+6. `check_prose_consistency.py` on the worksheet
 
-```bash
-bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Worksheets/
-bash "$SKILL_DIR/scripts/compile.sh" /tmp/ak_TOPIC_DATE.tex ~/Documents/Worksheets/
-bash "$SKILL_DIR/scripts/compile.sh" /tmp/ss_TOPIC_DATE.tex ~/Documents/Worksheets/
-```
+It ends with a gate-summary table and ONE verdict line. Exit 0 = all green with three PDF paths printed; exit 1 = a gate failed (named — fix and re-run); exit 2 = green with manual-review items. **Missing `ak_`/`ss_` documents are failures, not skips** — the skill mandates three documents (`--worksheet-only` exists for the rare single-document request). Default output directory is `~/Documents/Worksheets/` (`--outdir` to override; see the Prerequisites note about headless environments).
+
+Why the checkers exist (`build.sh` runs them for you):
+
+- `check_answer_key.py` fails if a verified answer value is printed **nowhere** in the key (transcription drift). Soft `⚠` alignment notes are heuristic; eyeball them. **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
+- `check_prose_consistency.py` checks prose numbers and **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
+- `check_layout.py` enforces the figure-scope and work-space rules from step 3.
 
 ### 6. Deliver
 
@@ -296,12 +293,29 @@ ss_algebra2_factoring_2026-02-22.pdf   ← skills summary / study guide
 
 Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 
+## Debugging individual gates
+
+`build.sh` is the normal path — these are the underlying commands for isolating a single failing gate. They are the same programs `build.sh` runs; using them does NOT discharge the gate chain (finish with a green `build.sh` run before delivering):
+
+```bash
+bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json          # 0 pass · 1 fail · 2 manual-review
+bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex            # figure scope + work space
+python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
+python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
+bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Worksheets/   # also ak_/ss_
+```
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | `tectonic` not found | `brew install tectonic`, or rely on the pdflatex fallback (see Prerequisites) |
 | pdflatex: `.sty` not found (enumitem, mdframed, …) | `apt install texlive-latex-extra` (pdflatex doesn't auto-download packages) |
+| `worksheet-preamble.tex` not found | Compile via `compile.sh`/`build.sh` — they stage `templates/*.tex` beside your `.tex`. Don't invoke the engine directly |
+| `sympy is not installed` but you installed it | You have several pythons and pip fed a different one — run the exact `<python> -m pip install sympy` command the error prints, or set `MWS_PYTHON_CANDIDATES` |
+| Which JSON fields does type X take? | `python3 "$SKILL_DIR/scripts/verify.py" --schema` (always current — generated from the enforced schema) |
 | Slow first compile | Downloading packages from CTAN — wait 30–60s, faster after |
 | LaTeX error on line N | Check paired `$...$`, matching `\begin{}/\end{}` |
 | pgfplots not rendering | Ensure `\pgfplotsset{compat=1.18}` is in preamble |

@@ -56,8 +56,13 @@ def has_valued_figure(item):
         for node in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", fig.group(0)):
             if re.search(r"\d", node.group(1)):
                 return True
-    # macro-style figures: \rt{...}{$b=8$}... — any braced arg holding a digit
-    for mac in re.finditer(r"\\[a-zA-Z]*(?:rt|tri|fig)[a-zA-Z]*((?:\{[^{}]*\}){2,})", item):
+    # macro-style figures: \rtfig{...}{$b=8$}... — any braced arg holding a
+    # digit. The optional [..] arg (scale/styling, e.g. \rtfig[scale=1.2])
+    # must neither defeat detection nor have its digits counted as values —
+    # a macro the detector silently stops seeing is a false PASS on the
+    # all-or-nothing figure rule, the dangerous direction.
+    for mac in re.finditer(r"\\[a-zA-Z]*(?:rt|tri|fig)[a-zA-Z]*"
+                           r"(?:\[[^\]]*\])?((?:\{[^{}]*\}){2,})", item):
         if re.search(r"\d", mac.group(1)):
             return True
     return False

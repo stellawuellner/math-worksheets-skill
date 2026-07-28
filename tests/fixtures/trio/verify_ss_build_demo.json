@@ -1,0 +1,7 @@
+{
+  "topic": "build.sh driver fixture — study-guide worked example",
+  "problem_count": 1,
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "2*x + 1", "at": {"x": 2}, "expected": 5}
+  ]
+}

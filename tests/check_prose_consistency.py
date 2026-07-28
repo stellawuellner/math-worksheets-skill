@@ -70,6 +70,16 @@ def figure_label_numbers(block):
         nums |= {float(n) for n in NUM_RE.findall(label)}
     for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):  # pic "$34^\circ$"
         nums |= {float(n) for n in NUM_RE.findall(m.group(1))}
+    # macro-style figures (templates/figure-macros.tex): the mandatory braced
+    # args ARE the printed labels, so their numbers are figure values; the
+    # optional [..] arg is scale/styling and excluded — mirrors
+    # check_layout.has_valued_figure so the two detectors cannot disagree
+    # about what counts as a figure value.
+    for m in re.finditer(r"\\[a-zA-Z]*(?:rt|tri|fig)[a-zA-Z]*"
+                         r"(?:\[[^\]]*\])?((?:\{[^{}]*\}){2,})", block):
+        args = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2",
+                      m.group(1))
+        nums |= {float(n) for n in NUM_RE.findall(args)}
     return nums
 
 

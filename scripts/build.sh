@@ -51,7 +51,12 @@
 #                      answer location)
 #   10 answer-line-ws  tests/check_answer_line.py (answer_unit <-> \answerline)
 #   11 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
-#                      the tectonic package cache for the other two)
+#                      the tectonic package cache for the other two). Each
+#                      compile enforces a page budget read from the engine's
+#                      own "Output written ... (N pages" log line
+#                      (check_log.py --max-pages): ss ≤ 2 (SKILL.md's hard
+#                      cap), ws ≤ 8 and ak ≤ 6 (sanity ceilings — the largest
+#                      real 12-problem worksheet ran 7 pages with figures)
 #   12 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
 #                      (values AND units; for ss_ also examplebox/tryitbox
 #                      pairing and role agreement)
@@ -397,23 +402,34 @@ fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared
 # cache, so the ak/ss compiles that follow are fast.
-compile_gate() { # gate-name tex-file
-  local gate="$1" tex="$2"
-  banner "compile $(basename "$tex") → $OUT_DIR"
-  if bash "$SCRIPT_DIR/compile.sh" "$tex" "$OUT_DIR"; then
+#
+# Page budgets, passed to compile.sh as MAX_PAGES (checked by check_log.py
+# against the log's "Output written ... (N pages" line — the engine's own
+# count, both engines print it). ss: SKILL.md hard-caps the study guide at
+# 2 pages; a documented cap with no check once let a 3-page guide ship green.
+# ws/ak have no pedagogical cap, so these are sanity ceilings sized from the
+# real artifacts (the largest real 12-problem worksheet was 7 pages with
+# figures): a 10-page worksheet is a layout accident, not a worksheet.
+WS_MAX_PAGES=8
+AK_MAX_PAGES=6
+SS_MAX_PAGES=2
+compile_gate() { # gate-name tex-file max-pages
+  local gate="$1" tex="$2" cap="$3"
+  banner "compile $(basename "$tex") → $OUT_DIR  (page budget: $cap)"
+  if MAX_PAGES="$cap" bash "$SCRIPT_DIR/compile.sh" "$tex" "$OUT_DIR"; then
     record "$gate" "PASS"
     PDFS+=("$OUT_DIR/$(basename "${tex%.tex}").pdf")
   else
     fail "$gate"
   fi
 }
-compile_gate compile-ws "$WS_TEX"
+compile_gate compile-ws "$WS_TEX" "$WS_MAX_PAGES"
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record compile-ak "SKIPPED(--worksheet-only)"
   record compile-ss "SKIPPED(--worksheet-only)"
 else
-  compile_gate compile-ak "$AK_TEX"
-  compile_gate compile-ss "$SS_TEX"
+  compile_gate compile-ak "$AK_TEX" "$AK_MAX_PAGES"
+  compile_gate compile-ss "$SS_TEX" "$SS_MAX_PAGES"
 fi
 
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then

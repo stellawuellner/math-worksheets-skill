@@ -92,9 +92,40 @@ check("missing file -> exit 2 (usage error, not a pass)",
       main_rc(BAD + ".nope") == 2)
 check("no args -> exit 2", main_rc() == 2)
 
+print("page budget (--max-pages): the SKILL.md study-guide cap gets teeth")
+OVER = os.path.join(HERE, "fixtures", "texlog_pages_over.log")     # 3 pages, else clean
+AT = os.path.join(HERE, "fixtures", "texlog_pages_at.log")         # 2 pages, clean
+NOOUT = os.path.join(HERE, "fixtures", "texlog_pages_missing.log")  # truncated
+check("page_count: ok log reads 2 pages from 'Output written'",
+      check_log.page_count(ok_text) == 2)
+check("page_count: singular '(1 page,' parses (real engine output for 1 page)",
+      check_log.page_count("Output written on x.pdf (1 page, 111 bytes).") == 1)
+check("page_count: no 'Output written' line -> None",
+      check_log.page_count("entering extended mode") is None)
+check("no cap flag -> the page gate is off (3-page log passes)",
+      main_rc(OVER) == 0)
+check("3-page log at --max-pages 2 -> exit 1 (the false green, killed)",
+      main_rc(OVER, "--max-pages", "2") == 1)
+check("2-page log AT --max-pages 2 -> exit 0 (the cap is inclusive)",
+      main_rc(AT, "--max-pages", "2") == 0)
+check("flag order is free (--max-pages before the file)",
+      main_rc("--max-pages", "2", OVER) == 1)
+check("capped but no 'Output written' line -> exit 2 (LOUD, never a pass)",
+      main_rc(NOOUT, "--max-pages", "2") == 2)
+check("garbage --max-pages -> exit 2 (config error, not a pass)",
+      main_rc(OK, "--max-pages", "many") == 2)
+check("--max-pages without a value -> exit 2",
+      main_rc(OK, "--max-pages") == 2)
+check("--max-pages 0 -> exit 2 (a budget that can never pass is a misconfig)",
+      main_rc(OK, "--max-pages", "0") == 2)
+
 print("CLI: the same contract through the real interpreter boundary")
 check("subprocess: bad fixture -> exit 1", run([BAD]).returncode == 1)
 check("subprocess: ok fixture -> exit 0", run([OK]).returncode == 0)
+over_run = run([OVER, "--max-pages", "2"])
+check("subprocess: over-budget -> exit 1", over_run.returncode == 1)
+check("over-budget message names the cap's source (SKILL.md) and the fix",
+      "SKILL.md" in over_run.stdout and "split the sheet" in over_run.stdout)
 
 print()
 if FAILS:

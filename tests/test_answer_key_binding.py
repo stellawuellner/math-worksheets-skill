@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""
+test_answer_key_binding.py — pins the per-problem answer-key gate (audit
+B1/B2/B3) and the shared segmenter it relies on.
+
+Each fixture case previously produced a wrong verdict — shuffled keys passed,
+a wrong \\boxed value passed whenever the correct number sat in the worked
+steps beside it, \\boxed{4.52} satisfied a verified 4.51, and enumerate-style
+keys were never segmented at all ('? problem segments'). The messages are
+asserted too: error messages teach the fix, so they are contract.
+
+Run: python3 tests/test_answer_key_binding.py
+"""
+import os
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from _tex_segments import segment_spans, blank_comments  # noqa: E402
+from check_answer_key import value_matches  # noqa: E402
+
+CHECKER = os.path.join(HERE, "check_answer_key.py")
+FIXTURES = os.path.join(HERE, "fixtures")
+
+FAILS = []
+
+
+def check(name, cond):
+    print(f"  {'✅' if cond else '❌'} {name}")
+    if not cond:
+        FAILS.append(name)
+
+
+def run(texf, jsonf):
+    r = subprocess.run(
+        [sys.executable, CHECKER,
+         os.path.join(FIXTURES, texf), os.path.join(FIXTURES, jsonf)],
+        capture_output=True, text=True)
+    return r.returncode, r.stdout + r.stderr
+
+
+print("Fixture verdicts and messages:")
+code, out = run("ak_bind_good.tex", "ak_bind.json")
+check("good enumerate key passes", code == 0)
+check("good key reports real segment count", "3 problem segments" in out)
+check("'?' segment placeholder is gone", "? problem segments" not in out)
+
+code, out = run("ak_bind_shuffled.tex", "ak_bind.json")
+check("shuffled key (right values, wrong problems) fails", code == 1)
+check("shuffle is diagnosed as a swap", "swapped or shifted" in out)
+
+code, out = run("ak_bind_masked.tex", "ak_bind.json")
+check("wrong box masked by correct worked step fails", code == 1)
+check("masked failure names problem 2", "problem 2" in out)
+check("masked failure blames the box, not the steps",
+      "NOT in the \\boxed{}/\\ans{} answer" in out)
+
+code, out = run("ak_bind_precision.tex", "ak_bind.json")
+check("4.52 boxed for verified 4.51 fails", code == 1)
+check("precision failure names problem 2", "problem 2" in out)
+
+code, out = run("ak_bind_nested.tex", "ak_bind_nested.json")
+check("nested parts-enumerate does not over-split", code == 0)
+check("nested key sees 2 segments, not 4", "2 problem segments" in out)
+
+code, out = run("ak_bind_symbolic.tex", "ak_bind_symbolic.json")
+check("correct factored key passes (binary minus, audit ak_factor)", code == 0)
+
+code, out = run("ss_bind_good.tex", "ss_bind.json")
+check("examplebox study guide segments and passes", code == 0)
+check("study guide sees one segment per worked example",
+      "2 problem segments" in out)
+
+code, out = run("ak_bind_unstructured.tex", "ak_bind.json")
+check("unsegmentable key fails", code == 1)
+check("unstructured message teaches the three shapes", "examplebox" in out)
+
+code, out = run("ak_bind_shortkey.tex", "ak_bind.json")
+check("segment/problem count mismatch fails", code == 1)
+check("count mismatch names both counts", "2 problem segment" in out and "3 problems" in out)
+
+code, out = run("ak_bind_outside.tex", "ak_bind.json")
+check("answer-bank key degrades loudly instead of hard-failing", code == 0)
+check("degradation is announced", "DEGRADED" in out)
+
+print("Segmenter edge cases:")
+spans = segment_spans(
+    r"\begin{enumerate}\item one \begin{itemize}\item bullet\end{itemize}"
+    r"\item two\end{enumerate}")
+check("itemize bullets inside an item do not split", len(spans) == 2)
+spans = segment_spans(r"\problem[8cm]{first} work \problem{second} work")
+check("optional-argument \\problem[len]{...} is recognized", len(spans) == 2)
+check("commented-out structure is ignored",
+      segment_spans("no structure here\n% \\problem{ghost}\n") is None)
+check("escaped \\% is not a comment",
+      "kept" in blank_comments(r"100\% kept"))
+
+print("Precision-aware value matching:")
+check("5 matches printed 5.00", value_matches(5.0, 5.0, "5.00"))
+check("5.0 matches printed 5", value_matches(5.0, 5.0, "5"))
+check("4.51 rejects printed 4.52", not value_matches(4.51, 4.52, "4.52"))
+check("4.515 rounds half-up to printed 4.52", value_matches(4.515, 4.52, "4.52"))
+check("2/3 binds a value stored to 4 places",
+      value_matches(0.6667, 2 / 3, "2/3"))
+
+print()
+if FAILS:
+    print(f"❌ {len(FAILS)} binding test(s) failed")
+    sys.exit(1)
+print("✅ all answer-key binding tests passed")

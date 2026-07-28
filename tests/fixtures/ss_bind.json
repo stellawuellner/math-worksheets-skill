@@ -1,0 +1,8 @@
+{
+  "topic": "Study-guide binding — one entry per examplebox worked example",
+  "problem_count": 2,
+  "problems": [
+    {"id": 1, "type": "factor", "expr": "x**2 - 7*x + 12", "expected": "(x - 3)*(x - 4)"},
+    {"id": 2, "type": "approx", "expr": "sqrt(2)", "expected": 1.41}
+  ]
+}

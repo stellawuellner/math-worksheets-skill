@@ -29,7 +29,11 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 
 | Macro | Purpose |
 |---|---|
-| `\problem{...}` | numbered problem stem (steps the `prob` counter) |
+| `\problem{...}` | numbered problem stem (steps the `prob` counter). With a positive workspace argument (`\problem[5cm]{...}`) it also emits the right-aligned answer line automatically — construction, don't type it |
+| `\ansline` | right-aligned "Answer: ____" blank — end every enumerate `\item` with it (`\problem` emits its own); `tests/check_layout.py` requires one answer-location macro per item |
+| `\ansblank` | inline blank for drill formats: `$7 + 5 =$~\ansblank` |
+| `\answerline{unit}` | answer blank + measurement unit (`\answerline{ft}`, `\answerline{cm$^2$}`) — the unit must match the problem's `"answer_unit"` in the verify JSON (`tests/check_answer_line.py`); suppresses `\problem`'s automatic line |
+| `\noansline` | explicit opt-out for problems whose worked product IS the answer (sketch, proof, construction) — prints nothing |
 | `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
 | `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
 | `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
@@ -58,21 +62,23 @@ itemsep-spaced sheet loses the workspace of the last item in each column.
 \begin{multicols}{2}
 \raggedcolumns
 \begin{enumerate}[label=\textbf{\arabic*.}, itemsep=0pt]
-  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.9cm}\end{minipage}
-  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.9cm}\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$3x + 7 = 22$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$-2(x - 5) = 14$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$\dfrac{x}{4} + 3 = 9$\par\vspace*{3.6cm}\ansline\end{minipage}
+  \item \begin{minipage}[t]{\linewidth}$5x - 3 = 2x + 9$\par\vspace*{3.6cm}\ansline\end{minipage}
 \end{enumerate}
 \end{multicols}
 ```
 
 ### Multi-part problem
+The parent `\problem` takes no workspace (so it emits no answer line of its
+own); each part carries its own blank.
 ```latex
 \problem{Given $f(x) = 3x^2 - 2x + 1$, find:}
 \begin{enumerate}[label=(\alph*), itemsep=3cm, leftmargin=1.5cm]
-  \item $f(0)$
-  \item $f(-2)$
-  \item $f(x+1)$ --- expand and simplify
+  \item $f(0) =$~\ansblank
+  \item $f(-2) =$~\ansblank
+  \item $f(x+1)$ --- expand and simplify \ansline
   \vspace{2cm}
 \end{enumerate}
 ```
@@ -142,6 +148,7 @@ $3$  & \\[0.5cm]\hline
 
 **Figure conventions** (apply to every figure):
 - **Triangle figures are generated, not hand-drawn**: `scripts/render_figures.py` renders every `triangle`-type problem (and `right_triangle` figure specs on `approx` problems) from the verify JSON as `\probfig{N}` macros — see SKILL.md step 4b. The triangle templates below document what the renderer emits; hand-built TikZ remains the pattern only for shapes the renderer doesn't cover (circles, sectors, solids, transversals).
+- **Effort markers are generated the same way**: `scripts/render_meta.py` renders `\probpts{N}` point values and `\probmeta{N}` difficulty stars (plus a computed `\totalpoints`) from the verified difficulty tags — see SKILL.md step 4c. Never hand-type `\bigstar` or "(N pts)"; the literal forms are banned by `check_prose_consistency.py`, exactly like hand-drawn valued figures.
 - **Draw to scale from the problem's actual values** whenever possible — a to-scale figure is a free visual sanity check on the answer. Only distort deliberately (e.g. to make a cramped angle readable), and then add *"(not to scale)"* below the figure.
 - Label triangle vertices $A, B, C$ with sides $a, b, c$ opposite them — the same convention the `triangle` verification type uses.
 - **Every number printed in a figure must come from the problem statement / verify JSON.** Never invent display values; a verified answer key with a mismatched figure is still a wrong worksheet.
@@ -441,13 +448,33 @@ Use the shipped macros (defined in `templates/worksheet-preamble.tex`):
 \akheader{TOPIC}                       % keep TOPIC short (under ~28 chars)
 ...
 \aktitleblock{TOPIC}{COURSE}{DATE}
+\input{qa_TOPIC_DATE}                  % the generated quick-answer bank
 ```
 `\aktitleblock` puts the topic on its own line (shrink-to-fit) and **"Answer
 Key" as a subtitle beneath it** — never append "--- Answer Key" to the big
 title, or a long topic wraps mid-phrase. The skills summary uses
 `\ssheader`/`\sstitleblock` the same way.
 
+### Quick-answer bank (generated, never hand-edited)
+`scripts/render_quick_answers.py` regenerates `qa_<stem>.tex` from the verify
+JSON on every build — a compact multi-column "answers at a glance" block for
+fast grading, placed by the one `\input{qa_<stem>}` line directly under
+`\aktitleblock`. The build gate fails a key that hand-rolls its preamble or
+never `\input`s the bank; the bank's entries are plain text (never
+`\ans`/`\boxed`), so `check_answer_key.py`'s strict per-problem binding is
+untouched.
+
 ### Step-by-step solution
+`\akheader` switches `\ans{...}` to a compact form that keeps the `\fbox` on
+the same line as the last worked step when it fits (flush-right on the next
+line when it does not), roughly halving the key's vertical space. Prefer it
+for single-value answers; keep the display `\[ \boxed{...} \]` form for long
+or multi-value answers.
+```latex
+\problem{[Repeat full problem statement]}
+
+\textbf{Solution:} \quad $3x = 15$, so $x = 5$. \ans{x = 5.00}
+```
 ```latex
 \problem{[Repeat full problem statement]}
 

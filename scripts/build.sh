@@ -31,12 +31,22 @@
 #    2 verify-ss       run_verify.sh on the study-guide JSON
 #    3 render-figures  scripts/render_figures.py, when shipped AND the JSON
 #                      has triangle-type or "figure" problems (else skipped)
-#    4 layout-ws       tests/check_layout.py (figure scope + work space)
-#    5 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
+#    4 render-meta     scripts/render_meta.py, when shipped AND the worksheet
+#                      uses \probmeta/\probpts or every problem carries an
+#                      integer difficulty (else skipped)
+#    5 quick-answers   scripts/render_quick_answers.py regenerates the ak_'s
+#                      qa_ bank every build (skipped with --worksheet-only)
+#    6 layout-ws       tests/check_layout.py (figure scope + work space +
+#                      answer location)
+#    7 answer-line-ws  tests/check_answer_line.py (answer_unit <-> \answerline)
+#    8 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two)
-#    6 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
-#    7 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
-#                      problems: a structural FAIL, not a manual-review pass)
+#    9 answer-key-*    tests/check_answer_key.py binds ak and ss to their JSONs
+#                      (values AND units)
+#   10 prose-ws        tests/check_prose_consistency.py (exit 2 = parsed ZERO
+#                      problems, an unresolved \probfig/\probmeta/\probpts, a
+#                      marker-binding fault, or a hand-typed effort marker: a
+#                      structural FAIL, not a manual-review pass)
 #
 # EXIT CODES: 0 all gates green · 1 a gate failed (named in the verdict line)
 #             · 2 green but manual review needed (run_verify's 2 propagates).
@@ -101,7 +111,8 @@ fi
 # ── Result bookkeeping ────────────────────────────────────────────────────────
 # One row per gate, appended in run order; finish() marks whatever never ran.
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
-GATES=(discover verify-ws verify-ss render-figures layout-ws \
+GATES=(discover verify-ws verify-ss render-figures render-meta quick-answers \
+       layout-ws answer-line-ws \
        compile-ws compile-ak compile-ss answer-key-ak answer-key-ss prose-ws)
 RESULTS=()
 MANUALS=0
@@ -221,6 +232,14 @@ else
   run_verify_gate verify-ss "$SS_JSON"
 fi
 
+# One python-resolution path for every render gate that needs sympy
+# (render-figures imports verify.py's solver; quick-answers typesets symbolic
+# answers via sympify). Resolved ONCE; empty means no sympy python exists —
+# the first gate that needs it fails, and the finder has already printed its
+# teaching message.
+source "$SCRIPT_DIR/find_python.sh"
+SYMPY_PY="$(find_sympy_python)" || SYMPY_PY=""
+
 banner "render figures"
 if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
   # Defensive: the renderer ships separately; its absence is not a fault.
@@ -229,11 +248,9 @@ if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
 elif ! grep -Eq '"type"[[:space:]]*:[[:space:]]*"triangle"|"figure"[[:space:]]*:' "$WS_JSON"; then
   echo "   no triangle-type or \"figure\" problems in the JSON — skipping."
   record render-figures "SKIPPED(no figure problems)"
+elif [[ -z "$SYMPY_PY" ]]; then
+  fail render-figures
 else
-  # render_figures imports verify.py, which needs sympy — same finder as
-  # run_verify.sh so there is exactly one python-resolution path.
-  source "$SCRIPT_DIR/find_python.sh"
-  SYMPY_PY="$(find_sympy_python)" || fail render-figures
   if "$SYMPY_PY" "$SCRIPT_DIR/render_figures.py" "$WS_JSON"; then
     record render-figures "PASS"
     FIGS_TEX="$(dirname "$WS_JSON")/figs_${STEM}.tex"
@@ -243,11 +260,72 @@ else
   fi
 fi
 
-banner "layout check (figure scope + work space) on $(basename "$WS_TEX")"
+banner "render effort markers (difficulty -> \\probmeta/\\probpts)"
+META_TEX=""
+if [[ ! -f "$SCRIPT_DIR/render_meta.py" ]]; then
+  echo "   render_meta.py not shipped — skipping."
+  record render-meta "SKIPPED(renderer not shipped)"
+else
+  # Run when the sheet already calls markers, or when every problem carries a
+  # legal difficulty tag (bash never parses JSON — python answers that).
+  WANT_META="no"
+  grep -Eq '\\probmeta\{|\\probpts\{' "$WS_TEX" && WANT_META="yes"
+  if [[ "$WANT_META" == "no" ]]; then
+    WANT_META="$("$PYTHON3" -c 'import json, sys
+ps = json.load(open(sys.argv[1])).get("problems", [])
+ok = bool(ps) and all(isinstance(p, dict)
+                      and isinstance(p.get("difficulty"), int)
+                      and not isinstance(p.get("difficulty"), bool)
+                      and 1 <= p["difficulty"] <= 5 for p in ps)
+print("yes" if ok else "no")' "$WS_JSON" 2>/dev/null || echo no)"
+  fi
+  if [[ "$WANT_META" == "yes" ]]; then
+    # stdlib-only renderer: plain python3 is enough (no sympy for integers)
+    if "$PYTHON3" "$SCRIPT_DIR/render_meta.py" "$WS_JSON"; then
+      record render-meta "PASS"
+      META_TEX="$(dirname "$WS_JSON")/meta_${STEM}.tex"
+      [[ -f "$META_TEX" ]] || META_TEX=""
+    else
+      fail render-meta
+    fi
+  else
+    echo "   no marker calls and no complete difficulty tagging — skipping."
+    record render-meta "SKIPPED(no difficulty tags)"
+  fi
+fi
+
+banner "quick-answer bank for the answer key"
+if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  record quick-answers "SKIPPED(--worksheet-only)"
+elif [[ ! -f "$SCRIPT_DIR/render_quick_answers.py" ]]; then
+  echo "   render_quick_answers.py not shipped — skipping."
+  record quick-answers "SKIPPED(renderer not shipped)"
+elif [[ -z "$SYMPY_PY" ]]; then
+  fail quick-answers
+else
+  # Regenerated EVERY build (the render-figures pattern): the gated path can
+  # never serve a stale bank, so no staleness lint exists to drift. The
+  # generator also preflights the ak_ source — a generated bank the key never
+  # \inputs, or a hand-rolled preamble, is a loud teaching failure here.
+  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX"; then
+    record quick-answers "PASS"
+  else
+    fail quick-answers
+  fi
+fi
+
+banner "layout check (figure scope + work space + answer location) on $(basename "$WS_TEX")"
 if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX" ${FIGS_TEX:+--figs "$FIGS_TEX"}; then
   record layout-ws "PASS"
 else
   fail layout-ws
+fi
+
+banner "answer-line binding (answer_unit) on $(basename "$WS_TEX")"
+if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
+  record answer-line-ws "PASS"
+else
+  fail answer-line-ws
 fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared
@@ -290,14 +368,18 @@ else
 fi
 
 banner "prose consistency on $(basename "$WS_TEX")"
-"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" ${FIGS_TEX:+--figs "$FIGS_TEX"}
+"$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" \
+  ${FIGS_TEX:+--figs "$FIGS_TEX"} ${META_TEX:+--meta "$META_TEX"}
 rc=$?
 if [[ "$rc" -eq 0 ]]; then
   record prose-ws "PASS"
 elif [[ "$rc" -eq 2 ]]; then
-  # NOT a manual-review pass: exit 2 here means the checker parsed ZERO
-  # problem blocks, i.e. nothing was checked at all.
-  fail prose-ws "Error: check_prose_consistency parsed no problems — the worksheet must use \\problem{...} or an enumerate/\\item list. Nothing was checked, so this is a structural failure."
+  # NOT a manual-review pass: exit 2 here is structural — the checker parsed
+  # ZERO problem blocks, hit an unresolved/mis-indexed \probfig or
+  # \probmeta/\probpts marker (re-run scripts/render_figures.py /
+  # scripts/render_meta.py after JSON edits), or found a hand-typed effort
+  # marker. The checker's own output names the specific fault and fix.
+  fail prose-ws "Error: check_prose_consistency stopped on a structural fault — see its output above (zero parsed problems, an unresolved \\probfig/\\probmeta/\\probpts, a marker-binding fault, or a hand-typed effort marker)."
 else
   fail prose-ws
 fi

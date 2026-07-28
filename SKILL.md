@@ -83,7 +83,12 @@ Ask (or infer from context):
 - **Student**: name, grade, course (e.g. "8th grade, Pre-Algebra")
 - **Topic**: e.g. "factoring trinomials", "solving two-step equations"
 - **Problem count**: default 10 if not specified
-- **Format preference**: timed quiz, homework practice, mixed difficulty, or topic drill
+- **Format preference**: timed quiz, homework practice, mixed difficulty, or topic drill.
+  For a **timed quiz**, point values are the default: place `\probpts{N}` at the end of
+  each stem and `Score: \underline{\hspace{1.5cm}} / \totalpoints\ pts` in the title
+  block (rendered in step 4c). Difficulty stars (`\probmeta{N}`) are opt-in for
+  practice/mixed-difficulty sheets on request; skip markers for early-elementary
+  drills unless asked.
 
 **Photo input shortcut**: If the user sends a photo of homework or a textbook page, read the image with whatever vision capability the platform provides (e.g. OpenClaw's `image` tool, or reading the image file directly in Claude Code / Gemini / Codex) to extract problem types, format, and difficulty — then mirror that style exactly.
 
@@ -119,6 +124,16 @@ See `references/latex-templates.md` → "Skills Summary / Study Guide Template" 
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
+**Answer-key shell:** the `ak_` document starts exactly like the worksheet
+(`\input{worksheet-preamble}`), then `\akheader{TOPIC}` + `\aktitleblock{...}`, and ONE
+`\input{qa_TOPIC_DATE}` line directly under the title block — the build driver's
+quick-answers gate regenerates that bank from the verify JSON every build and **fails a
+key that hand-rolls its preamble or never `\input`s the bank** (both messages teach the
+fix). `\akheader` switches `\ans{...}` to a compact same-line box, so end each worked
+solution's last step with `\ans{x = 5.00}`; keep the display `\[ \boxed{...} \]` form
+for long or multi-value answers. See `references/latex-templates.md` → "Answer Key
+Patterns".
+
 **Preamble — \input the shipped template, never retype it.** Start every document with:
 ```latex
 \documentclass[12pt]{article}
@@ -136,6 +151,26 @@ problem with zero room to work. These are a floor, not a suggestion: `tests/chec
 fails a worksheet whose problems get under 2.5cm and flags workspace `\vspace` left outside
 a minipage. A sheet with correct answers and nowhere to write them is a sheet the student
 cannot use.
+
+**Answer location (every problem gets one):** `\problem` sheets emit the right-aligned
+answer blank automatically whenever the workspace argument is positive — write nothing
+extra. On enumerate/`\item` sheets, end every item with `\ansline` (or an inline
+`\ansblank` for drill formats: `$7 + 5 =$~\ansblank`). Mark `\noansline` only where the
+worked product IS the answer — graph sketches, proofs, constructions (typically the
+`manual`-type set). `tests/check_layout.py` enforces one answer-location macro per item;
+answer keys and study guides are unaffected.
+
+**Units are verified data, not decoration:** any problem whose final answer carries a
+measurement unit declares `"answer_unit"` in its JSON entry (`"ft"`, `"m"`, `"cm^2"`,
+`"square units"` — distinct from the deg/rad angle-mode field `"unit"`) and ends with
+`\answerline{<unit>}` on the sheet (write exponents math-wrapped: `\answerline{cm$^2$}`;
+`\answerline` replaces `\ansline` there and suppresses `\problem`'s automatic blank).
+The key must print the same unit inside `\ans{}`/`\boxed{}` (`\text{ft}`).
+Both directions are gated: `tests/check_answer_line.py` fails a declared unit with no
+matching `\answerline` and an `\answerline` unit the JSON never declared;
+`tests/check_answer_key.py` fails a key whose box omits the declared unit or prints a
+unit the JSON never declared — a metres problem answered in feet no longer passes any
+gate. Prefix currency symbols are out of scope: write "in dollars" in the stem.
 
 **Figure scope (all-or-nothing per list)**: a figure carrying numbers belongs to one
 problem, but on the page it merely sits *near* several. If problem 6 shows a triangle
@@ -280,6 +315,27 @@ ambiguous SSA case as the two-apex swing figure — both apexes computed, not re
 
 `build.sh` (step 5) runs this render automatically when the JSON has figured problems and passes `--figs` to the checkers; run it by hand only when iterating on the `.tex` outside the driver.
 
+### 4c. Render effort markers (quiz points / difficulty stars)
+
+For timed quizzes (and practice sheets on request), render the per-problem effort
+markers **from the same JSON** — generated, never hand-written:
+
+```bash
+python3 "$SKILL_DIR/scripts/render_meta.py" /tmp/verify_TOPIC_DATE.json
+# → /tmp/meta_TOPIC_DATE.tex — \probpts{N} "(D pts)", \probmeta{N} stars, computed \totalpoints
+```
+
+`\input` the meta file right after `\begin{document}` and place the marker at the **end
+of each stem, inside the problem's unbreakable block** — all problems or none, ONE mode
+per document (points XOR stars). Never hand-type `\bigstar` or "(N pts)": the literal
+forms are banned by `check_prose_consistency.py`, which also fails swapped, duplicated,
+missing, or unresolved markers (`--meta`; a stale file after a JSON edit is caught the
+same way — re-run this renderer). The renderer is the one place difficulty tags become
+gating: every problem needs an integer difficulty 1–5 or it refuses to render, naming
+the offending ids. `\totalpoints` is computed — never type the sum yourself.
+`build.sh` runs this automatically when the sheet uses markers or every problem is
+tagged, and passes `--meta` to the checker.
+
 ### 5. Run the gate chain and compile — one command
 
 ```bash
@@ -290,18 +346,22 @@ That single command replaces what used to be nine separate steps. It discovers `
 
 1. `run_verify.sh` on the worksheet JSON, then the study-guide JSON
 2. figure rendering (when shipped and the JSON has figure/triangle problems)
-3. `check_layout.py` on the worksheet (figure scope + work space)
-4. `compile.sh` for all three documents (nothing compiles after a failed gate)
-5. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs
-6. `check_prose_consistency.py` on the worksheet
+3. effort-marker rendering (`render_meta.py`, when the sheet uses `\probmeta`/`\probpts` or every problem is difficulty-tagged)
+4. quick-answer bank regeneration (`render_quick_answers.py` on the answer key — every build, with the two preflight teaching failures)
+5. `check_layout.py` on the worksheet (figure scope + work space + answer location)
+6. `check_answer_line.py` on the worksheet (`answer_unit` ↔ `\answerline`)
+7. `compile.sh` for all three documents (nothing compiles after a failed gate)
+8. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (values and units)
+9. `check_prose_consistency.py` on the worksheet (`--figs`/`--meta` passed automatically)
 
 It ends with a gate-summary table and ONE verdict line. Exit 0 = all green with three PDF paths printed; exit 1 = a gate failed (named — fix and re-run); exit 2 = green with manual-review items. **Missing `ak_`/`ss_` documents are failures, not skips** — the skill mandates three documents (`--worksheet-only` exists for the rare single-document request). Default output directory is `~/Documents/Worksheets/` (`--outdir` to override; see the Prerequisites note about headless environments).
 
 Why the checkers exist (`build.sh` runs them for you):
 
 - `check_answer_key.py` binds **per problem**: it segments the key (`\problem{...}`, one enumerate `\item` per problem, or one `examplebox` per worked example), requires the segment count to equal `problem_count`, and fails unless every verified value appears in **its own problem's** `\boxed{}`/`\ans{}` at the printed precision — `4.52` never satisfies a verified `4.51`, while `5`, `5.0` and `5.00` are the same answer. A swapped key, a wrong boxed value (even with the correct number in the worked steps beside it), or an unsegmentable key all hard-fail; answer-bank keys degrade to a loud whole-document `⚠` check. **Best practice:** render each boxed final answer *from* the JSON `expected` string rather than re-typing it, so the printed answer cannot drift from the verified value by construction.
-- `check_prose_consistency.py` checks prose numbers and **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged.
-- `check_layout.py` enforces the figure-scope and work-space rules from step 3.
+- `check_prose_consistency.py` checks prose numbers and **figure-label numbers** against the JSON givens — a to-scale triangle labeled with a wrong side is flagged — and hard-stops on effort-marker faults (unresolved/swapped/missing `\probmeta`/`\probpts`, hand-typed stars or "(N pts)").
+- `check_answer_line.py` binds declared `answer_unit`s to the sheet's `\answerline`s, both directions (step 3).
+- `check_layout.py` enforces the figure-scope, work-space, and answer-location rules from step 3.
 - `--figs` splices the rendered `\probfig{N}` bodies back into the text so `check_prose_consistency.py` and `check_layout.py` see the figures the student sees; without it, a sheet using `\probfig` exits 2 (an unchecked figure must never read as a pass). A **stale** figs file rendered before a JSON edit is caught the same way — re-run step 4b.
 
 ### 6. Deliver
@@ -346,7 +406,8 @@ Prefix with student name when known: `leo_ws_...`, `leo_ak_...`, `leo_ss_...`
 ```bash
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_TOPIC_DATE.json          # 0 pass · 1 fail · 2 manual-review
 bash "$SKILL_DIR/scripts/run_verify.sh" /tmp/verify_ss_TOPIC_DATE.json
-python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex            # figure scope + work space
+python3 "$SKILL_DIR/tests/check_layout.py" /tmp/ws_TOPIC_DATE.tex            # figure scope + work space + answer location
+python3 "$SKILL_DIR/tests/check_answer_line.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ak_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_answer_key.py" /tmp/ss_TOPIC_DATE.tex /tmp/verify_ss_TOPIC_DATE.json
 python3 "$SKILL_DIR/tests/check_prose_consistency.py" /tmp/ws_TOPIC_DATE.tex /tmp/verify_TOPIC_DATE.json

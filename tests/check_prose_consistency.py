@@ -34,9 +34,13 @@ def item_blocks(tex):
 
 
 def problem_blocks(tex):
-    """Extract the argument of each \\problem{...} handling nested braces."""
+    """Extract the stem of each \\problem{...} / \\problem[5cm]{...} handling
+    nested braces. The macro takes the workspace as an optional first argument
+    (see references/latex-templates.md); matching it here — m.end() lands just
+    inside the stem's brace — keeps this binder aligned with the template, or
+    a sheet using the optional arg would silently parse zero blocks."""
     blocks = []
-    for m in re.finditer(r"\\problem\{", tex):
+    for m in re.finditer(r"\\problem(?:\[[^\]]*\])?\{", tex):
         i, depth, buf = m.end(), 1, []
         while i < len(tex) and depth:
             c = tex[i]

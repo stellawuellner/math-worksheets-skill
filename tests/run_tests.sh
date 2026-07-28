@@ -162,5 +162,72 @@ if echo "$output" | grep -qF "? problem segments"; then
 fi
 echo "✅ check_answer_key reports real segment counts"
 
+log_ran=0
+
+# Layout fixture pairs beyond the original enumerate pair, same contract
+# (bad exits nonzero, good exits 0):
+#   probstyle — \problem-macro sheets; the checker used to see only enumerate
+#               lists, so a zero-workspace \problem sheet passed VACUOUSLY
+#   pagebreak — workspace \vspace outside a minipage is discarded at page
+#               breaks (the good twin wraps it in the unbreakable minipage)
+#   lineskip  — \\[5cm] is real writing room; rejecting it taught generators
+#               to route around the gate (false positive, must PASS)
+#   negspace  — itemsep=3cm minus \vspace{-2.9cm} leaves 0.1cm; an unsigned
+#               regex credited the full 3cm (false negative, must FAIL)
+LAYOUT_PAIRS=(
+  "layout_bad_probstyle.tex:fail"
+  "layout_good_probstyle.tex:pass"
+  "layout_bad_pagebreak.tex:fail"
+  "layout_good_pagebreak.tex:pass"
+  "layout_good_lineskip.tex:pass"
+  "layout_bad_negspace.tex:fail"
+)
+for pair in "${LAYOUT_PAIRS[@]}"; do
+  fixture="${pair%%:*}"
+  want="${pair##*:}"
+  require_fixture "$fixture"
+  if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/$fixture" >/dev/null 2>&1; then
+    got="pass"
+  else
+    got="fail"
+  fi
+  if [ "$got" = "$want" ]; then
+    echo "✅ check_layout: $fixture -> $got (as expected)"
+    layout_ran=$((layout_ran + 1))
+  else
+    echo "❌ check_layout: $fixture -> $got, expected $want"; exit 1
+  fi
+done
+
+# Zero-parse guard: a sheet with no enumerate list and no \problem block was
+# checked against NOTHING — that must be exit 2 specifically, never a pass.
+ZERO_TEX="$(mktemp "${TMPDIR:-/tmp}/layout_zero.XXXXXX.tex")"
+printf '\\documentclass{article}\\begin{document}Nothing here\\end{document}\n' > "$ZERO_TEX"
+"$PYTHON" "$SCRIPT_DIR/check_layout.py" "$ZERO_TEX" >/dev/null 2>&1
+zero_got=$?
+rm -f "$ZERO_TEX"
+if [ "$zero_got" -eq 2 ]; then
+  echo "✅ check_layout exits 2 on a sheet where zero problems parse"
+else
+  echo "❌ check_layout zero-parse: expected exit 2, got $zero_got"; exit 1
+fi
+
+# Log hygiene (scripts/check_log.py, the gate compile.sh runs on the kept
+# TeX log). CI has no LaTeX engine, so the gate is fixture-tested on saved
+# log snippets: undefined refs / missing chars / big overfulls must FAIL,
+# a clean log with only sub-threshold overfulls must PASS.
+if "$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_bad.log" >/dev/null 2>&1; then
+  echo "❌ check_log did NOT flag texlog_bad.log"; exit 1
+else
+  echo "✅ check_log flags texlog_bad.log"
+  log_ran=$((log_ran + 1))
+fi
+if "$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_ok.log" >/dev/null 2>&1; then
+  echo "✅ check_log passes texlog_ok.log"
+  log_ran=$((log_ran + 1))
+else
+  echo "❌ check_log wrongly flagged texlog_ok.log"; exit 1
+fi
+
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $ak_ran answer-key fixtures"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures"

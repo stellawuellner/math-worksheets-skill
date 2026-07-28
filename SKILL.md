@@ -156,7 +156,10 @@ figure itself shipped with wrong hand-computed constants until the renderer repl
 them). Leave a `\probfig{N}` placeholder while writing the `.tex`; the macro exists
 once step 4b's figs file is `\input`. Hand-built TikZ per `references/latex-templates.md`
 remains the path only for figure kinds the renderer doesn't cover — circles, sectors,
-solids, transversals, coordinate grids.
+solids, transversals, coordinate grids. `\includegraphics` in worksheet problems is
+rejected as unverifiable (`check_prose_consistency.py` exits 2 — no checker can bind an
+external image's values to the JSON): figures come from `scripts/render_figures.py` or
+the TikZ templates, never from image files.
 
 ### 4. Write and run the verification file
 

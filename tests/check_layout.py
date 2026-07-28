@@ -37,7 +37,11 @@ None is visible to verify.py, which only sees the JSON.
 Both the enumerate/\item and the \problem{...} macro shapes are parsed — the
 skill's first-taught template style is \problem, and a checker that only sees
 enumerate lists passes a zero-workspace \problem sheet vacuously (the same
-zero-parse failure class fixed in check_prose_consistency.py).
+zero-parse failure class fixed in check_prose_consistency.py). Enumerate
+parsing is DEPTH-AWARE via _tex_segments.enumerate_lists: every nested
+part-list is checked as its own list against its own [itemsep=..], and a
+naive regex that truncated the outer list at the first nested \end{enumerate}
+(dropping every item after the multi-part problem) is gone.
 
 Exit 0 clean, 1 on any fault, 2 when nothing parsed (no list and no \problem
 block means nothing was checked — that is NOT a pass). Skips answer keys and
@@ -48,6 +52,7 @@ import re
 import sys
 
 from _probfig import expand_probfigs, probfig_bodies
+from _tex_segments import enumerate_lists
 
 MIN_CM_PER_PROBLEM = 2.5      # hard floor; SKILL.md recommends 5cm
 UNIT_CM = {"cm": 1.0, "mm": 0.1, "in": 2.54, "pt": 0.0352778, "ex": 0.15, "em": 0.35}
@@ -76,17 +81,16 @@ def strip_comments(tex):
     return re.sub(r"(?<!\\)%[^\n]*", lambda m: " " * len(m.group(0)), tex)
 
 
-def enumerates(tex):
-    """Each enumerate environment: (options, body)."""
-    out = []
-    for m in re.finditer(r"\\begin\{enumerate\}(\[[^\]]*\])?(.*?)\\end\{enumerate\}",
-                         tex, re.S):
-        out.append((m.group(1) or "", m.group(2)))
-    return out
+def blank_spans(text, spans, base=0):
+    """Overwrite the given absolute spans with spaces inside text[base:...].
 
-
-def items(body):
-    return [p for p in re.split(r"\\item\b", body)[1:]]
+    Blanking (not deleting) keeps every remaining offset true to the source,
+    the same discipline strip_comments follows."""
+    chars = list(text)
+    for a, b in spans:
+        for i in range(max(a - base, 0), min(b - base, len(chars))):
+            chars[i] = " "
+    return "".join(chars)
 
 
 def problem_regions(tex):
@@ -101,26 +105,52 @@ def problem_regions(tex):
     skill's own template.
     """
     matches = list(PROBLEM_RE.finditer(tex))
+    # depth-aware env spans: a naive .*? strip ends at the FIRST nested
+    # \end{enumerate}, leaving the tail of a multi-part region in place —
+    # the same truncation class enumerate_lists exists to kill
+    env_spans = [span for _, span, _, _ in enumerate_lists(tex)]
     out = []
     for m, nxt in zip(matches, matches[1:] + [None]):
-        region = tex[m.start():nxt.start() if nxt else len(tex)]
+        start = m.start()
+        end = nxt.start() if nxt else len(tex)
+        region = tex[start:end]
         opt_cm = 0.0
         if m.group(1):
             o = re.search(r"(-?[\d.]+)\s*(cm|mm|in|pt|ex|em)", m.group(1))
             if o:
                 opt_cm = to_cm(o.group(1), o.group(2))
-        stripped = re.sub(r"\\begin\{enumerate\}.*?\\end\{enumerate\}", "",
-                          region, flags=re.S)
+        inner = [(a, b) for a, b in env_spans if a < end and b > start]
+        stripped = blank_spans(region, inner, base=start)
         out.append((opt_cm, stripped, stripped != region))
     return out
 
 
 def has_valued_figure(item):
-    """A tikzpicture whose visible node labels contain a number."""
+    """A figure whose visible labels contain a number: tikz \\node text, pic
+    "..." quotes, figure-macro args, \\probfig{N}, or any \\includegraphics."""
     for fig in re.finditer(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", item, re.S):
         for node in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", fig.group(0)):
             if re.search(r"\d", node.group(1)):
                 return True
+        # pic-quote labels ("$34^\circ$") are printed values too — the taught
+        # circle-angle template carries its ONLY numbers there. Same
+        # extraction as check_prose_consistency.figure_label_numbers' pic
+        # branch, so the two detectors cannot disagree about what counts as a
+        # figure value. Accepted edge (fix both branches together if it ever
+        # bites): a digit-subscripted label like $\theta_1$ counts as valued —
+        # nothing in the repo emits one, and the failure direction is a loud
+        # false FAIL, never a silent false PASS. Confined to the tikzpicture
+        # body: straight-quoted prose digits elsewhere in the item must not
+        # trip the figure rule.
+        for q in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', fig.group(0)):
+            if re.search(r"\d", q.group(1)):
+                return True
+    # \includegraphics is an opaque image: no checker can read the values it
+    # almost certainly shows (a figure worth including carries labels), so it
+    # must be ASSUMED valued and the all-or-nothing scope rule applies
+    # unconditionally. check_prose_consistency additionally hard-fails it.
+    if re.search(r"\\includegraphics\b", item):
+        return True
     # macro-style figures: \rtfig{...}{$b=8$}... — any braced arg holding a
     # digit. The optional [..] arg (scale/styling, e.g. \rtfig[scale=1.2])
     # must neither defeat detection nor have its digits counted as values —
@@ -220,11 +250,24 @@ def main():
     faults = []
     print(f"Layout report: {path}")
 
-    lists = enumerates(tex)
-    for n, (opts, body) in enumerate(lists, 1):
-        its = items(body)
-        if not its:
+    # Depth-aware: every enumerate at any depth is its own list, judged
+    # against its own [itemsep=..] — a naive .*? regex ended the outer list at
+    # the FIRST nested \end{enumerate}, so nested parts were counted as
+    # top-level problems and every real item after them silently escaped both
+    # rules (the false-PASS direction).
+    lists = enumerate_lists(tex)
+    for n, (opts, _env_span, item_spans, child_idxs) in enumerate(lists, 1):
+        if not item_spans:
             continue
+        # a nested part-list is checked as its own list (with its own opts),
+        # so its items are blanked out of the parent item — otherwise a
+        # part's figure would false-fail the parent's all-or-nothing rule
+        child_item_spans = [sp for k in child_idxs for sp in lists[k][2]]
+        its, had_nested = [], []
+        for (s, e) in item_spans:
+            inner = [(a, b) for a, b in child_item_spans if a >= s and b <= e]
+            its.append(blank_spans(tex[s:e], inner, base=s))
+            had_nested.append(bool(inner))
         valued = [i for i, it in enumerate(its, 1) if has_valued_figure(it)]
 
         # 1. figure scope
@@ -239,9 +282,12 @@ def main():
             print(f"  list {n}: figure scope ok "
                   f"({'all' if valued else 'no'} {len(its)} problems carry valued figures)")
 
-        # 2. work space
+        # 2. work space — items holding a nested part-list are skipped: their
+        # workspace lives in the child's itemsep, which the child's own pass
+        # enforces (mirrors problem_regions' had_list)
         thin = [(i, round(space_cm(opts, it), 2))
-                for i, it in enumerate(its, 1) if space_cm(opts, it) < MIN_CM_PER_PROBLEM]
+                for i, (it, nested) in enumerate(zip(its, had_nested), 1)
+                if not nested and space_cm(opts, it) < MIN_CM_PER_PROBLEM]
         if thin:
             worst = min(c for _, c in thin)
             faults.append(

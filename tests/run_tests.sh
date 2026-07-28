@@ -129,6 +129,27 @@ else
   exit 1
 fi
 
+# attribution greps: exit codes alone (LAYOUT_PAIRS below) cannot prove the
+# fault names the RIGHT item — a fault naming the wrong one teaches the wrong
+# fix. picquote: the pic-quote-only figure sits on item 1; nestfig: the valued
+# figure sits on item 3 AFTER a nested part-list, exactly the item the naive
+# parse used to drop.
+require_fixture layout_bad_picquote.tex layout_bad_nestfig.tex
+layout_out=$("$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_bad_picquote.tex" 2>&1)
+if echo "$layout_out" | grep -q "items \[1\]"; then
+  echo "✅ check_layout attributes the pic-quote figure to item 1"
+else
+  echo "❌ check_layout mis-attributed the pic-quote figure (no 'items [1]')"
+  echo "$layout_out" | sed 's/^/     /'; exit 1
+fi
+layout_out=$("$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_bad_nestfig.tex" 2>&1)
+if echo "$layout_out" | grep -q "items \[3\]"; then
+  echo "✅ check_layout attributes the post-nested-list figure to item 3"
+else
+  echo "❌ check_layout mis-attributed the post-nested-list figure (no 'items [3]')"
+  echo "$layout_out" | sed 's/^/     /'; exit 1
+fi
+
 
 # Rendered figures (scripts/render_figures.py). Construction is the guarantee —
 # the property suite parses the emitted TikZ (no LaTeX engine in CI) — and the
@@ -250,6 +271,15 @@ log_ran=0
 #               to route around the gate (false positive, must PASS)
 #   negspace  — itemsep=3cm minus \vspace{-2.9cm} leaves 0.1cm; an unsigned
 #               regex credited the full 3cm (false negative, must FAIL)
+#   picquote  — a figure whose ONLY values are pic-quote angle labels (the
+#               taught circle template) passed a mixed list clean; the
+#               value-free "$\theta$" twin must still PASS
+#   includegraphics — an opaque image must be ASSUMED valued (all-or-nothing
+#               scope), or a mixed list with an image passes clean
+#   nest*     — the naive enumerate regex truncated at a nested part-list,
+#               so items after it escaped BOTH rules (nestfig: dropped valued
+#               figure; nestspace: dropped zero-workspace items — both exit 0
+#               pre-fix); the multi-part template twin must still PASS
 LAYOUT_PAIRS=(
   "layout_bad_probstyle.tex:fail"
   "layout_good_probstyle.tex:pass"
@@ -257,6 +287,12 @@ LAYOUT_PAIRS=(
   "layout_good_pagebreak.tex:pass"
   "layout_good_lineskip.tex:pass"
   "layout_bad_negspace.tex:fail"
+  "layout_bad_picquote.tex:fail"
+  "layout_bad_includegraphics.tex:fail"
+  "layout_good_picquote_valuefree.tex:pass"
+  "layout_bad_nestfig.tex:fail"
+  "layout_bad_nestspace.tex:fail"
+  "layout_good_nested.tex:pass"
 )
 for pair in "${LAYOUT_PAIRS[@]}"; do
   fixture="${pair%%:*}"
@@ -287,6 +323,54 @@ if [ "$zero_got" -eq 2 ]; then
 else
   echo "❌ check_layout zero-parse: expected exit 2, got $zero_got"; exit 1
 fi
+
+# ── check_prose: \includegraphics hard gate ──────────────────────────────────
+# An external image cannot be bound to the JSON — worse, its FILENAME digits
+# (52/100 here, deliberately also JSON givens) leak into the prose scan and
+# used to make the report read "all consistent" for an unverified figure. Like
+# unresolved \probfig, that must be exit 2 with a message naming the checkable
+# path (render_figures.py); the commented-out twin proves the gate runs on
+# comment-blanked text (dead markup must not trip a hard gate).
+require_fixture ws_includegraphics.tex ws_includegraphics.json ws_includegraphics_commented.tex
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_includegraphics.tex" \
+         "$FIXTURES/ws_includegraphics.json" 2>&1)
+got=$?
+if [ "$got" -eq 2 ] && echo "$output" | grep -q "render_figures"; then
+  echo "✅ check_prose is LOUD on \\includegraphics (exit 2, names render_figures.py)"
+else
+  echo "❌ check_prose \\includegraphics gate: expected exit 2 naming render_figures.py, got exit $got"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+"$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_includegraphics_commented.tex" \
+  "$FIXTURES/ws_includegraphics.json" >/dev/null 2>&1
+got=$?
+if [ "$got" -eq 0 ]; then
+  echo "✅ check_prose ignores a commented-out \\includegraphics (exit 0)"
+else
+  echo "❌ check_prose fired on a commented-out \\includegraphics (exit $got)"; exit 1
+fi
+
+# ── check_prose: depth-aware item parse ──────────────────────────────────────
+# Nested parts must stay inside their parent's block (3 top-level blocks, not
+# 4) and the post-nested problem must be PARSED — its drifted 77 was invisible
+# while the naive regex dropped everything after the part-list.
+require_fixture ws_nested_prose.tex ws_nested_prose.json
+output=$("$PYTHON" "$SCRIPT_DIR/check_prose_consistency.py" "$FIXTURES/ws_nested_prose.tex" \
+         "$FIXTURES/ws_nested_prose.json" 2>&1)
+got=$?
+if [ "$got" -ne 0 ]; then
+  echo "❌ check_prose ws_nested_prose.tex: expected exit 0 (report, not gate), got $got"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+if ! echo "$output" | grep -q "across 3 problem block(s)"; then
+  echo "❌ check_prose counted nested parts as top-level problems (want 3 blocks)"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+if ! echo "$output" | grep -q "problem 3: .*missing from JSON: \[77.0\]"; then
+  echo "❌ check_prose never parsed the post-nested problem (77 not flagged)"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+echo "✅ check_prose parses nested sheets per top-level problem (3 blocks, 77 flagged)"
 
 # Log hygiene (scripts/check_log.py, the gate compile.sh runs on the kept
 # TeX log). CI has no LaTeX engine, so the gate is fixture-tested on saved

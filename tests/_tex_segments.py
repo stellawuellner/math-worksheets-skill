@@ -2,8 +2,9 @@
 """
 _tex_segments.py — split a LaTeX document into per-problem segments.
 
-Shared segmentation for the binding checkers (check_answer_key.py today; the
-sibling checkers parse the same shapes and can adopt it). Why a helper: the
+Shared segmentation for the binding checkers (check_answer_key.py,
+check_layout.py, and check_prose_consistency.py all parse through it). Why a
+helper: the
 shipped templates emit THREE document shapes, and a checker that parses only
 one silently skips the others — the exact parser gap that let a fully swapped
 enumerate-style answer key pass green (audit B1) after c2608b9 had fixed the
@@ -36,6 +37,10 @@ _LIST_TOKEN = re.compile(
     r"\\begin\{(enumerate|itemize)\}|\\end\{(enumerate|itemize)\}|\\item\b")
 
 _COMMENT = re.compile(r"(?<!\\)%[^\n]*")
+
+# enumerate options must sit immediately after \begin{enumerate} — parity
+# with the (\[[^\]]*\])? of the naive regex enumerate_lists replaces
+_OPTS = re.compile(r"\[[^\]]*\]")
 
 
 def blank_comments(tex):
@@ -89,6 +94,65 @@ def _examplebox_spans(tex):
     spans = [(m.start(1), m.end(1)) for m in re.finditer(
         r"\\begin\{examplebox\}(.*?)\\end\{examplebox\}", tex, re.S)]
     return spans or None
+
+
+def enumerate_lists(tex):
+    """Every enumerate environment at ANY depth, in document order.
+
+    Returns [(opts, env_span, item_spans, child_idxs), ...]:
+      opts       — the [..] immediately after \\begin{enumerate}, or ""
+                   (parity with the naive regex this replaces)
+      env_span   — (start of \\begin{enumerate}, end of \\end{enumerate})
+      item_spans — (start-of-\\item, start of next sibling \\item or own \\end)
+      child_idxs — indices (into the returned list) of enumerate lists nested
+                   directly inside this one; an itemize in between does not
+                   break the link, so a part-list's items can always be
+                   blanked out of the enclosing enumerate item.
+
+    Why per-list at any depth rather than outermost-only: check_layout must
+    validate a nested part-list against its OWN [itemsep=..] options — that
+    is how the multi-part template's workspace floor is enforced — while the
+    parent pass blanks the child's items so a part's figure or spacing is
+    never mis-attributed to the parent item. itemize frames are tracked but
+    never emitted and never split items (parity with _item_spans). Comments
+    are blanked internally — length-preserving, so every returned span is
+    valid against the caller's text.
+    """
+    tex = blank_comments(tex)
+    lists = []   # appended at close time (children first), sorted below
+    # frame: [env, opts, begin_start, item_spans, open_item_start, child_idxs]
+    frames = []
+    for m in _LIST_TOKEN.finditer(tex):
+        opened, closed = m.group(1), m.group(2)
+        if opened:
+            o = _OPTS.match(tex, m.end())
+            frames.append([opened, o.group(0) if o else "", m.start(), [], None, []])
+        elif closed:
+            if not frames:
+                continue
+            env, opts, begin, item_spans, item_start, kids = frames.pop()
+            if env == "enumerate":
+                if item_start is not None:
+                    item_spans.append((item_start, m.start()))
+                idx = len(lists)
+                lists.append((opts, (begin, m.end()), item_spans, kids))
+                for f in reversed(frames):
+                    if f[0] == "enumerate":
+                        f[5].append(idx)
+                        break
+        else:  # \item
+            if frames and frames[-1][0] == "enumerate":
+                f = frames[-1]
+                if f[4] is not None:
+                    f[3].append((f[4], m.start()))
+                f[4] = m.start()
+    # the stack walk closes children before parents; reports must count lists
+    # in the order a reader sees them, or the shipped "list 2:" faults would
+    # renumber — sort by \begin offset and remap the child links to match
+    order = sorted(range(len(lists)), key=lambda i: lists[i][1][0])
+    remap = {old: new for new, old in enumerate(order)}
+    return [(lists[i][0], lists[i][1], lists[i][2],
+             sorted(remap[k] for k in lists[i][3])) for i in order]
 
 
 def segment_spans(tex):

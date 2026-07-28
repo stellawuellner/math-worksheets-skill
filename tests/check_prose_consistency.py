@@ -9,9 +9,10 @@ Usage: python3 tests/check_prose_consistency.py <worksheet.tex> <verify.json>
 Matches worksheet \\problem{...} blocks to verify-JSON entries by order
 (problem i ↔ i-th JSON id). Heuristic by design — a report for graders and
 generators, not a hard gate. Exit 0 always unless files are unreadable, the
-parse comes up empty, or \\probfig{N} figures cannot be resolved (pass the
+parse comes up empty, \\probfig{N} figures cannot be resolved (pass the
 figs file scripts/render_figures.py emitted via --figs, or the figure check
-runs blind).
+runs blind), or a problem embeds \\includegraphics (an image this check can
+never bind to the JSON — see includegraphics_problems).
 """
 
 import json
@@ -19,23 +20,33 @@ import re
 import sys
 
 from _probfig import CALL_RE, expand_probfigs, probfig_bodies
+from _tex_segments import _item_spans, blank_comments
 
 NUM_RE = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
 
 def item_blocks(tex):
-    """Extract each \\item body inside an enumerate.
+    """Extract each top-level \\item body across every outermost enumerate.
 
     The shipped worksheet templates use enumerate/\\item rather than the
     \\problem{...} macro, so a generator that follows the templates produced
     ZERO parsed blocks here and the report still said "all consistent".
     Parsing both shapes is what makes this checker apply to real worksheets.
+
+    Depth-aware via _tex_segments._item_spans: a nested part-list's content
+    stays INSIDE its parent problem's block (the parts' numbers belong to
+    problem i's JSON entry), where the old non-greedy regex ended the outer
+    list at the first nested \\end{enumerate} — nested parts were promoted to
+    top-level problems and every real problem after them was never checked.
+    Comments are blanked (length-preserving) before the walk, so a
+    commented-out \\item can neither split a block nor leak numbers.
     """
+    btex = blank_comments(tex)
     blocks = []
-    for env in re.finditer(r"\\begin\{enumerate\}(.*?)\\end\{enumerate\}", tex, re.S):
-        body = env.group(1)
-        parts = re.split(r"\\item\b", body)[1:]
-        blocks.extend(p.strip() for p in parts if p.strip())
+    for s, e in _item_spans(btex) or []:
+        body = re.sub(r"^\\item\b", "", btex[s:e]).strip()
+        if body:
+            blocks.append(body)
     return blocks
 
 
@@ -84,19 +95,38 @@ def figure_label_numbers(block):
         # swing figure labels its two apexes $B_1$/$B_2$
         label = re.sub(r"_\{?\d+\}?", "", label)
         nums |= {float(n) for n in NUM_RE.findall(label)}
-    for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):  # pic "$34^\circ$"
+    # pic "$34^\circ$" quotes: mirror contract with check_layout — its
+    # has_valued_figure scans pic quotes with THIS same extraction regex, so
+    # the two detectors cannot disagree about whether a pic label is a figure
+    # value (they once did: this branch counted pic numbers while check_layout
+    # was blind to them, a false PASS on the all-or-nothing scope rule there).
+    for m in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', block):
         nums |= {float(n) for n in NUM_RE.findall(m.group(1))}
     # macro-style figures (templates/figure-macros.tex): the mandatory braced
     # args ARE the printed labels, so their numbers are figure values; the
-    # optional [..] arg is scale/styling and excluded — mirrors
-    # check_layout.has_valued_figure so the two detectors cannot disagree
-    # about what counts as a figure value.
+    # optional [..] arg is scale/styling and excluded — the same mirror
+    # contract with check_layout.has_valued_figure's macro branch.
     for m in re.finditer(r"\\[a-zA-Z]*(?:rt|tri|fig)[a-zA-Z]*"
                          r"(?:\[[^\]]*\])?((?:\{[^{}]*\}){2,})", block):
         args = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2",
                       m.group(1))
         nums |= {float(n) for n in NUM_RE.findall(args)}
     return nums
+
+
+def includegraphics_problems(blocks):
+    """1-based indexes of problem blocks that embed \\includegraphics.
+
+    An external image is opaque to this checker: the values it shows cannot
+    be bound to the verify JSON — worse, digits in its FILENAME or options
+    leak into the prose scan and can read as consistent givens, so the report
+    looks healthy for a figure nobody verified. Like an unresolved \\probfig,
+    an uncheckable figure must never read as a pass (exit 2). Blocks are
+    comment-blanked here because problem_blocks slices raw text — a
+    commented-out \\includegraphics must not trip a hard gate.
+    """
+    return [i for i, b in enumerate(blocks, 1)
+            if re.search(r"\\includegraphics\b", blank_comments(b))]
 
 
 def json_numbers(entry):
@@ -151,6 +181,15 @@ def main():
         print("    (and re-run scripts/render_figures.py if the JSON changed).")
         sys.exit(2)
     blocks = problem_blocks(tex) or item_blocks(tex)
+    flagged = includegraphics_problems(blocks)
+    if flagged:
+        print(f"  ⚠ \\includegraphics in worksheet problem(s) {flagged}.")
+        print("    An external image cannot be bound to the verify JSON, so this check")
+        print("    cannot see the values it shows — like an unresolved \\probfig, an")
+        print("    uncheckable figure must never read as a pass. Generate the figure")
+        print("    with scripts/render_figures.py (triangle problems) or a TikZ figure")
+        print("    from references/latex-templates.md so its labels are checkable.")
+        sys.exit(2)
     # group JSON entries by id — one worksheet problem may have several checks
     by_id = {}
     for e in data.get("problems", []):

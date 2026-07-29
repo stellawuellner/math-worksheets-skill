@@ -9,7 +9,7 @@ Generate a student worksheet PDF + full step-by-step answer key PDF for any math
 
 This skill is **agent-agnostic**: it works in any agent harness that can read files and run shell commands (Claude Code, Gemini, Codex, OpenClaw, etc.). It uses no harness-specific primitives; every step is plain file I/O and shell commands, and the platform-specific delivery step is optional with a portable fallback.
 
-Throughout this document, `$SKILL_DIR` means the directory containing this SKILL.md. Resolve it once at the start (e.g. `SKILL_DIR=/path/to/math-worksheets`) — do not rely on `$0`, which is only meaningful inside a script.
+Throughout this document, `$SKILL_DIR` means the directory containing this SKILL.md. Resolve it once at the start (e.g. `SKILL_DIR=/path/to/math-worksheets`) — do not rely on `$0`, which is only meaningful inside a script. In Claude Code the skill's directory is already available as `${CLAUDE_SKILL_DIR}`, so `SKILL_DIR="${CLAUDE_SKILL_DIR}"` works; other agents resolve the path however they locate the skill.
 
 ## A note on accuracy
 

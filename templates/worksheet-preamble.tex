@@ -88,11 +88,19 @@
 % Trig Practice", not the full course name) — it shares the header line with
 % the Name/Date blanks and a long title overlaps them. ──────────────────────
 % \wsheader{Short Title} — student worksheet
+% Optional branding: set your school or teacher name once and it prints in the
+% footer (bottom-left) of every generated page. Empty by default = no branding.
+% To brand every worksheet, change the line below to e.g.
+%   \newcommand{\schoolname}{Riverside Middle School}
+% or override per-document by placing that \renewcommand after \input.
+\newcommand{\schoolname}{}
+
 \newcommand{\wsheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
   \fancyhead[L]{\textbf{\small #1}}%
   \fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}%
   \fancyfoot[C]{\thepage}%
+  \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}}
 
 % \akheader{Short Topic} — answer key
@@ -110,6 +118,7 @@
   \fancyhead[L]{\textbf{\small #1 --- Answer Key}}%
   \fancyhead[R]{\textit{\small For instructor/parent use}}%
   \fancyfoot[C]{\thepage}%
+  \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}%
   \renewcommand{\ans}[1]{{\unskip\nobreak\hfil\penalty50\hskip1em\null\nobreak\hfil\mbox{\fbox{$\,##1\,$}}\parfillskip=0pt\finalhyphendemerits=0\par}}}
 
@@ -119,24 +128,40 @@
   \fancyhead[L]{\textbf{Skills Summary: #1}}%
   \fancyhead[R]{\small\textit{Study Guide \& Reference}}%
   \fancyfoot[C]{\thepage}%
+  \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}}
 
 % ── Title blocks ────────────────────────────────────────────────────────────
-% \wstitleblock{Title}{Course}{Date}
+% \mwssubtitle{Course}{Date} — the "Course * Date" line under the title. Either
+% field may be empty: an empty Date drops the bullet and the date (leave Date
+% empty for a reusable, undated sheet — the header already carries a fill-in
+% Name/Date blank), an empty Course drops that side, both empty prints nothing.
+\makeatletter
+\newcommand{\mwssubtitle}[2]{%
+  \def\mwssubA{#1}\def\mwssubB{#2}%
+  \ifx\mwssubA\@empty
+    \ifx\mwssubB\@empty\else{\large #2}\fi
+  \else
+    \ifx\mwssubB\@empty{\large #1}\else{\large #1 \quad $\bullet$ \quad #2}\fi
+  \fi}
+\makeatother
+
+% \wstitleblock{Title}{Course}{Date} — Date is optional; pass an empty third
+% argument for an undated, reusable worksheet.
 \newcommand{\wstitleblock}[3]{%
   \begin{center}
     \fittedtitle{#1}\\[0.3cm]
-    {\large #2 \quad $\bullet$ \quad #3}
+    \mwssubtitle{#2}{#3}
   \end{center}
   \noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}}
 
 % \aktitleblock{Topic}{Course}{Date} — "Answer Key" is a subtitle BENEATH the
-% topic, never appended to it: a long topic would wrap mid-phrase.
+% topic, never appended to it: a long topic would wrap mid-phrase. Date optional.
 \newcommand{\aktitleblock}[3]{%
   \begin{center}
     \fittedtitle{#1}\\[0.15cm]
     {\Large\bfseries Answer Key}\\[0.25cm]
-    {\large #2 \quad $\bullet$ \quad #3}
+    \mwssubtitle{#2}{#3}
   \end{center}}
 
 % \sstitleblock{Topic}

@@ -18,12 +18,30 @@
 \wsheader{TOPIC Practice}
 
 \begin{document}
-\wstitleblock{TOPIC Practice Worksheet}{COURSE}{DATE}
+\wstitleblock{TOPIC Practice Worksheet}{COURSE}{}  % empty 3rd arg = no printed date (reusable)
 
 % [problems here]
 
 \end{document}
 ```
+
+**Leave the date empty by default.** The header already carries a fill-in
+Name/Date blank, so a printed date only stamps the sheet and blocks reuse.
+Pass a real date as the third argument only when the user explicitly wants one
+dated (e.g. a specific quiz day). Same for `\aktitleblock`.
+
+**Branding (school or teacher name).** To print a school or teacher name in the
+footer of every generated document, set `\schoolname` once. Either edit the
+default in `templates/worksheet-preamble.tex`:
+```latex
+\newcommand{\schoolname}{Riverside Middle School}
+```
+or override per document by placing this line after `\input{worksheet-preamble}`:
+```latex
+\renewcommand{\schoolname}{Riverside Middle School}
+```
+Empty by default, so nothing prints unless set. It appears bottom-left on the
+worksheet, answer key, and study guide.
 
 Macro reference (defined in `templates/worksheet-preamble.tex`):
 
@@ -38,8 +56,8 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 | `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
 | `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
 | `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic" / "Study Guide \& Reference") |
-| `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule |
-| `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase |
+| `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule. **`Date` is optional** — pass an empty `{}` for an undated, reusable sheet (the default); an empty `Course` is dropped too |
+| `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase. `Date` optional, same as `\wstitleblock` |
 | `\sstitleblock{Topic}` | study-guide title block |
 | `formulabox` / `examplebox` / `tryitbox` / `watchoutbox` | study-guide box environments (blue formula / green worked example / violet try-it / orange watch-out) |
 | `\step{...}` | auto-numbered worked-example line; the counter resets at each `examplebox`. Step 1 is always the strategy sentence (why this tool), computation starts at step 2 |
@@ -452,8 +470,8 @@ Use the shipped macros (defined in `templates/worksheet-preamble.tex`):
 ```latex
 \akheader{TOPIC}                       % keep TOPIC short (under ~28 chars)
 ...
-\aktitleblock{TOPIC}{COURSE}{DATE}
-\input{qa_TOPIC_DATE}                  % the generated quick-answer bank
+\aktitleblock{TOPIC}{COURSE}{}         % empty 3rd arg = no printed date (reusable)
+\input{qa_TOPIC_DATE}                  % the generated quick-answer bank (DATE here is the filename token, not printed)
 ```
 `\aktitleblock` puts the topic on its own line (shrink-to-fit) and **"Answer
 Key" as a subtitle beneath it** — never append "--- Answer Key" to the big

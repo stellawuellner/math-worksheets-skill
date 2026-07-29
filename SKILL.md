@@ -7,56 +7,13 @@ description: Generate professional math practice worksheets and full answer keys
 
 Generate a student worksheet PDF + full step-by-step answer key PDF for any math topic from elementary through AP Calculus BC. Compiles LaTeX with `tectonic` (no TeX installation required — it auto-downloads packages).
 
-This skill is **agent-agnostic**: it works in any agent harness that can read files and run shell commands (OpenClaw, Claude Code, Gemini, Codex, etc.). Platform-specific steps below are always optional with a portable fallback.
+This skill is **agent-agnostic**: it works in any agent harness that can read files and run shell commands (Claude Code, Gemini, Codex, OpenClaw, etc.). It uses no harness-specific primitives; every step is plain file I/O and shell commands, and the platform-specific delivery step is optional with a portable fallback.
 
-Throughout this document, `$SKILL_DIR` means the directory containing this SKILL.md. Resolve it once at the start (e.g. `SKILL_DIR=/path/to/math-worksheets`) — do not rely on `$0`, which is only meaningful inside a script.
+Throughout this document, `$SKILL_DIR` means the directory containing this SKILL.md. Resolve it once at the start (e.g. `SKILL_DIR=/path/to/math-worksheets`) — do not rely on `$0`, which is only meaningful inside a script. In Claude Code the skill's directory is already available as `${CLAUDE_SKILL_DIR}`, so `SKILL_DIR="${CLAUDE_SKILL_DIR}"` works; other agents resolve the path however they locate the skill.
 
-## Model Selection (Automatic, Best-Effort)
+## A note on accuracy
 
-Reasoning models (o1, o3, DeepSeek R1, Gemini DeepThink) work through math step-by-step and make significantly fewer errors than standard models. This skill tries to detect the best available model and delegate problem generation to it. **Every branch degrades gracefully** — if detection or delegation isn't possible on the current platform, generate the problems yourself; the SymPy verification gate (steps 4–5) catches most errors regardless.
-
-Rankings are bundled in `references/model-rankings.json` (human-readable notes in `references/model-rankings.md`) and updated with each skill release. Detection is fully local — no network calls.
-
-**Step 0 — run model detection before anything else:**
-
-```bash
-result=$(bash "$SKILL_DIR/scripts/check_reasoning_model.sh")
-status=$(echo "$result" | awk '{print $1}')   # FOUND_REASONING, FOUND_STRONG, or NONE
-model_alias=$(echo "$result" | awk '{print $2}')
-model_full=$(echo "$result" | awk '{print $3}')
-```
-
-The script inspects the host agent's config files (OpenClaw, Claude Code, Gemini, Codex) plus common `*_MODEL` environment variables. If the script can't run (no bash, no python3), skip detection and treat the status as `NONE`.
-
-**How to delegate depends on the platform** — use whichever mechanism the current harness provides:
-
-- **OpenClaw**: `sessions_spawn(task="<generation prompt>", model=model_alias)`
-- **Claude Code**: spawn a subagent via the Agent/Task tool, passing the model override if the detected model is available to the harness; otherwise generate inline.
-- **Gemini / Codex / other agents**: per-task model switching is generally not available — generate the problems inline with the current model.
-- **No subagent support at all**: generate inline. This is always acceptable.
-
-Then branch on the status:
-
-**`FOUND_REASONING`** (o3, o1, DeepThink, DeepSeek R1) — best case. Delegate problem generation to it (or, if the current model *is* the reasoning model, just proceed). No warning needed.
-
-**`FOUND_STRONG`** (Claude Opus) — excellent quality, use it without alarming the user. Optionally add a quiet note: *"Using Opus — solid math accuracy and excellent LaTeX. For the hardest Algebra 2 problems, a reasoning model (DeepThink/o1) would be marginally better."*
-
-**`NONE`** — standard model only; proceed but surface a clear recommendation:
-```
-⚠️ No reasoning model or Opus detected. Worksheet generated with [current model].
-For best accuracy, especially on multi-step problems, configure one of:
-  • Gemini 2.5 Pro DeepThink  — google.generativeai.com (free tier available)
-  • o1 / o3                   — platform.openai.com
-  • DeepSeek R1               — platform.deepseek.com (very affordable)
-  • Claude Opus               — console.anthropic.com
-SymPy verification will catch most errors regardless.
-```
-
-| Status | Model examples | Action |
-|---|---|---|
-| `FOUND_REASONING` | DeepThink, o1, o3, R1 | Use it silently, no warning |
-| `FOUND_STRONG` | Claude Opus 4.x | Use it silently, optional quiet note |
-| `NONE` | Sonnet, Flash, GPT-4o | Use current model + show recommendation |
+Generate the problems with whatever model your agent is already running. Correctness does not depend on the model getting the math right the first time: the SymPy verification gate (steps 4–5) independently checks every answer and blocks the build if any check fails, so a wrong answer never reaches the PDF. Stronger reasoning models simply need fewer retries to pass the gate. The skill does not detect, switch, or recommend models.
 
 ## Prerequisites
 
@@ -90,7 +47,7 @@ Ask (or infer from context):
   practice/mixed-difficulty sheets on request; skip markers for early-elementary
   drills unless asked.
 
-**Photo input shortcut**: If the user sends a photo of homework or a textbook page, read the image with whatever vision capability the platform provides (e.g. OpenClaw's `image` tool, or reading the image file directly in Claude Code / Gemini / Codex) to extract problem types, format, and difficulty — then mirror that style exactly.
+**Photo input shortcut**: If the user provides a photo of homework or a textbook page, read the image with whatever vision capability your agent provides (or by reading the image file directly) to extract problem types, format, and difficulty, then mirror that style exactly.
 
 ### 2. Design problems
 
@@ -403,18 +360,15 @@ Why the checkers exist (`build.sh` runs them for you):
 
 ### 6. Deliver
 
-Deliver all three PDFs however the current platform delivers files, matching the channel the request came from:
+Deliver all three PDFs however your agent makes files available to the user, matching the channel the request came from:
 
-- **Chat-connected agents (e.g. OpenClaw)** — send back on the originating channel:
-  - Telegram → `message` tool with `filePath` (copy to the outbound media dir, e.g. `~/.openclaw/media/outbound/`, first)
-  - iMessage/SMS → `imsg` skill
-  - Email → `gog` skill (all three as attachments)
-- **CLI / IDE agents (Claude Code, Gemini, Codex)** — the PDFs are already on the user's machine: report the three output paths clearly. If the harness has a file-sending or preview tool, use it.
-- **Sandboxed / remote agents** — commit or export the PDFs so the user can actually retrieve them, and report where they are.
+- **Local CLI / IDE agents** — the PDFs are already on the user's machine: report the three output paths clearly. If your agent has a file-send or preview capability, use it.
+- **Chat-connected agents** — if the request arrived over a messaging channel and your agent can attach files, send the PDFs back on that channel; otherwise report where they are so the user can retrieve them.
+- **Sandboxed / remote agents** — commit or export the PDFs so the user can retrieve them, and report where they are.
 
 Suggested send order: skills summary first (study guide), then worksheet, then answer key.
 
-**Printing**: Do NOT print unless explicitly asked. If asked, print worksheet + skills summary (not answer key, unless requested). Use `lpr -P <printer_name>`.
+**Printing**: Do NOT print unless explicitly asked. If asked, print worksheet + skills summary (not answer key, unless requested). Use `lpr -P <printer_name>` where available.
 
 ## Quality Checklist
 

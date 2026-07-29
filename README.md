@@ -17,7 +17,7 @@
 
 *Real, unretouched output. The `read_data` type even renders data charts from the same numbers it verifies:* [data-handling worksheet →](docs/samples/worksheet_data-1.png)
 
-Works with any AI agent that can read files and run shell commands — **OpenClaw**, **Claude Code**, **Gemini**, **Codex** — via the standard `SKILL.md` format, with portable fallbacks for every platform-specific step.
+Works with any AI agent that can read files and run shell commands — **Claude Code**, **Gemini**, **Codex**, **OpenClaw** — via the standard `SKILL.md` format, with portable fallbacks for every platform-specific step.
 
 ## Why it's different: nothing ships unverified
 
@@ -51,7 +51,6 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 - **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
 - **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
-- **Auto model detection** — finds the best available reasoning model from the host agent's config; fully local, no network calls.
 - **Portable delivery** — chat agents send PDFs back on the originating channel; CLI/IDE agents report the paths.
 
 ## Examples
@@ -69,7 +68,7 @@ The skill designs 8 ramped problems, writes a `verify.json`, runs it through Sym
 - *"Systems of equations aligned to 8.EE.C.8, with a scaffolded support tier and a challenge tier."*
 - *"Leo needs graphing-polynomials practice — use his homework photo as the style guide."*
 
-The skill handles the rest: model selection, problem design, SymPy verification, answer-key and figure binding, compile, and delivery on whatever channel the request came from.
+The skill handles the rest: problem design, SymPy verification, answer-key and figure binding, compile, and delivery on whatever channel the request came from.
 
 ## Install
 
@@ -130,7 +129,6 @@ math-worksheets/
 ├── LICENSE                           ← MIT
 ├── scripts/
 │   ├── build.sh                     ← ONE command: full gate chain + three compiles, fail-fast
-│   ├── check_reasoning_model.sh     ← auto-detects best available model (local only)
 │   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper (stages templates/)
 │   ├── find_python.sh               ← shared finder: first python3 that can import sympy
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
@@ -143,7 +141,6 @@ math-worksheets/
 │   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC
 │   ├── standards-map.md             ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
 │   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
-│   ├── model-rankings.md / .json    ← model guidance
 ├── tests/
 │   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
 │   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
@@ -166,6 +163,11 @@ bash tests/coverage.sh           # all suites under coverage, floor 90%
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.1.0 — 2026-07-23
+- **Removed the model-selection subsystem.** The skill no longer detects, switches, or recommends an AI model. `scripts/check_reasoning_model.sh` and `references/model-rankings.{md,json}` are deleted, and the SKILL.md "Model Selection" section is replaced with a short accuracy note: generate problems with whatever model your agent runs, and the SymPy gate catches wrong answers regardless. Model choice is the agent's job, not the skill's.
+- **De-coupled from OpenClaw primitives.** Removed OpenClaw-specific runtime assumptions from the workflow: no `sessions_spawn` delegation, no `image`-tool photo path, and no `~/.openclaw/media` / `imsg` / `gog` delivery specifics. Photo input and delivery are now written generically for any agent's capabilities. OpenClaw remains a supported harness, on equal footing with the others.
+- **Reusable, undated worksheets + branding** (from the prior change): title-block date is optional, and a `\schoolname` hook prints a school or teacher name in the footer.
 
 ### v3.0.0 — 2026-07-20
 - **Trust audit + hardening (breaking-adjacent):** an independent adversarial audit found and fixed soundness gaps confirmed by execution — `solve`/`zeros` no longer silently drop complex roots (declare `"domain"`), `integrate` rejects domain-invalid antiderivatives (`ln(x)` for `1/x`), the numeric-equality fallback no longer accepts a crafted vanishing-polynomial, `approx`/`triangle` use scale-aware tolerance, and `solve_interval` confirms completeness via mpmath instead of a blanket manual downgrade. Pinned by `tests/test_audit_fixes.py`.

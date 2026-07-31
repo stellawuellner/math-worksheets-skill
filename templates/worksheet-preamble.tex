@@ -163,8 +163,13 @@
 % (\ssheader never redefines \ans).
 \newcommand{\akheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
-  \fancyhead[L]{\mws@headtitle{5.2cm}{#1 --- Answer Key}}%
-  \fancyhead[R]{\mws@fitr{5.2cm}{\textit{\small For instructor/parent use}}}%
+  % The right slot carries nothing: "For instructor/parent use" restated what
+  % "Answer Key" already says, and every centimetre it held was width the title
+  % could not use — which is what forced the title to shrink. Reserve 0cm and
+  % the title gets the whole head. Rule: the header's right slot is for
+  % information the reader must ACT on (the Name/Date blanks). Labels that only
+  % restate the document type belong nowhere.
+  \fancyhead[L]{\mws@headtitle{0cm}{#1 --- Answer Key}}%
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}%
@@ -173,8 +178,8 @@
 % \ssheader{Topic} — skills summary / study guide
 \newcommand{\ssheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
-  \fancyhead[L]{\mws@headtitle{4.4cm}{Skills Summary: #1}}%
-  \fancyhead[R]{\mws@fitr{4.4cm}{\small\itshape Study Guide \& Reference}}%
+  % Same rule as \akheader: "Study Guide & Reference" restated "Skills Summary".
+  \fancyhead[L]{\mws@headtitle{0cm}{Skills Summary: #1}}%
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}}
@@ -241,7 +246,7 @@
 % Formula/rule box
 \newmdenv[
   backgroundcolor=skillbluebg,
-  linecolor=skillblue, linewidth=1.5pt,
+  linecolor=skillblue, linewidth=1.6pt,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=4pt, skipbelow=3pt, nobreak=true
@@ -252,7 +257,7 @@
 % at 1 in every worked example without the author touching the counter.
 \newmdenv[
   backgroundcolor=exgreenbg,
-  linecolor=exgreen, linewidth=1pt,
+  linecolor=exgreen, linewidth=0.6pt,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt
@@ -278,7 +283,8 @@
 % tikz already loads.)
 \newmdenv[
   backgroundcolor=tryvioletbg,
-  linecolor=tryviolet, linewidth=1pt,
+  linecolor=tryviolet, linewidth=2.5pt,
+  topline=false, bottomline=false, rightline=false,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt, nobreak=true
@@ -287,7 +293,8 @@
 % Watch-out box
 \newmdenv[
   backgroundcolor=warnbg,
-  linecolor=warnorange, linewidth=1pt,
+  linecolor=warnorange, linewidth=1.6pt,
+  leftline=false, rightline=false,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt, nobreak=true

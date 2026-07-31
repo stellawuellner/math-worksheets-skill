@@ -868,6 +868,7 @@ tpl_ran=0
 TPL_CASES=(
   "tpl_bad_handrolled.tex:1"
   "tpl_bad_redefine.tex:1"
+  "tpl_bad_longtitle.tex:1"
   "tpl_good.tex:0"
 )
 for case in "${TPL_CASES[@]}"; do

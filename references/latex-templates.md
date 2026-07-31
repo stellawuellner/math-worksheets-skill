@@ -1,5 +1,41 @@
 # LaTeX Templates Reference
 
+## Design rules
+
+These are the invariants the shipped preamble maintains. They exist because
+each one was violated once and shipped a bad-looking sheet. Follow them when
+adding anything to the design system.
+
+1. **Every box that shares a line needs a width contract.** Two pieces of
+   content on one line (a running head's left and right slots) must each have a
+   reserved width and a defined overflow behaviour. Set at natural width they
+   silently overprint each other, and a running head repeats that collision on
+   every page.
+2. **Overflow must degrade visibly, and degradation must be reported.**
+   Shrink-to-fit keeps a long title on one line, but a shrunk title is worse
+   output that the page never admits to. `check_template_use.py` fails a header
+   title longer than its slot so the degradation is caught before compile, not
+   discovered in print.
+3. **The header's right slot is for information the reader acts on.** The
+   Name/Date blanks earn their place. Labels that restate the document type
+   ("For instructor/parent use" next to "Answer Key") do not: they cost the
+   title the width it needed and add nothing.
+4. **Never encode meaning in colour alone.** Worksheets get printed, usually in
+   black and white. The four study-guide boxes carry the same colours they
+   always did, and are additionally distinguished by frame shape: thick full
+   frame (formula), thin full frame (example), left bar only (try-it), top and
+   bottom rules only (watch-out). Measured, the four background fills span 5 of
+   255 luminance in grayscale, so hue alone made them identical on a mono
+   printer.
+5. **Space that must survive a page break belongs inside a box.** LaTeX
+   discards `\vspace` glue at a break, so workspace outside a minipage vanishes
+   exactly when its problem lands at a page bottom. `\problem[5cm]{...}` puts it
+   inside; `check_layout.py` fails the stranded form.
+6. **A page budget is measured, not assumed.** The study guide's 2-page cap and
+   its "2-5 sections" allowance were set independently and contradicted each
+   other. See "Page budget" below for the measured cost of every component.
+
+
 > **Source of truth:** the preamble, header/title macros, study-guide boxes,
 > and figure macros ship as `\input`-able files in `templates/`
 > (`worksheet-preamble.tex`, `figure-macros.tex`). This page documents how to

@@ -121,7 +121,52 @@ def check(doc_tex, template_tex, template_path):
             faults.append(
                 f"color '{m.group(1)}' is redefined here but shipped by the "
                 f"template ({template_path})")
+    faults.extend(header_title_faults(doc))
     return faults
+
+
+# D. HEADER TITLE LENGTH. The running head is a fixed-width box; a title too
+# long for it is shrunk to fit (\mws@fitl). Shrinking prevents the collision
+# that used to overprint the Name/Date blanks, but a shrunk title is degraded
+# output, and nothing on the page says so — the document just quietly gets
+# harder to read, on every page, because a running head repeats. Caught here
+# instead, statically, before the compile.
+#
+# Budgets are measured, not guessed: \small\bfseries averages 5.48pt/char and
+# \headwidth is 469.8pt, so the worksheet's page-1 head (which reserves 8.4cm
+# for the Name/Date blanks plus a 0.5cm gutter) fits ~39 characters. The
+# answer key and study guide reserve nothing on the right, so they fit ~68.
+# A 10% buffer covers titles of unusually wide characters.
+HEADER_BUDGET = {
+    "wsheader": 36,   # measured 39; the tightest slot, and the common case
+    "akheader": 60,   # measured 68 (" --- Answer Key" already subtracted)
+    "ssheader": 60,   # measured 67 ("Skills Summary: " already subtracted)
+}
+HEADER_RE = re.compile(r"\\(wsheader|akheader|ssheader)\{([^{}]*)\}")
+
+
+def visible_len(title):
+    """Characters a reader sees: strip TeX markup and math delimiters, and
+    count an escaped symbol as the one glyph it prints."""
+    t = re.sub(r"\\[a-zA-Z]+\s*", "x", title)   # \alpha -> one glyph
+    t = t.replace("$", "").replace("{", "").replace("}", "")
+    return len(t.strip())
+
+
+def header_title_faults(doc):
+    out = []
+    for m in HEADER_RE.finditer(doc):
+        macro, title = m.group(1), m.group(2)
+        n = visible_len(title)
+        cap = HEADER_BUDGET[macro]
+        if n > cap:
+            out.append(
+                f"\\{macro} title is {n} characters; the running-head slot fits "
+                f"about {cap}. It will be shrunk to fit on EVERY page, which is "
+                f"legible but visibly degraded. Use a short running title "
+                f"(\"Triangle Trig Practice\", not the full course name) — the "
+                f"full topic still gets its full size in the title block.")
+    return out
 
 
 def main():

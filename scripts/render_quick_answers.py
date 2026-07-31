@@ -115,7 +115,44 @@ def render(data):
         "\\noindent\\rule{\\linewidth}{0.4pt}\\medskip",
         "",
     ]
+    lines += common_errors(by_id, n)
     return "\n".join(lines)
+
+
+def common_errors(by_id, n):
+    """A "Common wrong answers" block built from the declared traps.
+
+    The key proves the right answer but says nothing about how to grade a wrong
+    one. Every declared trap already carries the misconception, the expression a
+    student following it would evaluate, and the value that produces — and
+    verify.py machine-checks that the trap value really is what the wrong method
+    yields. Printing it turns grading into teaching: seeing 7.37 tells the
+    grader the student used cos where tan was needed, which is a different
+    conversation from "wrong, minus two".
+
+    Emitted through \\commonerror, never \\ans/\\boxed, so
+    check_answer_key.py's per-problem binding of CORRECT answers stays strict
+    and a wrong value can never be mistaken for a verified one.
+    """
+    rows = []
+    for i in range(1, n + 1):
+        for entry in by_id.get(i, []):
+            for trap in (entry.get("traps") or []):
+                desc, val = trap.get("desc"), trap.get("value")
+                if desc is None or val is None:
+                    continue
+                rows.append((i, _fmt(val), desc))
+    if not rows:
+        return []
+    out = [
+        "\\medskip\\noindent{\\small\\textbf{Common wrong answers}}"
+        "\\par\\nopagebreak",
+        "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak",
+    ]
+    for i, val, desc in rows:
+        out.append(f"\\commonerror{{{i}}}{{{val}}}{{{desc}}}")
+    out += ["\\noindent\\rule{\\linewidth}{0.4pt}\\medskip", ""]
+    return out
 
 
 def preflight(ak_tex, out_base):

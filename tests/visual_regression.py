@@ -115,6 +115,29 @@ $x^2 + bx + c = (x+p)(x+q)$ where $p+q=b$ and $p\cdot q=c$
 \begin{watchoutbox}\textbf{(!) Watch out:} Signs matter.\end{watchoutbox}
 \end{document}
 """,
+    # large print + dyslexia-friendly: 17pt sans, wider blanks, 1.5 leading.
+    # A student entitled to large print is exactly the one who cannot afford a
+    # silent layout regression, so the mode gets its own baseline.
+    "accessible_both": r"""\documentclass[17pt]{extarticle}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\accessiblemode{both}
+\wsheader{Slope Practice}
+\begin{document}
+\wstitleblock{Slope and Intercepts}{Algebra 1}{}
+\problem[4cm]{A line rises 3 units over a run of 2. Find the slope.}
+\problem[4cm]{Emphasis: \emph{bold, never italic}.}
+\end{document}
+""",
+    # decimal comma and \times for the countries that use A4
+    "locale_eu": PREAMBLE % "1in, top=0.75in, bottom=0.75in" + r"""
+\mwslocale{eu}
+\wsheader{Slope Practice}
+\begin{document}
+\wstitleblock{Decimals and products}{Algebra 1}{}
+\problem[3cm]{A line rises \dec{3.75} over a run of \dec{2.5}, giving $a \mtimes b$.}
+\end{document}
+""",
     # the answer key head, which must use the full width now that the redundant
     # right-hand label is gone
     "answer_key_head": PREAMBLE % "1in, top=0.75in, bottom=0.75in" + r"""

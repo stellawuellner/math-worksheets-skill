@@ -51,6 +51,8 @@
 %              enforces the pairing in both directions). Also suppresses the
 %              auto \ansline so a unit problem never gets two blanks.
 \makeatletter
+\newif\ifmws@sans
+\newif\ifmws@bigblanks
 \newif\ifmws@ans
 \mws@anstrue
 \newdimen\mws@wsdim
@@ -65,8 +67,10 @@
 % student to commit one value for a question that has three.
 % Self-clearing is harmless for the parent's own auto-emitted line: it fires
 % after the test, and \problem re-arms the flag at the start of every problem.
-\newcommand{\ansline}{\global\mws@ansfalse\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \rule[-1pt]{3.5cm}{0.4pt}}
-\newcommand{\ansblank}{\global\mws@ansfalse\rule[-1pt]{1.8cm}{0.4pt}}
+% Blank length and rule weight grow in an accessibility mode: a student who
+% needs 17pt type also needs a blank big enough to write 17pt digits in.
+\newcommand{\ansline}{\global\mws@ansfalse\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \ifmws@bigblanks\rule[-2pt]{5cm}{0.8pt}\else\rule[-1pt]{3.5cm}{0.4pt}\fi}
+\newcommand{\ansblank}{\global\mws@ansfalse\ifmws@bigblanks\rule[-2pt]{2.6cm}{0.8pt}\else\rule[-1pt]{1.8cm}{0.4pt}\fi}
 \newcommand{\answerline}[1]{\global\mws@ansfalse\par\nopagebreak\vspace{4pt}\hfill\textbf{Answer:}\ \rule[-2pt]{3.5cm}{0.4pt}\ #1}
 
 % ── Problem numbering ───────────────────────────────────────────────────────
@@ -84,6 +88,84 @@
 % \noansline inside an enumerate item must never leak into a later \problem.
 \newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\global\mws@anstrue\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\mws@wsdim=#1\relax\ifdim\mws@wsdim>0pt\ifmws@ans\ansline\fi\fi\end{minipage}\par}
 \makeatother
+
+% ── Accessibility modes ─────────────────────────────────────────────────────
+% A student whose IEP or 504 plan entitles them to large-print materials could
+% not use this tool at all before these existed. Type SIZE must come from the
+% document class (article offers only 10/11/12pt), so a large-print sheet opens
+%   \documentclass[14pt]{extarticle}   % or 17pt
+% and everything below adapts the rest of the page to it.
+%
+%   \accessiblemode{large}     roomier leading and bigger answer blanks
+%   \accessiblemode{dyslexia}  sans-serif text AND math, 1.5 leading, no italics
+%   \accessiblemode{both}      both
+%
+% The dyslexia settings follow the British Dyslexia Association style guide:
+% sans-serif faces, generous line spacing, and no italics (italic letterforms
+% are the ones most often reported as blurring). sfmath switches MATH to sans
+% too, which matters more here than in prose: a worksheet is mostly math, and
+% leaving formulas in serif would defeat the point.
+% The page budget needs no change: it is computed from content, so a larger
+% type size simply produces more pages, which is the honest outcome.
+\usepackage{setspace}
+\makeatletter
+\newcommand{\accessiblemode}[1]{%
+  \def\mws@am{#1}%
+  \def\mws@amlarge{large}\def\mws@amdys{dyslexia}\def\mws@amboth{both}%
+  \ifx\mws@am\mws@amlarge\setstretch{1.25}\global\mws@bigblankstrue\fi
+  \ifx\mws@am\mws@amdys\global\mws@sanstrue\setstretch{1.5}\global\mws@bigblankstrue\fi
+  \ifx\mws@am\mws@amboth\global\mws@sanstrue\setstretch{1.5}\global\mws@bigblankstrue\fi
+  \ifmws@sans
+    \renewcommand{\familydefault}{\sfdefault}%
+    % sans MATH as well as sans prose: a worksheet is mostly math, so leaving
+    % formulas in serif would defeat the purpose of the mode
+    \@ifundefined{sfmath@loaded}{\RequirePackage{sfmath}\global\let\sfmath@loaded\relax}{}%
+    % italic letterforms are the ones most often reported as blurring, so
+    % emphasis becomes bold instead of italic
+    \renewcommand{\emph}[1]{\textbf{##1}}%
+  \fi}
+\makeatother
+
+% ── Locale ──────────────────────────────────────────────────────────────────
+% Supporting A4 paper but not the notation that goes with it is half a job. Most
+% of the countries that use A4 write the decimal COMMA: a student in Germany or
+% France reading "1.5" parses that period as a thousands separator, so this is a
+% correctness problem, not a cosmetic one. The multiplication sign differs too
+% (\times is taught where \cdot is not, and vice versa).
+%
+%   \mwslocale{us}   1.5   a \cdot b     (default)
+%   \mwslocale{eu}   1,5   a \times b
+%
+% The verify JSON always stays canonical (period decimals, ASCII operators) so
+% the verifier and every gate keep one unambiguous number format. Only the
+% PRINTED form is localised, via these macros:
+%
+%   \dec{3.75}   prints 3.75 or 3,75
+%   \mtimes      prints \cdot or \times
+%
+% Use \dec{} for every decimal in problem text and answer keys when a locale is
+% set; a bare 3.75 in the source prints a period regardless and is the one way
+% to defeat this.
+\makeatletter
+\newif\ifmws@eu
+\newcommand{\mwslocale}[1]{%
+  \def\mws@loc{#1}\def\mws@loceu{eu}%
+  \ifx\mws@loc\mws@loceu\global\mws@eutrue\fi}
+\newcommand{\dec}[1]{\ifmws@eu\mws@deccomma#1.\@nil\else#1\fi}
+\def\mws@deccomma#1.#2\@nil{#1\ifx\relax#2\relax\else{,}\mws@stripdot#2\fi}
+\def\mws@stripdot#1.{#1}
+\newcommand{\mtimes}{\ifmws@eu\times\else\cdot\fi}
+\makeatother
+
+% ── Common wrong answers (answer key) ───────────────────────────────────────
+% The key proves the RIGHT answer but says nothing about how to grade a wrong
+% one. The verify JSON already declares "traps": the misconception, the
+% expression a student following it would evaluate, and the value it produces —
+% all machine-checked. Printing that turns grading into teaching: seeing 7.37
+% tells the grader the student used cos where tan was needed, which is a
+% different conversation from "wrong, minus two".
+% Rendered from the JSON by scripts/render_quick_answers.py, never hand-typed.
+\newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}}
 
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox

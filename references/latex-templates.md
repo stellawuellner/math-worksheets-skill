@@ -27,6 +27,60 @@ depend on the paper and are handled explicitly:
 Do not mix units: an A4 document with `margin=1in` wastes 5mm of usable width
 against the metric convention its readers expect.
 
+## Accessibility
+
+A student whose IEP or 504 plan entitles them to large-print materials could not
+use this tool before these modes existed. Type size must come from the document
+class (`article` offers only 10/11/12pt), so a large-print sheet opens with
+`extarticle`; everything else adapts from the preamble.
+
+```latex
+\documentclass[17pt]{extarticle}     % or 14pt
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\accessiblemode{both}                % large | dyslexia | both
+```
+
+| Mode | Effect |
+|---|---|
+| `large` | 1.25 line spacing, answer blanks grow to 5cm at 0.8pt |
+| `dyslexia` | sans-serif text **and math** (via `sfmath`), 1.5 line spacing, emphasis set bold instead of italic |
+| `both` | all of the above |
+
+The dyslexia settings follow the British Dyslexia Association style guide: sans
+faces, generous leading, no italics. Math is switched to sans too, which matters
+more here than in prose because a worksheet is mostly math.
+
+The page budget needs no adjustment: it is computed from content, so larger type
+simply produces more pages, which is the honest outcome. The header-title budget
+DOES scale, and `check_template_use.py` scales with it (a 12pt title of 36
+characters is 30 at 17pt) — a large-print sheet is exactly the one that must not
+carry a shrunken header.
+
+## Locale
+
+Supporting A4 paper without the notation that goes with it is half a job: most
+A4 countries write the decimal comma, so a student reading `1.5` parses that
+period as a thousands separator. That is a correctness problem, not a cosmetic
+one.
+
+```latex
+\mwslocale{eu}     % 1,5 and \times    (us is the default: 1.5 and \cdot)
+```
+
+The verify JSON stays canonical (period decimals, ASCII operators) so the
+verifier and every gate keep one unambiguous number format. Only the printed form
+is localised:
+
+| Macro | `us` | `eu` |
+|---|---|---|
+| `\dec{3.75}` | 3.75 | 3,75 |
+| `\mtimes` | `\cdot` | `\times` |
+
+Use `\dec{}` for every decimal in problem text and answer keys when a locale is
+set. A bare `3.75` in the source prints a period regardless, and is the one way
+to defeat this.
+
 ## Design rules
 
 These are the invariants the shipped preamble maintains. They exist because

@@ -41,6 +41,7 @@ Ask (or infer from context):
 - **Topic**: e.g. "factoring trinomials", "solving two-step equations"
 - **Problem count**: default 10 if not specified
 - **Page use**: the page budget is COMPUTED from the problem set (`scripts/page_budget.py`), not fixed. Fifty graphing problems that each need a coordinate plane legitimately run past 20 pages and are allowed to; a flat cap could only be met by shrinking the work space, which is the one thing that must never give. `build.sh` prints the ideal page count and the double-sided sheet count before compiling, so paper cost is visible. If a set is bigger than intended, reduce the PROBLEM COUNT, never the work space. Hard ceiling: 100 problems — past that, split into several worksheets
+- **Paper size**: US Letter by default. For A4 or Legal, add the paper as a documentclass option (`\documentclass[12pt,a4paper]{article}`) with metric geometry margins, and pass `--paper a4` to `page_budget.py`. See `references/latex-templates.md` → "Paper size"
 - **Format preference**: timed quiz, homework practice, mixed difficulty, or topic drill.
   For a **timed quiz**, point values are the default: place `\probpts{N}` at the end of
   each stem and `Score: \underline{\hspace{1.5cm}} / \totalpoints\ pts` in the title

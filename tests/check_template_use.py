@@ -142,6 +142,10 @@ HEADER_BUDGET = {
     "akheader": 60,   # measured 68 (" --- Answer Key" already subtracted)
     "ssheader": 60,   # measured 67 ("Skills Summary: " already subtracted)
 }
+# A4 is 6mm narrower than Letter, so every head slot loses about 4 characters.
+# Scaling the budget by the width ratio keeps one rule honest on both papers
+# instead of quietly passing on Letter and overflowing on A4.
+A4_WIDTH_RATIO = 21.0 / 21.59
 HEADER_RE = re.compile(r"\\(wsheader|akheader|ssheader)\{([^{}]*)\}")
 
 
@@ -155,14 +159,18 @@ def visible_len(title):
 
 def header_title_faults(doc):
     out = []
+    a4 = bool(re.search(r"\\documentclass\[[^\]]*a4paper", doc))
     for m in HEADER_RE.finditer(doc):
         macro, title = m.group(1), m.group(2)
         n = visible_len(title)
         cap = HEADER_BUDGET[macro]
+        if a4:
+            cap = int(cap * A4_WIDTH_RATIO)
         if n > cap:
             out.append(
                 f"\\{macro} title is {n} characters; the running-head slot fits "
-                f"about {cap}. It will be shrunk to fit on EVERY page, which is "
+                f"about {cap}{' on A4' if a4 else ''}. It will be shrunk to fit on "
+                f"EVERY page, which is "
                 f"legible but visibly degraded. Use a short running title "
                 f"(\"Triangle Trig Practice\", not the full course name) — the "
                 f"full topic still gets its full size in the title block.")

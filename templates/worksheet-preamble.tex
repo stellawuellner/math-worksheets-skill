@@ -104,8 +104,13 @@
 % line (a wrapped head overprints the body text below it).
 % Keeping the title short (<= ~28 chars) is still the right habit: shrink-to-fit
 % keeps a long one legible and on one line, it does not make it pretty.
-\setlength{\headheight}{15pt}      % room for one \small line; silences fancyhdr
-\addtolength{\textheight}{-3pt}    % give back what the taller head took
+% Ask GEOMETRY for the taller head rather than patching \headheight after the
+% fact. geometry computes \topmargin, \headsep and \textheight together; a raw
+% \setlength afterwards changes one of them and leaves the rest derived from the
+% old value, so the header drifts into the headsep gap and the body sits a few
+% points off where every other measurement assumes. \geometry{} re-runs the whole
+% computation, which is the only way to keep the page self-consistent.
+\geometry{headheight=15pt}
 \makeatletter
 \newlength{\mws@boxw}
 % left-aligned / right-aligned single-line box of exactly the given width
@@ -260,7 +265,7 @@
   linecolor=exgreen, linewidth=0.6pt,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
-  skipabove=3pt, skipbelow=3pt
+  skipabove=3pt, skipbelow=3pt, nobreak=true
 ]{exampleboxinner}
 \newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}}{\end{exampleboxinner}}
 
@@ -311,7 +316,8 @@
 % largest controllable costs. \needspace keeps a heading from stranding itself
 % at the foot of a page with its formula box overleaf.
 \newcommand{\skillheading}[1]{%
-  \needspace{3\baselineskip}%
+  \needspace{4\baselineskip}%  keeps a heading with its formula box; 7 over-reserved
+  
   \vspace{0.25cm}
   {\large\textbf{\textcolor{skillblue}{#1}}}
   \vspace{0.06cm}

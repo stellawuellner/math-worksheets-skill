@@ -1,5 +1,32 @@
 # LaTeX Templates Reference
 
+## Paper size
+
+US Letter is the default because that is what the schools this was built for
+use. A4 and Legal are supported: pass the paper as a `documentclass` option and
+give geometry margins in the matching unit.
+
+```latex
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=2cm, top=1.9cm, bottom=1.9cm]{geometry}   % A4 worksheet
+\usepackage[margin=1.8cm, top=1.8cm, bottom=1.8cm]{geometry} % A4 study guide
+```
+
+Most of the system is already paper-agnostic: the running head derives its title
+box from `\headwidth`, and every box sizes from `\linewidth`. Two things do
+depend on the paper and are handled explicitly:
+
+- **Page budget.** `scripts/page_budget.py --paper a4` sizes the budget from the
+  real page height. A4 is 1.8cm taller than Letter, worth roughly one page saved
+  every fourteen on a long set.
+- **Header title length.** A4 is 6mm narrower, so each head slot loses about
+  four characters. `check_template_use.py` detects `a4paper` and scales the
+  budget, so one rule stays honest on both rather than passing on Letter and
+  overflowing on A4.
+
+Do not mix units: an A4 document with `margin=1in` wastes 5mm of usable width
+against the metric convention its readers expect.
+
 ## Design rules
 
 These are the invariants the shipped preamble maintains. They exist because
@@ -89,9 +116,9 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 | `\answerline{unit}` | answer blank + measurement unit (`\answerline{ft}`, `\answerline{cm$^2$}`) — the unit must match the problem's `"answer_unit"` in the verify JSON (`tests/check_answer_line.py`); suppresses `\problem`'s automatic line |
 | `\noansline` | explicit opt-out for problems whose worked product IS the answer (sketch, proof, construction) — prints nothing |
 | `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
-| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
-| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
-| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic" / "Study Guide \& Reference") |
+| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right on page 1, "(continued)" on later pages. Keep the title SHORT (under ~28 chars) — `check_template_use.py` fails one that would be shrunk to fit |
+| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key"); the right slot is empty so the title gets the full head width |
+| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic"); right slot empty, same reason as `\akheader` |
 | `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule. **`Date` is optional** — pass an empty `{}` for an undated, reusable sheet (the default); an empty `Course` is dropped too |
 | `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase. `Date` optional, same as `\wstitleblock` |
 | `\sstitleblock{Topic}` | study-guide title block |

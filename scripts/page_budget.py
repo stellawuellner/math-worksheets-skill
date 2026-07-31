@@ -3,7 +3,8 @@ r"""
 page_budget.py — derive a worksheet's page budget from what it actually asks
 of the student, instead of a flat cap.
 
-Usage: python3 scripts/page_budget.py <verify.json> [--doc ws|ak] [--max-pages]
+Usage: python3 scripts/page_budget.py <verify.json> [--doc ws|ak]
+                [--paper letter|a4|legal] [--max-pages]
 
 WHY THIS EXISTS
 A single number ("worksheets may not exceed 8 pages") is wrong in both
@@ -52,10 +53,17 @@ import math
 import os
 import sys
 
-# Usable column height per page, measured: letter, margin=1in, top/bottom
-# 0.75in, minus the running head. Study guides use tighter margins but the
-# study guide has its own fixed 2-page budget and is not sized here.
-PAGE_CM = 24.1
+# Usable column height per page at the worksheet's margins (top/bottom 0.75in
+# = 1.905cm each). US Letter is the default because that is what the schools
+# this was built for use; A4 is 1.8cm taller per page, which is a real
+# difference over a long set (about one page saved every fourteen), so the
+# budget must know which one it is sizing for rather than assume.
+PAPER_CM = {
+    "letter": 27.94 - 2 * 1.905,   # 8.5 x 11in
+    "a4":     29.70 - 2 * 1.905,   # 210 x 297mm
+    "legal":  35.56 - 2 * 1.905,   # 8.5 x 14in
+}
+DEFAULT_PAPER = "letter"
 
 # A worksheet is a practice set, not a workbook. Beyond this the request is
 # better served as several worksheets, which also print and grade better.
@@ -108,8 +116,9 @@ def problem_cost(p):
     return cost
 
 
-def budget(spec):
+def budget(spec, paper=DEFAULT_PAPER):
     """Return the budget dict for a parsed verify JSON."""
+    page_cm = PAPER_CM.get(paper, PAPER_CM[DEFAULT_PAPER])
     problems = spec.get("problems", [])
     # one entry per problem id: several checks may bind to the same problem,
     # and charging a problem twice would inflate the budget
@@ -135,7 +144,7 @@ def budget(spec):
         total /= 2.0
 
     title_block_cm = 2.0                      # title + rule + instruction line
-    ideal = max(1, math.ceil((total + title_block_cm) / PAGE_CM))
+    ideal = max(1, math.ceil((total + title_block_cm) / page_cm))
     return {
         "problems": len(unique),
         "declared_count": declared,
@@ -144,13 +153,14 @@ def budget(spec):
         "max_pages": ideal + SLACK_OVER,
         "min_pages": max(1, math.floor(ideal * (1 - SLACK_UNDER))),
         "two_column": all_compact,
+        "paper": paper,
         "sheets_duplex": math.ceil(ideal / 2),
     }
 
 
 def render(b, doc="ws"):
     lines = [
-        f"Page budget ({doc}): {b['problems']} problems, "
+        f"Page budget ({doc}, {b['paper']}): {b['problems']} problems, "
         f"{b['content_cm']}cm of content"
         + (" (two-column drill: charged at half height)" if b["two_column"] else ""),
         f"  ideal {b['ideal_pages']} page(s) · accepted range "
@@ -172,6 +182,15 @@ def main():
         i = argv.index("--doc")
         doc = argv[i + 1] if i + 1 < len(argv) else "ws"
         del argv[i:i + 2]
+    paper = DEFAULT_PAPER
+    if "--paper" in argv:
+        i = argv.index("--paper")
+        paper = (argv[i + 1] if i + 1 < len(argv) else DEFAULT_PAPER).lower()
+        del argv[i:i + 2]
+        if paper not in PAPER_CM:
+            print(f"page_budget: unknown paper {paper!r}; known: "
+                  f"{', '.join(sorted(PAPER_CM))}", file=sys.stderr)
+            return 2
     only_max = "--max-pages" in argv
     if only_max:
         argv.remove("--max-pages")
@@ -188,7 +207,7 @@ def main():
         print(f"page_budget: cannot parse {path}: {e}", file=sys.stderr)
         return 2
 
-    b = budget(spec)
+    b = budget(spec, paper)
     if b["problems"] > MAX_PROBLEMS:
         print(f"page_budget: {b['problems']} problems exceeds the {MAX_PROBLEMS}-problem "
               f"ceiling. Split this into several worksheets: past ~100 problems a "

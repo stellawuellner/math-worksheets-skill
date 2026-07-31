@@ -17,7 +17,7 @@ done
 
 # the python test suites (each exits nonzero on failure)
 rc=0
-for t in test_audit_fixes test_error_paths test_branches test_answer_key_binding test_check_log test_pipeline_fixes test_render_figures test_facets test_render_meta test_render_quick_answers test_unit_binding test_preamble_layout; do
+for t in test_audit_fixes test_error_paths test_branches test_answer_key_binding test_check_log test_pipeline_fixes test_render_figures test_facets test_render_meta test_render_quick_answers test_unit_binding test_preamble_layout visual_regression; do
   if ! python3 -m coverage run --source=scripts -a "tests/$t.py"; then
     echo "❌ tests/$t.py FAILED"
     rc=1

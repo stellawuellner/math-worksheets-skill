@@ -90,8 +90,14 @@ itemsep-spaced sheet loses the workspace of the last item in each column.
 ```
 
 ### Multi-part problem
-The parent `\problem` takes no workspace (so it emits no answer line of its
-own); each part carries its own blank.
+Each part carries its own blank, and the parent's single answer line is
+**suppressed automatically**: `\ansline`/`\ansblank`/`\answerline` clear the
+auto-emit flag, and `\problem` typesets its stem before testing that flag, so a
+stem that already contains answer locations never also gets a trailing one. One
+"Answer: ____" under a problem with three sub-answers is worse than none, and
+it no longer depends on the author remembering to pass a zero workspace.
+Giving the parent a workspace (`\problem[4cm]{...}`) is therefore safe: the
+parts still own the answers.
 ```latex
 \problem{Given $f(x) = 3x^2 - 2x + 1$, find:}
 \begin{enumerate}[label=(\alph*), itemsep=3cm, leftmargin=1.5cm]
@@ -545,6 +551,36 @@ On the student worksheet, print the same table with empty rows (use `\rule{0pt}{
 
 This is the **third document** generated alongside every worksheet. It's a one-to-two page reference card the student can use while working or studying.
 
+### Page budget (measured, not guessed)
+
+The guide is hard-capped at 2 pages by the `compile-ss` gate. These are the
+real typeset heights at `margin=0.85in, top/bottom=0.7in`:
+
+| Item | Height |
+|---|---|
+| One page of text | 691pt (2 pages = 1382pt) |
+| `\sstitleblock` | ~80pt (one-time) |
+| `\skillheading` | 24pt |
+| `formulabox` | ~45pt |
+| `examplebox` (2 steps + answer) | ~82pt |
+| `tryitbox` | ~45pt |
+| `watchoutbox` | ~38pt |
+
+A full skill section (heading + all four boxes) costs **~234pt**, so the budget
+is `(1382 - 80) / 234` ≈ **5 full skill sections**. Five fit; a sixth spills
+onto page 3 and fails the gate.
+
+Sizing rules:
+- **5 full sections is the ceiling, not a target.** Prefer 3-4 with room to
+  breathe over 5 crammed sections.
+- A long worked example (4+ `\step` lines, displayed fractions, a figure) can
+  double an `examplebox`. Budget 2 long examples as 3 short ones.
+- **Drop in this order when over budget:** `watchoutbox` first (it is the only
+  optional box), then merge two thin skills into one section, then shorten
+  worked examples. Never drop the `tryitbox` — retrieval practice is the point.
+- Do **not** add `\vspace` between boxes. The box environments carry their own
+  `skipabove`/`skipbelow`; hand-added glue is what pushed guides onto page 3.
+
 ### Document shell
 
 The colors, box environments (`formulabox`/`examplebox`/`watchoutbox`), and
@@ -569,8 +605,6 @@ file the worksheet inputs. Only the geometry margins differ:
 $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \end{formulabox}
 
-\vspace{0.2cm}
-
 \begin{examplebox}
 \textbf{Example:} \quad Factor $x^2 - 7x + 12$
 \step{Product $+12$ with sum $-7$: both numbers are negative --- hunt for a negative factor pair of $12$.}
@@ -578,14 +612,10 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 $\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
 
-\vspace{0.2cm}
-
 \begin{tryitbox}
 \textbf{Try it:} \quad Factor $x^2 - 9x + 20$\\[2pt]
 \rotatebox{180}{\footnotesize check: $\ans{(x-4)(x-5)}$}
 \end{tryitbox}
-
-\vspace{0.2cm}
 
 \begin{watchoutbox}
 % Engine-neutral warning marker: pdflatex cannot typeset a literal Unicode (!),
@@ -610,16 +640,12 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \end{itemize}
 \end{formulabox}
 
-\vspace{0.2cm}
-
 \begin{examplebox}
 \textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$
 \step{No obvious factor pair and $a \neq 1$ --- go straight to the quadratic formula.}
 \step{$a = 2,\ b = -3,\ c = -5$: \quad $\Delta = 9 + 40 = 49$, \quad $x = \dfrac{3 \pm 7}{4}$}
 $\Rightarrow\quad\ans{x = \tfrac{5}{2}}$ \quad or \quad $\ans{x = -1}$
 \end{examplebox}
-
-\vspace{0.2cm}
 
 \begin{tryitbox}
 \textbf{Try it:} \quad Solve $3x^2 - 5x - 2 = 0$\\[2pt]

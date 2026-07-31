@@ -131,6 +131,16 @@ if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_good.tex" >/dev/nul
 else
   echo "❌ check_layout wrongly flagged layout_good.tex"; exit 1
 fi
+
+# oversized workspace: an unbreakable minipage taller than the page prints past
+# the bottom margin, and check_log.py only WARNS on the resulting Overfull
+# \vbox — so this fault is invisible unless check_layout catches it statically.
+if "$PYTHON" "$SCRIPT_DIR/check_layout.py" "$FIXTURES/layout_oversized.tex" >/dev/null 2>&1; then
+  echo "❌ check_layout did NOT flag layout_oversized.tex"; exit 1
+else
+  echo "✅ check_layout flags an over-page workspace (layout_oversized.tex)"
+  layout_ran=$((layout_ran + 1))
+fi
 layout_ran=$((layout_ran + 1))
 
 # the optional-arg macro figure (\rtfig[scale=..]) must be SEEN: list 2 of

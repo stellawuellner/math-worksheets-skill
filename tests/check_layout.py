@@ -67,6 +67,15 @@ from _probfig import expand_probfigs, probfig_bodies
 from _tex_segments import enumerate_lists
 
 MIN_CM_PER_PROBLEM = 2.5      # hard floor; SKILL.md recommends 5cm
+# A worksheet page holds ~24cm of text. \problem wraps stem + workspace in ONE
+# unbreakable minipage, so a workspace larger than the page cannot break and
+# simply runs off the bottom margin: the engine reports "Overfull \vbox ...
+# while \output is active", which check_log.py deliberately treats as a warning
+# (vbox warnings are noisy on legitimately full pages). Nothing else catches it,
+# so a 26cm workspace ships a sheet with content printed past the paper edge.
+# Caught here instead, statically: no problem can legitimately ask for more
+# workspace than a page has, so there is no false-positive direction.
+MAX_CM_PER_PROBLEM = 20.0
 UNIT_CM = {"cm": 1.0, "mm": 0.1, "in": 2.54, "pt": 0.0352778, "ex": 0.15, "em": 0.35}
 # \bigskip/\medskip/\smallskip at their conventional sizes — coarse, but they
 # are real writing room and ignoring them under-credits a legitimate sheet
@@ -360,6 +369,21 @@ def main():
         else:
             print(f"  problem blocks: work space ok "
                   f"(all {len(regions)} problems ≥ {MIN_CM_PER_PROBLEM}cm)")
+
+        # 5. oversized workspace — an unbreakable minipage taller than the page
+        huge = [(i, round(opt + space_cm("", r), 2))
+                for i, (opt, r, _) in enumerate(regions, 1)
+                if opt + space_cm("", r) > MAX_CM_PER_PROBLEM]
+        if huge:
+            worst = max(c for _, c in huge)
+            faults.append(
+                f"problem blocks: {len(huge)} of {len(regions)} problems request more "
+                f"than {MAX_CM_PER_PROBLEM}cm of work space (largest {worst}cm) "
+                f"(problems {[i for i, _ in huge]}). \\problem keeps stem and workspace "
+                f"in ONE unbreakable minipage, so a workspace taller than the ~24cm page "
+                f"cannot break and prints past the bottom margin — the engine only warns "
+                f"(Overfull \\vbox), so nothing else catches it. Split the problem into "
+                f"parts, or move the extra room to a separate blank work page.")
 
     if not lists and not regions:
         print("\n  ⚠ PARSED ZERO PROBLEMS from this file.")

@@ -4,6 +4,15 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      rerecord_visual_baselines:
+        description: >-
+          Re-record the visual baselines on the runner and upload them as an
+          artifact. Use when the `visual` job reports environment drift: download
+          the artifact, replace tests/baseline/, and commit it on its own.
+        type: boolean
+        default: false
 
 jobs:
   verify:
@@ -27,3 +36,64 @@ jobs:
         run: |
           echo "### Coverage" >> "$GITHUB_STEP_SUMMARY"
           python3 -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+  # The visual gate needs a TeX install, so it gets its own job — and, more
+  # importantly, its own PINNED runner. An ink-density baseline belongs to one
+  # font and rasteriser stack; `ubuntu-latest` silently moves between releases
+  # and would take the reference rendering with it. This job is the project's
+  # canonical environment: the baselines in tests/baseline are whatever it
+  # renders, and a contributor's laptop is advisory by comparison.
+  visual:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the release, not to package versions: apt has no usable
+      # version pinning for texlive, so the runner image IS the pin. When the
+      # image's TeX or poppler moves, the harness reports drift by name rather
+      # than as an unexplained page diff.
+      - name: Install TeX and poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+            texlive-pictures texlive-fonts-recommended poppler-utils
+
+      - name: Record the rendering environment
+        run: |
+          {
+            echo "### Rendering environment"
+            echo '```'
+            pdflatex --version | head -1
+            pdftoppm -v 2>&1 | head -1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # MWS_VISUAL_STRICT turns "this machine renders differently" from an
+      # advisory into a failure. Advisory is right on a laptop, where a red
+      # build the contributor did not cause teaches them to reach for
+      # --approve. It is wrong here: an advisory gate in CI tests nothing at
+      # all, and would let the baselines rot unnoticed.
+      - name: Visual regression (authoritative)
+        if: ${{ ! inputs.rerecord_visual_baselines }}
+        env:
+          MWS_VISUAL_STRICT: "1"
+        run: python3 tests/visual_regression.py
+
+      - name: Printed-page round trip
+        if: ${{ ! inputs.rerecord_visual_baselines }}
+        run: python3 tests/test_preamble_layout.py
+
+      # The escape hatch for drift, so nobody has to reproduce the runner
+      # locally: re-record here, download, commit. Deliberately manual and
+      # deliberately not a push — a baseline change is a human decision.
+      - name: Re-record baselines on this runner
+        if: ${{ inputs.rerecord_visual_baselines }}
+        run: python3 tests/visual_regression.py --approve --rebase-environment
+
+      - name: Upload re-recorded baselines
+        if: ${{ inputs.rerecord_visual_baselines }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: tests/baseline/

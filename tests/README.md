@@ -12,6 +12,43 @@ Fixture-pinned contract for `scripts/verify.py`: correct algebra/calculus/geomet
 answer keys exit 0, wrong answers exit 1, manual-only sets exit 2, injection
 attempts and schema violations exit 1 without executing anything.
 
+## 1b. Visual regression (needs TeX; skips cleanly without it)
+
+```bash
+python3 tests/visual_regression.py            # check
+python3 tests/visual_regression.py --approve  # re-record an intended design change
+```
+
+Each case is rendered, reduced to a 48×48 ink-density grid, and compared against
+a committed baseline. It catches the class of fault no rule anticipated, because
+it looks at the printed page rather than the source.
+
+**Read this before you re-approve anything.** A baseline is specific to the font
+and rasteriser stack that produced it. A different TeX Live or poppler moves
+cells with the design untouched, and that has already happened here once: a
+branch arrived with seven re-recorded baselines that failed the harness at 6.6%
+while its own code rendered identically to the previous baselines. So the
+harness checks the environment first — recorded tool versions in
+`tests/baseline/ENVIRONMENT.txt`, plus two canary documents covering both font
+stacks — and behaves accordingly:
+
+| Situation | What happens |
+| --- | --- |
+| Environment matches | Full gate. A page diff is a design change; fix it or `--approve` it. |
+| Environment differs | Diffs are printed, **nothing is enforced**, and `--approve` is refused. |
+| Environment differs, `MWS_VISUAL_STRICT=1` | Hard failure. CI sets this so drift can't silently retire the gate. |
+| You mean to move the reference here | `--approve --rebase-environment`, committed on its own. |
+
+If your machine reports drift, that is expected and not your problem to fix:
+the authoritative run is the `visual` CI job, which pins `ubuntu-24.04`. When
+the runner image itself moves, re-record on it — run the `tests` workflow
+manually with **Re-record visual baselines** checked, download the
+`visual-baselines` artifact, and commit it as a standalone change.
+
+`tests/test_visual_environment.py` pins this guard's behaviour with rendering
+stubbed, so it runs on machines with no TeX at all and is part of
+`tests/run_tests.sh`.
+
 ## 2. Corpus evals (minutes, run when the verifier changes)
 
 Ground-truth math datasets exercised against the verifier. Three metrics each:

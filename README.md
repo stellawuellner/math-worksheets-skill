@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.2.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.2.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -167,14 +167,17 @@ math-worksheets/
 │   ├── test_curriculum_eval_suite.py ← 500-prompt uniqueness, distribution, and judge contract
 │   ├── test_page_budget.py           ← page-budget cost model and CLI contract
 │   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
+│   ├── test_visual_environment.py    ← the guard deciding whether baselines apply here
 │   ├── test_preamble_layout.py      ← compiles a PDF and reads it back (answer lines, header, date)
 │   ├── baseline/                    ← approved ink-density signatures, one file per page
+│   │   └── ENVIRONMENT.txt          ← the TeX/poppler stack they were recorded in
 │   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
 │   ├── check_answer_key.py          ← binds printed answer key to verified JSON
 │   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
 │   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
 │   └── fixtures/
-└── .github/workflows/tests.yml       ← CI: runs both suites on every push
+└── .github/workflows/tests.yml       ← CI: both suites everywhere, plus the
+                                        visual gate on a pinned TeX runner
 ```
 
 ## Testing
@@ -188,15 +191,24 @@ python3 tests/visual_regression.py --approve   # re-record after an intended des
 
 `run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability- and curriculum-eval integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, and prove the 500 curriculum prompts remain unique and evenly distributed. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
-`coverage.sh` runs those plus **14 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+`coverage.sh` runs those plus **15 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
 **Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
+
+**Baselines belong to one machine, and the harness knows which.** An ink signature is a property of a font and rasteriser stack, not only of a design: a different TeX Live or poppler moves cells with nothing in the design touched. So the environment is compared before any page is — by recorded tool versions, and by two canary documents that exercise both font stacks the cases use. On a machine that does not match, the page comparison is printed but **not enforced**, and `--approve` refuses to run; adopting a new reference rendering takes the explicit `--approve --rebase-environment`. That keeps a contributor's first run from being red through no fault of theirs, and keeps an unrelated environment's rendering from quietly replacing the approved one.
+
+The canonical environment is CI, not a laptop — the `visual` job pins `ubuntu-24.04` and sets `MWS_VISUAL_STRICT=1`, which turns environment drift from an advisory into a failure so the gate cannot silently stop testing. When the runner image does move, re-record on it: run the `tests` workflow manually with **Re-record visual baselines** checked, download the `visual-baselines` artifact, and commit it on its own.
 
 CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on 6,993 checks**.
 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.2.1 — 2026-08-02
+- **Eval suites** — a 28-task capability suite with hard-gate profiles and a map covering all 26 verifier types, and a 500-prompt curriculum acceptance suite spanning kindergarten counting to AP Calculus BC, generated deterministically so the checked-in manifest cannot drift from its source. Three new integrity suites keep them honest.
+- **`\ans` works inside math mode.** `$m=\ans{3}$` used to fail with "Missing $ inserted"; it now boxes in place, and keeps the flush-right end-of-proof layout in prose.
+- **Visual baselines now know which machine they belong to.** An ink signature is a property of a font and rasteriser stack; a foreign TeX Live or poppler moves cells with the design untouched, and re-recorded baselines from another machine would make every later contributor's first run red. The harness compares the environment before it compares a page — recorded tool versions plus two canary documents — and on a mismatch reports diffs without enforcing them and refuses `--approve`. `MWS_VISUAL_STRICT=1` makes drift a hard failure instead, so the gate cannot quietly retire; CI sets it on a pinned `ubuntu-24.04` runner, which is now the canonical rendering environment, with a manual re-record path when the image moves.
 
 ### v3.2.0 — 2026-07-31
 - **Printed-page fixes, each reproduced before fixing.** The multi-part answer line is suppressed automatically (`\ansline`/`\ansblank` clear the auto-emit flag, and `\problem` tests it after typesetting the stem). The running head can no longer collide: a 68-character title used to overprint the Name/Date blanks by **181pt** on every page, and both head boxes are now shrink-to-fit inside a reserved width. Name/Date print on page 1 only. The answer key dropped its redundant right-hand label, taking its title budget from ~28 characters to ~68. Study-guide page geometry is recomputed by `geometry` rather than patched afterwards, and no box can split mid-text.

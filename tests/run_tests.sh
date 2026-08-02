@@ -51,6 +51,16 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_page_budget.py"; then
 fi
 page_budget_ran=1
 
+# The visual harness needs TeX and so cannot run everywhere, but the guard that
+# decides WHETHER its baselines apply to this machine is pure logic — it runs
+# here, on every machine, TeX or not.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_visual_environment.py"; then
+  echo "❌ test_visual_environment.py failed"
+  exit 1
+fi
+visual_env_ran=1
+
 require_fixture() {
   # a deleted/renamed fixture must fail the suite loudly, not shrink it
   for f in "$@"; do
@@ -1182,4 +1192,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $page_budget_ran page-budget suite"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard"

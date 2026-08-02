@@ -195,7 +195,9 @@ def main():
     if only_max:
         argv.remove("--max-pages")
     if len(argv) != 1:
-        print(__doc__.strip().splitlines()[2], file=sys.stderr)
+        usage = next(line for line in __doc__.splitlines()
+                     if line.startswith("Usage:"))
+        print(usage, file=sys.stderr)
         return 2
     path = argv[0]
     if not os.path.exists(path):

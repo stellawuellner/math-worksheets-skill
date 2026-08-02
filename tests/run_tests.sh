@@ -24,15 +24,32 @@ cd "$SCRIPT_DIR/.." || exit 1
 VERIFY_PY="${SCRIPT_DIR}/../scripts/verify.py"
 FIXTURES="${SCRIPT_DIR}/fixtures"
 
-PYTHON="$(command -v python3 2>/dev/null || true)"
-if [[ -z "$PYTHON" ]]; then
-  echo "Error: python3 not found" >&2
+source "$SCRIPT_DIR/../scripts/find_python.sh"
+PYTHON="$(find_sympy_python)" || exit 1
+
+# Eval manifests are product contract too: keep the quick skill-creator subset
+# synchronized with the full capability suite, and pin coverage of every public
+# verifier family before the slower fixture suite begins.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_eval_suite.py"; then
+  echo "❌ test_eval_suite.py failed"
   exit 1
 fi
-if ! "$PYTHON" -c "import sympy" 2>/dev/null; then
-  echo "Error: sympy is not installed (pip3 install sympy)" >&2
+eval_ran=1
+
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_curriculum_eval_suite.py"; then
+  echo "❌ test_curriculum_eval_suite.py failed"
   exit 1
 fi
+curriculum_eval_ran=1
+
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_page_budget.py"; then
+  echo "❌ test_page_budget.py failed"
+  exit 1
+fi
+page_budget_ran=1
 
 require_fixture() {
   # a deleted/renamed fixture must fail the suite loudly, not shrink it
@@ -1165,4 +1182,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $page_budget_ran page-budget suite"

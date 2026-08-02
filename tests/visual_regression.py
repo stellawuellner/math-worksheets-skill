@@ -165,9 +165,14 @@ def render(name, tex, workdir):
     eng = engine()
     cmd = ([eng, "-interaction=nonstopmode", "c.tex"] if eng.endswith("pdflatex")
            else [eng, "c.tex"])
-    subprocess.run(cmd, cwd=d, capture_output=True)
+    compiled = subprocess.run(cmd, cwd=d, capture_output=True, text=True)
     pdf = os.path.join(d, "c.pdf")
     if not os.path.exists(pdf):
+        output = (compiled.stdout + "\n" + compiled.stderr).strip()
+        tail = "\n".join(output.splitlines()[-12:])
+        print(f"  compile failed for {name} (exit {compiled.returncode})", file=sys.stderr)
+        if tail:
+            print(tail, file=sys.stderr)
         return None
     # -gray gives PGM (P5), which parses in a few lines of pure Python: no
     # image library and no extra binary beyond poppler, which the repo already

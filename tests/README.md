@@ -39,13 +39,37 @@ python3 tests/eval_math_dataset.py MATH/test \
 
 ## 3. End-to-end skill evals (the real question: does the skill help?)
 
-**skill-creator loop** — realistic worksheet prompts run by an agent *with* the
-skill and *without* it (baseline), graded against the assertions in
-`evals/evals.json`: three PDFs produced, verification JSON present and passing,
-requested problem count, figures present, spot-checked answer correctness.
-The with/without delta is the skill's measured value. Test prompts live in
-`evals/evals.json`; run via the skill-creator tooling or by spawning the two
-runs per prompt manually.
+**Quick skill-creator loop** — the 3-prompt `evals/evals.json` smoke subset is
+for fast skill-on versus skill-off comparison. It covers factoring facets,
+triangle rendering/ambiguous SSA, and AP Calculus chain/product rules. Grade
+the outcome artifacts: readable PDFs, complete verification JSON, exact problem
+count, requested behavior, and zero independently detected wrong answers.
+
+**Full capability suite** — `evals/capability-suite.json` contains 28 tasks:
+single-turn, multi-turn, asset-backed, stress, adversarial bypass, manual-review,
+worksheet-only, multi-set, accessibility/locale/paper, and negative-routing
+cases. It defines hard-gate profiles, execution conditions, task-specific
+assertions, and an explicit map covering all 26 public verifier types. Run the
+same model/harness in isolated skill-on and skill-off trials; use three trials
+per normal task and one for expensive stress tasks. Report hard-gate pass rate,
+quality among passes, pass@1, pass^3, and the paired skill delta. Never average
+away a wrong answer, uncovered printed problem, missing requested artifact, or
+false machine-verification claim.
+
+`tests/test_eval_suite.py` validates the manifests and keeps the quick subset
+synchronized with the full suite. It runs as part of `tests/run_tests.sh`.
+
+**500-prompt curriculum acceptance suite** —
+`evals/curriculum-suite-500.json` spans ten equally weighted bands from
+kindergarten counting through AP Calculus BC: 100 topic families with five
+distinct instructional focuses apiece. Every prompt requests a worksheet,
+step-by-step answer key, and 1–2 page study guide. Run generation in clean
+workspaces, preferably in shards of 25, then have a trained person or an
+independent second agent apply `evals/curriculum-judge-rubric.md`. Acceptance
+requires no hard failure, at least 3/4 on every quality dimension, and at least
+27/32 overall. `tests/test_curriculum_eval_suite.py` pins exact regeneration,
+500 distinct focus strings and normalized-unique prompts, the 50-per-band
+distribution, artifact contract, all 26 verifier targets, and the judge threshold.
 
 **SkillsBench** — the community benchmark for agent skills
 (https://github.com/benchflow-ai/skillsbench, paper: arXiv:2602.12670), built

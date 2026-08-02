@@ -16,11 +16,13 @@
 # the exact install command for the interpreter that exists).
 
 find_sympy_python() {
-  local candidates=() tried=() first_existing="" p
+  local candidates=() tried=() first_existing="" p repo_root
   if [[ -n "${MWS_PYTHON_CANDIDATES:-}" ]]; then
     read -r -a candidates <<< "$MWS_PYTHON_CANDIDATES"
   else
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     candidates=(
+      "$repo_root/.venv/bin/python3"
       "$(command -v python3 2>/dev/null || true)"
       "/opt/homebrew/bin/python3"
       "/usr/local/bin/python3"

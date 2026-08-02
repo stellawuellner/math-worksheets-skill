@@ -122,6 +122,14 @@ sudo apt install tectonic   # Debian/Ubuntu (recent releases)
 pip3 install "sympy>=1.12"   # bundles mpmath, used for numerical checks
 ```
 
+For a repo-local development setup that does not modify Homebrew or system
+Python, create `.venv`; the build and test scripts discover it automatically:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python3 -m pip install "sympy==1.14.0" "coverage>=7"
+```
+
 Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.
 
 No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
@@ -147,8 +155,17 @@ math-worksheets/
 │   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC
 │   ├── standards-map.md             ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
 │   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
+├── evals/
+│   ├── evals.json                    ← quick 3-prompt skill-on/off smoke subset
+│   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, and coverage map
+│   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus acceptance prompts
+│   ├── curriculum-judge-rubric.md    ← human/independent-agent acceptance procedure
+│   └── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
 ├── tests/
 │   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
+│   ├── test_eval_suite.py            ← eval schema, coverage, balance, and smoke-sync contract
+│   ├── test_curriculum_eval_suite.py ← 500-prompt uniqueness, distribution, and judge contract
+│   ├── test_page_budget.py           ← page-budget cost model and CLI contract
 │   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
 │   ├── test_preamble_layout.py      ← compiles a PDF and reads it back (answer lines, header, date)
 │   ├── baseline/                    ← approved ink-density signatures, one file per page
@@ -169,9 +186,9 @@ python3 tests/visual_regression.py         # rendered pages vs approved baseline
 python3 tests/visual_regression.py --approve   # re-record after an intended design change
 ```
 
-`run_tests.sh` pins the contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability- and curriculum-eval integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, and prove the 500 curriculum prompts remain unique and evenly distributed. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
-`coverage.sh` runs those plus **13 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+`coverage.sh` runs those plus **14 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
 **Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
 

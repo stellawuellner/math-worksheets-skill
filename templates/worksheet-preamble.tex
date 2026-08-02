@@ -260,7 +260,10 @@
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}%
-  \renewcommand{\ans}[1]{{\unskip\nobreak\hfil\penalty50\hskip1em\null\nobreak\hfil\mbox{\fbox{$\,##1\,$}}\parfillskip=0pt\finalhyphendemerits=0\par}}}
+  % Keep the compact box valid in both authoring forms. In prose, retain the
+  % flush-right end-of-proof layout; inside `$...$`, stay in math mode instead
+  % of emitting paragraph glue (or a second pair of math delimiters).
+  \renewcommand{\ans}[1]{\ifmmode\boxed{##1}\else{\unskip\nobreak\hfil\penalty50\hskip1em\null\nobreak\hfil\mbox{\fbox{\ensuremath{\,##1\,}}}\parfillskip=0pt\finalhyphendemerits=0\par}\fi}}
 
 % \ssheader{Topic} — skills summary / study guide
 \newcommand{\ssheader}[1]{%

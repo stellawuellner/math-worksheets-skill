@@ -139,7 +139,7 @@
       "bloom": "analyze",
       "traps": [
         {
-          "desc": "took the smaller digit from the larger in every column instead of regrouping across the zero\\\\",
+          "desc": "took the smaller digit from the larger in every column instead of regrouping across the zero",
           "expr": "(9-4)*100 + (5-0)*10 + (8-3)",
           "value": 555
         }

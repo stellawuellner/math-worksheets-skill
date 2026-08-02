@@ -36,6 +36,16 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 |---|---|
 | Fraction operations | 5.NF.A.1 / 6.NS.A.1 / 5.NF.B |
 | Expressions: write, read, evaluate, equivalent | 6.EE.A / 7.EE.A |
+| Ratios & proportional relationships | 6.RP.A / 7.RP.A |
+| Rational number operations (signed) | 6.NS.C / 7.NS.A |
+| Area, surface area, volume (gr 6–7) | 6.G.A / 7.G.B |
+| Scale drawings & scale factor | 7.G.A.1 |
+| Transformations, congruence, similarity (gr 8) | 8.G.A |
+| Pythagorean theorem & converse | 8.G.B.6–B.8 |
+| Volume of cones, cylinders, spheres | 8.G.C.9 |
+| Functions (gr 8) | 8.F.A / 8.F.B |
+| Statistics & distributions (gr 6–7) | 6.SP.A / 6.SP.B / 7.SP.A |
+| Probability & sampling (gr 7) | 7.SP.C |
 | Decimals & operations | 5.NBT.B.7 / 6.NS.B.3 |
 | Ratios & unit rates | 6.RP.A.2, 6.RP.A.3 |
 | Percent problems | 6.RP.A.3.c / 7.RP.A.3 |
@@ -79,6 +89,17 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Circles (arcs, sectors) | HSG-C.B.5 |
 | Coordinate geometry proofs | HSG-GPE.B.4–B.7 |
 | Sequences & series (explicit/recursive) | HSF-BF.A.2, HSF-LE.A.2 |
+| Congruence: transformations, triangle congruence, proofs | HSG-CO.A–HSG-CO.D |
+| Similarity: dilations, AA/SSS/SAS similarity | HSG-SRT.A.1–A.3, HSG-SRT.B.4–B.5 |
+| Creating equations & inequalities from context | HSA-CED.A.1–A.4 |
+| Function behaviour, notation, graphs | HSF-IF.A–HSF-IF.C |
+| Complex numbers: arithmetic & the complex plane | HSN-CN.A.1–A.3, HSN-CN.B.4–B.6 |
+| Complex solutions of polynomials | HSN-CN.C.7–C.9 |
+| Vectors & vector operations | HSN-VM.A.1–A.3, HSN-VM.B.4–B.5 |
+| Matrices | HSN-VM.C.6–C.12 |
+| Statistics: data displays, spread, regression | HSS-ID.A–HSS-ID.C |
+| Inference & experimental design | HSS-IC.A–HSS-IC.B |
+| Conditional probability & rules | HSS-CP.A–HSS-CP.B |
 | Binomial theorem & Pascal's triangle | HSA-APR.C.5 |
 | Radicals & rational exponents | HSN-RN.A.1, HSN-RN.A.2 |
 | Radical/rational equations (extraneous roots) | HSA-REI.A.2 |

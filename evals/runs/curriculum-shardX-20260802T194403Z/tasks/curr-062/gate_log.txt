@@ -36,7 +36,7 @@ standards: 3.NBT.A.2×10
 skill mix: check-by-adding×1, estimate-the-difference×2, subtract-across-one-zero×4, subtract-across-two-zeros×3
 facets: across-one-zero×4, estimate-check×2, across-two-zeros×3, check-by-adding×1
 traps: 1 declared, all distinguishable
-    problem 9: trap 'took the smaller digit from the larger in every column instead of regrouping across the zero\\\\': (9-4)*100 + (5-0)*10 + (8-3) → 555 (rejected by the problem's own check)
+    problem 9: trap 'took the smaller digit from the larger in every column instead of regrouping across the zero': (9-4)*100 + (5-0)*10 + (8-3) → 555 (rejected by the problem's own check)
 facet mix: across-one-zero×4, estimate-check×2, across-two-zeros×3, check-by-adding×1; max in-window run: 1
 difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4]
 

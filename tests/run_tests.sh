@@ -79,6 +79,8 @@ CASES=(
   "fail_wrong_answers.json:1"
   "fail_geometry.json:1"
   "manual_only.json:2"
+  "manual_cas_incomplete.json:2"   # CAS returns a confident, incomplete root set
+  "pass_cas_factored.json:0"       # ...and the audit must not fire on a complete one
   "reject_injection.json:1"
   "reject_bad_schema.json:1"
   "reject_coverage_gap.json:1"

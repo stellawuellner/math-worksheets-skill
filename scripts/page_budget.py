@@ -108,7 +108,13 @@ def problem_cost(p):
     """Column height one problem deserves, in cm."""
     ptype = p.get("type", "manual")
     ws = p.get("workspace_cm")
-    ws = float(ws) if ws is not None else WORKSPACE.get(ptype, STANDARD)
+    # verify.py runs first and rejects a non-numeric workspace_cm, but this
+    # module is also called directly, so it degrades to the type default rather
+    # than dying on input it did not validate.
+    try:
+        ws = float(ws) if ws is not None else WORKSPACE.get(ptype, STANDARD)
+    except (TypeError, ValueError):
+        ws = WORKSPACE.get(ptype, STANDARD)
     stem = WORD_PROBLEM_STEM_CM if p.get("word_problem") else STEM_CM
     cost = OVERHEAD_CM + stem + ws
     if isinstance(p.get("figure"), dict):

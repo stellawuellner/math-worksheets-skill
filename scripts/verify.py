@@ -686,6 +686,15 @@ SCHEMAS = {
 # the reference cannot drift.
 _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
                      "skill", "role",
+                     # page_budget.py has always read workspace_cm and charged
+                     # for it, but the strict schema rejected it as unknown —
+                     # so the ONLY way to declare that a problem needs more room
+                     # than its type's default was forbidden by the gate that
+                     # runs first. An eval agent hit the page cap on a sheet
+                     # with displayed student work and found no legal way to say
+                     # so, and compressed the sheet instead. That is exactly the
+                     # trade this project decided against.
+                     "workspace_cm",
                      # the declarative figure spec render_figures.py draws from
                      "figure",
                      # ── facet/misconception fields (grouped so schema merges
@@ -1096,6 +1105,17 @@ def check_schema(p):
     if unknown:
         raise VerifyInputError(
             f"type {ptype!r} has unknown field(s): {sorted(unknown)}")
+    # workspace_cm feeds page_budget.py's cost model, so a non-number would
+    # reach it as a crash rather than a message. Bounded because the value buys
+    # printed paper: past a full page it is a typo, not a request.
+    if "workspace_cm" in p:
+        ws = p["workspace_cm"]
+        if isinstance(ws, bool) or not isinstance(ws, (int, float)):
+            raise VerifyInputError(
+                f"'workspace_cm' must be a number of centimetres, got {ws!r}")
+        if not 0 < ws <= 24:
+            raise VerifyInputError(
+                f"'workspace_cm' must be between 0 and 24 cm, got {ws}")
     # "role" tags a study-guide try-it and is position-matched against
     # tryitbox segments by check_answer_key.py — any other value would bind
     # to nothing, so it is a schema error, not a free string.
@@ -1687,6 +1707,26 @@ def check_problem(p, ptype):
                     f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): key "
                     f"lists {len(exp_floats)} but numeric enumeration found "
                     f"{len(numeric)} ({[round(r,4) for r in numeric]}) — review by hand")
+        # A FiniteSet is not proof of completeness. solveset returns {0} for
+        # 2*cos(x)**2 - cos(x) - 1 on [0, 2*pi) — confidently, and wrong: it
+        # misses 2*pi/3 and 4*pi/3. The completeness check above only ran when
+        # solveset ADMITTED it could not enumerate, so a key listing just [0]
+        # passed as verified. That is a false accept, on the one guarantee this
+        # project makes. Numeric enumeration therefore also audits the symbolic
+        # answer. One-directional on purpose: only MORE numeric roots than
+        # symbolic ones is evidence of incompleteness, so a tangent root the
+        # grid misses can never manufacture a false alarm.
+        numeric = count_real_roots(expr, var, lo, hi)
+        if numeric is not None and len(numeric) > len(computed):
+            missed = [round(r, 4) for r in numeric
+                      if all(abs(r - float(sympy.N(c))) > 1e-2 for c in computed)]
+            return ("MANUAL",
+                    f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): the "
+                    f"symbolic solver returned {len(computed)} root(s) but numeric "
+                    f"enumeration finds {len(numeric)} ({missed} unaccounted for) — "
+                    f"the CAS solution is INCOMPLETE for this form. Restate the "
+                    f"expression in factored form, or review by hand. Do NOT treat "
+                    f"the short list as the answer key.")
         ok = multiset_equal(computed, expected)
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "

@@ -1,12 +1,12 @@
 # math-worksheets — Agent Skill
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)](tests/coverage.sh)
+[![coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](tests/coverage.sh)
 [![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.0.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.2.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -26,7 +26,7 @@ Most worksheet generators ask a language model for the answers and trust them. T
 ```mermaid
 flowchart LR
     A[Natural-language<br/>request] --> B[Model designs<br/>problems as JSON]
-    B --> C{{"verify.py — SymPy<br/>24 check types"}}
+    B --> C{{"verify.py — SymPy<br/>26 check types"}}
     C -->|any wrong answer| B
     C -->|all pass| D[Compile LaTeX → 3 PDFs]
     D --> E{{"check_answer_key.py<br/>check_prose_consistency.py"}}
@@ -47,10 +47,15 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 ## Features
 
 - **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary cheat sheet with formula boxes and worked mini-examples (all three verified).
-- **24 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
+- **26 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
 - **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
 - **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
+- **Accessible output** — large-print and dyslexia-friendly modes (`extarticle` at 14/17pt plus `\accessiblemode`): roomier leading, bigger answer blanks, sans-serif prose *and* math, emphasis set bold rather than italic. A student whose IEP entitles them to large print can use the same generator everyone else does. [How →](references/latex-templates.md#accessibility)
+- **Paper and locale** — US Letter, A4, and Legal; `\mwslocale{eu}` prints decimal commas and `\times`. The verify JSON stays canonical, so only the *printed* form is localised and every gate keeps one number format.
+- **Page budget computed from content** — 50 graphing problems that each need a coordinate plane are allowed the ~24 pages they need; a flat cap could only be met by shrinking the work space. `build.sh` prints the ideal page count and the double-sided sheet count, so paper cost is visible before printing. [Details →](references/latex-templates.md#page-budget-measured-not-guessed)
+- **Grading help in the key** — declared misconception `traps` print as a "Common wrong answers" block ("If they got 7.37: used cos instead of tan"), turning grading into teaching.
+- **Visual regression testing** — every document is rendered and compared against an approved baseline, so a layout fault nobody wrote a rule for still cannot ship silently.
 - **Portable delivery** — chat agents send PDFs back on the originating channel; CLI/IDE agents report the paths.
 
 ## Examples
@@ -130,6 +135,7 @@ math-worksheets/
 ├── scripts/
 │   ├── build.sh                     ← ONE command: full gate chain + three compiles, fail-fast
 │   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper (stages templates/)
+│   ├── page_budget.py               ← page budget computed from the problem set (paper-aware)
 │   ├── find_python.sh               ← shared finder: first python3 that can import sympy
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
 │   └── verify.py                    ← the fixed, audited verifier (26 check types; --schema)
@@ -143,6 +149,9 @@ math-worksheets/
 │   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
 ├── tests/
 │   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
+│   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
+│   ├── test_preamble_layout.py      ← compiles a PDF and reads it back (answer lines, header, date)
+│   ├── baseline/                    ← approved ink-density signatures, one file per page
 │   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
 │   ├── check_answer_key.py          ← binds printed answer key to verified JSON
 │   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
@@ -154,15 +163,34 @@ math-worksheets/
 ## Testing
 
 ```bash
-bash tests/run_tests.sh          # verifier contract (18 fixtures)
-bash tests/coverage.sh           # all suites under coverage, floor 90%
+bash tests/run_tests.sh                    # contract suite (105 fixtures/checks)
+bash tests/coverage.sh                     # every suite under coverage, floor 90%
+python3 tests/visual_regression.py         # rendered pages vs approved baselines
+python3 tests/visual_regression.py --approve   # re-record after an intended design change
 ```
 
-`coverage.sh` runs the fixture suite plus three Python suites — `test_audit_fixes.py` (soundness-regression pins from two adversarial audits, 33 assertions), `test_error_paths.py` (input-validation for every type), and `test_branches.py` (numeric fallbacks and verdict variants) — under `coverage`, and fails below **90%** (currently **91%**). Fixtures pin the contract: correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection/schema violations exit 1 without executing anything. CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on 6,993 checks**.
+`run_tests.sh` pins the contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+
+`coverage.sh` runs those plus **13 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+
+**Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
+
+CI runs everything on every push. For deeper validation, the corpus evals check the verifier against GSM8K and the MATH dataset — **0 false accepts on 6,993 checks**.
 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.2.0 — 2026-07-31
+- **Printed-page fixes, each reproduced before fixing.** The multi-part answer line is suppressed automatically (`\ansline`/`\ansblank` clear the auto-emit flag, and `\problem` tests it after typesetting the stem). The running head can no longer collide: a 68-character title used to overprint the Name/Date blanks by **181pt** on every page, and both head boxes are now shrink-to-fit inside a reserved width. Name/Date print on page 1 only. The answer key dropped its redundant right-hand label, taking its title budget from ~28 characters to ~68. Study-guide page geometry is recomputed by `geometry` rather than patched afterwards, and no box can split mid-text.
+- **Grayscale-safe study guide.** Measured, the four box background fills span **5 of 255** luminance in grayscale, so on the black-and-white printer most people use, formula/example/try-it/watch-out were indistinguishable. They keep their colours and now also differ in frame shape.
+- **Visual regression harness** (`tests/visual_regression.py`) — documents are rendered and compared against committed ink-density baselines, so a layout fault nobody wrote a rule for cannot ship silently. Band-aware, because a page-wide threshold missed the header collision.
+- **Page budget computed from the problem set** (`scripts/page_budget.py`) — replaces the flat 8/6-page caps, which were wrong in both directions at once. Paper-aware (Letter/A4/Legal), reports double-sided sheet count, 100-problem ceiling.
+- **Accessibility** — large-print and dyslexia-friendly modes via `extarticle` + `\accessiblemode`; sans-serif prose and math, roomier leading, bigger answer blanks. The header-title budget scales with type size.
+- **Locale** — `\mwslocale{eu}` prints decimal commas and `\times`; the verify JSON stays canonical so every gate keeps one number format.
+- **Common wrong answers in the key** — declared `traps` render as "If they got 7.37: used cos instead of tan", emitted through `\commonerror` so the correct-answer binding stays strict.
+- **New gates:** workspace larger than the page (the engine only warns), and header titles too long for their slot (shrink-to-fit degradation caught before compile).
+- **Reusable sheets:** the title-block date is optional and empty by default; `\schoolname` prints a school or teacher name in the footer.
 
 ### v3.1.0 — 2026-07-23
 - **Removed the model-selection subsystem.** The skill no longer detects, switches, or recommends an AI model. `scripts/check_reasoning_model.sh` and `references/model-rankings.{md,json}` are deleted, and the SKILL.md "Model Selection" section is replaced with a short accuracy note: generate problems with whatever model your agent runs, and the SymPy gate catches wrong answers regardless. Model choice is the agent's job, not the skill's.

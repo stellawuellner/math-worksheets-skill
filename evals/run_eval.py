@@ -277,9 +277,17 @@ def cmd_record(a):
     if os.path.isfile(gpath):
         gate_text = open(gpath, encoding="utf-8", errors="replace").read()
 
+    # Per task, not just per run. A run may be authored by several agents, and
+    # the question "how much does the driving model change the result" is only
+    # answerable if every artifact carries the model that actually made it —
+    # a run-level field silently averages a mixed fleet into one label.
     obs = {
         "task_id": a.task_id,
         "recorded": now(),
+        "generator": {
+            "agent": a.generator_agent or run["generator"]["agent"],
+            "model": a.generator_model or run["generator"]["model"],
+        },
         "latency_seconds": a.latency_seconds,
         "notes": a.notes or "",
         "artifacts_present": {name: os.path.isfile(os.path.join(out, name))
@@ -298,7 +306,7 @@ def cmd_record(a):
     save(os.path.join(obs_dir, f"{a.task_id}.json"), obs)
 
     flag = "⚠️ " if problems or not obs["gate_chain_passed"] or not obs["problem_count_matches"] else "✅ "
-    print(f"{flag}recorded {a.task_id}: "
+    print(f"{flag}recorded {a.task_id} [{obs['generator']['model']}]: "
           f"{declared}/{expected} problems, "
           f"gates {'passed' if obs['gate_chain_passed'] else 'DID NOT PASS'}, "
           f"{obs['worksheet_pages']} ws page(s)")
@@ -319,6 +327,13 @@ def cmd_status(a):
     print(f"run {run['run_id']}  ({run['suite']} shard {run['shard']})")
     print(f"  generator : {run['generator']['agent']} / {run['generator']['model']}")
     print(f"  recorded  : {len(done)}/{len(run['task_ids'])}")
+    fleet = {}
+    for tid in done:
+        m = load(os.path.join(d, "observations", f"{tid}.json")) \
+            .get("generator", {}).get("model", "?")
+        fleet[m] = fleet.get(m, 0) + 1
+    if fleet:
+        print("  by model  : " + ", ".join(f"{m} ×{n}" for m, n in sorted(fleet.items())))
     clean = flagged = 0
     for tid in done:
         o = load(os.path.join(d, "observations", f"{tid}.json"))
@@ -403,6 +418,16 @@ mechanical facts you were not shown, and writes `report.md`.
 """
 
 
+def generator_identities(d, run):
+    """Every agent/model string that authored any task in this run."""
+    out = {run["generator"]["model"], run["generator"]["agent"]}
+    obs_dir = os.path.join(d, "observations")
+    for name in sorted(os.listdir(obs_dir)) if os.path.isdir(obs_dir) else []:
+        gen = load(os.path.join(obs_dir, name)).get("generator", {})
+        out |= {gen.get("model"), gen.get("agent")}
+    return {x for x in out if x}
+
+
 def cmd_package(a):
     d = run_dir(a.run)
     run = load(os.path.join(d, "run.json"))
@@ -428,7 +453,7 @@ def cmd_package(a):
             if not name.endswith((".txt", ".json", ".md", ".tex")):
                 continue
             body = open(path, encoding="utf-8", errors="replace").read().lower()
-            for ident in (run["generator"]["model"], run["generator"]["agent"]):
+            for ident in generator_identities(d, run):
                 if ident and ident.lower() in body:
                     leaked.append(f"{tid}/{name} names the generator ({ident})")
 
@@ -487,6 +512,8 @@ def main(argv=None):
     r.add_argument("--run")
     r.add_argument("--gate-log")
     r.add_argument("--response-file")
+    r.add_argument("--generator-agent", help="defaults to the run's generator")
+    r.add_argument("--generator-model", help="defaults to the run's generator")
     r.add_argument("--latency-seconds", type=float)
     r.add_argument("--notes")
     r.set_defaults(fn=cmd_record)

@@ -410,9 +410,19 @@ fi
 # ws/ak have no pedagogical cap, so these are sanity ceilings sized from the
 # real artifacts (the largest real 12-problem worksheet was 7 pages with
 # figures): a 10-page worksheet is a layout accident, not a worksheet.
-WS_MAX_PAGES=8
-AK_MAX_PAGES=6
+# ws/ak budgets are COMPUTED from the problem set (scripts/page_budget.py), not
+# fixed: 50 graphing problems that each need a coordinate plane legitimately run
+# past 20 pages, and a flat cap could only be satisfied by shrinking the work
+# space — the one thing that must never give. The budget moves with the content;
+# what the cap still catches is a page count far above what the content asks
+# for, which is paper spent on a layout accident. The compression direction is
+# gated per problem by check_layout.py's work-space floor, which is the better
+# place for it: it is a property of the problem, not of the aggregate.
+# ss keeps a fixed 2 pages: it is a reference card, and SKILL.md caps it there.
+WS_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --max-pages 2>/dev/null || echo 8)
+AK_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --doc ak --max-pages 2>/dev/null || echo 6)
 SS_MAX_PAGES=2
+"$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" 2>/dev/null || true
 compile_gate() { # gate-name tex-file max-pages
   local gate="$1" tex="$2" cap="$3"
   banner "compile $(basename "$tex") → $OUT_DIR  (page budget: $cap)"

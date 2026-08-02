@@ -121,7 +121,71 @@ def check(doc_tex, template_tex, template_path):
             faults.append(
                 f"color '{m.group(1)}' is redefined here but shipped by the "
                 f"template ({template_path})")
+    faults.extend(header_title_faults(doc))
     return faults
+
+
+# D. HEADER TITLE LENGTH. The running head is a fixed-width box; a title too
+# long for it is shrunk to fit (\mws@fitl). Shrinking prevents the collision
+# that used to overprint the Name/Date blanks, but a shrunk title is degraded
+# output, and nothing on the page says so — the document just quietly gets
+# harder to read, on every page, because a running head repeats. Caught here
+# instead, statically, before the compile.
+#
+# Budgets are measured, not guessed: \small\bfseries averages 5.48pt/char and
+# \headwidth is 469.8pt, so the worksheet's page-1 head (which reserves 8.4cm
+# for the Name/Date blanks plus a 0.5cm gutter) fits ~39 characters. The
+# answer key and study guide reserve nothing on the right, so they fit ~68.
+# A 10% buffer covers titles of unusually wide characters.
+HEADER_BUDGET = {
+    "wsheader": 36,   # measured 39; the tightest slot, and the common case
+    "akheader": 60,   # measured 68 (" --- Answer Key" already subtracted)
+    "ssheader": 60,   # measured 67 ("Skills Summary: " already subtracted)
+}
+# A4 is 6mm narrower than Letter, so every head slot loses about 4 characters.
+# Scaling the budget by the width ratio keeps one rule honest on both papers
+# instead of quietly passing on Letter and overflowing on A4.
+A4_WIDTH_RATIO = 21.0 / 21.59
+# Accessibility modes set a larger base type size, and the running head scales
+# with it, so the same title that fits at 12pt is shrunk at 17pt. Measured
+# average character widths at \small\bfseries: 5.48pt at 12pt, 5.87pt at 14pt,
+# 7.04pt at 17pt. A large-print sheet is exactly the one that must not have a
+# shrunken header, so the budget scales rather than being waived.
+SIZE_RATIO = {10: 1.15, 11: 1.07, 12: 1.00, 14: 0.93, 17: 0.78, 20: 0.66}
+HEADER_RE = re.compile(r"\\(wsheader|akheader|ssheader)\{([^{}]*)\}")
+
+
+def visible_len(title):
+    """Characters a reader sees: strip TeX markup and math delimiters, and
+    count an escaped symbol as the one glyph it prints."""
+    t = re.sub(r"\\[a-zA-Z]+\s*", "x", title)   # \alpha -> one glyph
+    t = t.replace("$", "").replace("{", "").replace("}", "")
+    return len(t.strip())
+
+
+def header_title_faults(doc):
+    out = []
+    a4 = bool(re.search(r"\\documentclass\[[^\]]*a4paper", doc))
+    m = re.search(r"\\documentclass\[[^\]]*?(\d+)pt", doc)
+    size = int(m.group(1)) if m else 12
+    for m in HEADER_RE.finditer(doc):
+        macro, title = m.group(1), m.group(2)
+        n = visible_len(title)
+        cap = HEADER_BUDGET[macro]
+        if a4:
+            cap = int(cap * A4_WIDTH_RATIO)
+        cap = int(cap * SIZE_RATIO.get(size, 1.0))
+        if n > cap:
+            out.append(
+                f"\\{macro} title is {n} characters; the running-head slot fits "
+                f"about {cap}"
+                f"{' on A4' if a4 else ''}{f' at {size}pt' if size != 12 else ''}"
+                f". It will be shrunk to fit on "
+                f"EVERY page, which is "
+                f"legible but visibly degraded. Use a short running title "
+                f"(\"Triangle Trig Practice\", not the full course name) — the "
+                f"full topic still gets its full size in the title block.")
+    return out
 
 
 def main():

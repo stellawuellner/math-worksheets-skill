@@ -40,6 +40,10 @@ Ask (or infer from context):
 - **Student**: name, grade, course (e.g. "8th grade, Pre-Algebra")
 - **Topic**: e.g. "factoring trinomials", "solving two-step equations"
 - **Problem count**: default 10 if not specified
+- **Page use**: the page budget is COMPUTED from the problem set (`scripts/page_budget.py`), not fixed. Fifty graphing problems that each need a coordinate plane legitimately run past 20 pages and are allowed to; a flat cap could only be met by shrinking the work space, which is the one thing that must never give. `build.sh` prints the ideal page count and the double-sided sheet count before compiling, so paper cost is visible. If a set is bigger than intended, reduce the PROBLEM COUNT, never the work space. Hard ceiling: 100 problems — past that, split into several worksheets
+- **Paper size**: US Letter by default. For A4 or Legal, add the paper as a documentclass option (`\documentclass[12pt,a4paper]{article}`) with metric geometry margins, and pass `--paper a4` to `page_budget.py`. See `references/latex-templates.md` → "Paper size"
+- **Accessibility**: for large-print or dyslexia-friendly output use `\documentclass[17pt]{extarticle}` (or 14pt) plus `\accessiblemode{large|dyslexia|both}`. The page budget adapts automatically; larger type simply means more pages. See `references/latex-templates.md` → "Accessibility"
+- **Locale**: `\mwslocale{eu}` prints decimal commas and `\times`. The verify JSON stays canonical (period decimals) — only the printed form is localised, via `\dec{}` and `\mtimes`. Pair this with A4 paper for European users
 - **Format preference**: timed quiz, homework practice, mixed difficulty, or topic drill.
   For a **timed quiz**, point values are the default: place `\probpts{N}` at the end of
   each stem and `Score: \underline{\hspace{1.5cm}} / \totalpoints\ pts` in the title
@@ -61,7 +65,7 @@ See `references/problem-library.md` for topic-specific problem type menus.
 
 **Interleave after the warm-up:** a blocked warm-up over the first third of the sheet is fine; after that, keep same-facet runs to 3 or fewer so the student must *choose* the method — unless the sheet is genuinely a drill, declared with top-level `"format": "drill"`. `verify.py` flags longer runs (exit 2, manual review) with a concrete swap suggestion. See `references/problem-library.md` → "How to interleave".
 
-**Misconception traps:** consult the misconception table (`references/problem-library.md` → "Misconception traps & error analysis") when choosing givens — pick numbers so the canonical wrong method lands visibly off the correct answer — and declare `"traps"` on the 2–3 problems you designed that way. Traps are optional, but declared ones are machine-checked (step 4).
+**Misconception traps:** consult the misconception table (`references/problem-library.md` → "Misconception traps & error analysis") when choosing givens — pick numbers so the canonical wrong method lands visibly off the correct answer — and declare `"traps"` on the 2–3 problems you designed that way. Traps are optional, but declared ones are machine-checked (step 4) AND printed in the answer key as a "Common wrong answers" block (`scripts/render_quick_answers.py` emits one `\commonerror` line per trap, so the grader sees "If they got 7.37: used cos instead of tan"). Declaring traps therefore pays twice: it hardens the problem design and it turns grading into teaching.
 
 **Tiered worksheets (differentiation, on request):** when asked for tiers (support/on-level/challenge), build ONE set of problem skeletons, then re-parameterize per tier — same structure and standards, different givens and difficulty band (support: 1–2 with a hints box and a worked first step; core: 2–3; challenge: 3–5). Each tier gets its OWN verify JSON (the gate re-checks every tier) and file prefix: `wsS_`/`wsC_`/`wsX_` + matching keys. Because construction is JSON-first, a tier is a data change, not a rewrite.
 
@@ -75,7 +79,7 @@ Write **three** `.tex` files to `/tmp/`:
 - `ss_TOPIC_DATE.tex` — skills summary / study guide (cheat sheet)
 
 The **skills summary** is a 1–2 page reference card the student can use while working through the worksheet or when studying. Per skill section: **formulabox → examplebox → tryitbox**. It contains:
-- One section per distinct skill tested (2–5 sections typical), tagged with the worksheet's `"skill"` names — `build.sh`'s `coverage-ss` gate fails the build if any worksheet skill lacks a tagged study-guide entry
+- One section per distinct skill tested, tagged with the worksheet's `"skill"` names — `build.sh`'s `coverage-ss` gate fails the build if any worksheet skill lacks a tagged study-guide entry. **Five full sections is the hard ceiling** for the 2-page cap (a full section costs ~234pt against a 1382pt two-page budget); aim for 3–4. When over budget, drop the watch-out box first, then merge two thin skills, then shorten worked examples — never drop the try-it. Add no `\vspace` between boxes; they carry their own spacing. See `references/latex-templates.md` → "Page budget"
 - A **formula/rule box** (blue) per skill — the key facts and formulas
 - A **mini worked example** (green) per skill — a `\step` strategy line naming why this tool applies, then the computation — fewer steps than worksheet problems, never a bare answer chain (see the exemplars in `references/latex-templates.md`)
 - A **try-it** (violet) per worked example — a re-parameterization of that section's example (same skeleton, new givens), printing ONLY the stem plus the verified answer upside down INSIDE the box via `\rotatebox{180}{\footnotesize check: $\ans{...}$}` — no worked steps; solving it is the student's job. Formula-only sections (no example) are legal and need no try-it

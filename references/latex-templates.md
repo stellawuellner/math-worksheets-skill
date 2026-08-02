@@ -1,5 +1,122 @@
 # LaTeX Templates Reference
 
+## Paper size
+
+US Letter is the default because that is what the schools this was built for
+use. A4 and Legal are supported: pass the paper as a `documentclass` option and
+give geometry margins in the matching unit.
+
+```latex
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=2cm, top=1.9cm, bottom=1.9cm]{geometry}   % A4 worksheet
+\usepackage[margin=1.8cm, top=1.8cm, bottom=1.8cm]{geometry} % A4 study guide
+```
+
+Most of the system is already paper-agnostic: the running head derives its title
+box from `\headwidth`, and every box sizes from `\linewidth`. Two things do
+depend on the paper and are handled explicitly:
+
+- **Page budget.** `scripts/page_budget.py --paper a4` sizes the budget from the
+  real page height. A4 is 1.8cm taller than Letter, worth roughly one page saved
+  every fourteen on a long set.
+- **Header title length.** A4 is 6mm narrower, so each head slot loses about
+  four characters. `check_template_use.py` detects `a4paper` and scales the
+  budget, so one rule stays honest on both rather than passing on Letter and
+  overflowing on A4.
+
+Do not mix units: an A4 document with `margin=1in` wastes 5mm of usable width
+against the metric convention its readers expect.
+
+## Accessibility
+
+A student whose IEP or 504 plan entitles them to large-print materials could not
+use this tool before these modes existed. Type size must come from the document
+class (`article` offers only 10/11/12pt), so a large-print sheet opens with
+`extarticle`; everything else adapts from the preamble.
+
+```latex
+\documentclass[17pt]{extarticle}     % or 14pt
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\accessiblemode{both}                % large | dyslexia | both
+```
+
+| Mode | Effect |
+|---|---|
+| `large` | 1.25 line spacing, answer blanks grow to 5cm at 0.8pt |
+| `dyslexia` | sans-serif text **and math** (via `sfmath`), 1.5 line spacing, emphasis set bold instead of italic |
+| `both` | all of the above |
+
+The dyslexia settings follow the British Dyslexia Association style guide: sans
+faces, generous leading, no italics. Math is switched to sans too, which matters
+more here than in prose because a worksheet is mostly math.
+
+The page budget needs no adjustment: it is computed from content, so larger type
+simply produces more pages, which is the honest outcome. The header-title budget
+DOES scale, and `check_template_use.py` scales with it (a 12pt title of 36
+characters is 30 at 17pt) — a large-print sheet is exactly the one that must not
+carry a shrunken header.
+
+## Locale
+
+Supporting A4 paper without the notation that goes with it is half a job: most
+A4 countries write the decimal comma, so a student reading `1.5` parses that
+period as a thousands separator. That is a correctness problem, not a cosmetic
+one.
+
+```latex
+\mwslocale{eu}     % 1,5 and \times    (us is the default: 1.5 and \cdot)
+```
+
+The verify JSON stays canonical (period decimals, ASCII operators) so the
+verifier and every gate keep one unambiguous number format. Only the printed form
+is localised:
+
+| Macro | `us` | `eu` |
+|---|---|---|
+| `\dec{3.75}` | 3.75 | 3,75 |
+| `\mtimes` | `\cdot` | `\times` |
+
+Use `\dec{}` for every decimal in problem text and answer keys when a locale is
+set. A bare `3.75` in the source prints a period regardless, and is the one way
+to defeat this.
+
+## Design rules
+
+These are the invariants the shipped preamble maintains. They exist because
+each one was violated once and shipped a bad-looking sheet. Follow them when
+adding anything to the design system.
+
+1. **Every box that shares a line needs a width contract.** Two pieces of
+   content on one line (a running head's left and right slots) must each have a
+   reserved width and a defined overflow behaviour. Set at natural width they
+   silently overprint each other, and a running head repeats that collision on
+   every page.
+2. **Overflow must degrade visibly, and degradation must be reported.**
+   Shrink-to-fit keeps a long title on one line, but a shrunk title is worse
+   output that the page never admits to. `check_template_use.py` fails a header
+   title longer than its slot so the degradation is caught before compile, not
+   discovered in print.
+3. **The header's right slot is for information the reader acts on.** The
+   Name/Date blanks earn their place. Labels that restate the document type
+   ("For instructor/parent use" next to "Answer Key") do not: they cost the
+   title the width it needed and add nothing.
+4. **Never encode meaning in colour alone.** Worksheets get printed, usually in
+   black and white. The four study-guide boxes carry the same colours they
+   always did, and are additionally distinguished by frame shape: thick full
+   frame (formula), thin full frame (example), left bar only (try-it), top and
+   bottom rules only (watch-out). Measured, the four background fills span 5 of
+   255 luminance in grayscale, so hue alone made them identical on a mono
+   printer.
+5. **Space that must survive a page break belongs inside a box.** LaTeX
+   discards `\vspace` glue at a break, so workspace outside a minipage vanishes
+   exactly when its problem lands at a page bottom. `\problem[5cm]{...}` puts it
+   inside; `check_layout.py` fails the stranded form.
+6. **A page budget is measured, not assumed.** The study guide's 2-page cap and
+   its "2-5 sections" allowance were set independently and contradicted each
+   other. See "Page budget" below for the measured cost of every component.
+
+
 > **Source of truth:** the preamble, header/title macros, study-guide boxes,
 > and figure macros ship as `\input`-able files in `templates/`
 > (`worksheet-preamble.tex`, `figure-macros.tex`). This page documents how to
@@ -53,9 +170,9 @@ Macro reference (defined in `templates/worksheet-preamble.tex`):
 | `\answerline{unit}` | answer blank + measurement unit (`\answerline{ft}`, `\answerline{cm$^2$}`) — the unit must match the problem's `"answer_unit"` in the verify JSON (`tests/check_answer_line.py`); suppresses `\problem`'s automatic line |
 | `\noansline` | explicit opt-out for problems whose worked product IS the answer (sketch, proof, construction) — prints nothing |
 | `\fittedtitle{...}` | shrink-to-fit title: `\LARGE` when it fits on one line, otherwise scaled to the text width — never enlarges, never wraps mid-phrase |
-| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right. Keep the title SHORT (under ~28 chars, e.g. "Triangle Trig Practice") — it shares the line with the blanks and a long title overlaps them |
-| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key" / "For instructor/parent use") |
-| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic" / "Study Guide \& Reference") |
+| `\wsheader{Short Title}` | worksheet running header: title left, Name/Date blanks right on page 1, "(continued)" on later pages. Keep the title SHORT (under ~28 chars) — `check_template_use.py` fails one that would be shrunk to fit |
+| `\akheader{Topic}` | answer-key header ("Topic --- Answer Key"); the right slot is empty so the title gets the full head width |
+| `\ssheader{Topic}` | study-guide header ("Skills Summary: Topic"); right slot empty, same reason as `\akheader` |
 | `\wstitleblock{Title}{Course}{Date}` | worksheet title block + horizontal rule. **`Date` is optional** — pass an empty `{}` for an undated, reusable sheet (the default); an empty `Course` is dropped too |
 | `\aktitleblock{Topic}{Course}{Date}` | topic on its own line, **"Answer Key" as a subtitle beneath it** — never appended to the big title, or a long topic wraps mid-phrase. `Date` optional, same as `\wstitleblock` |
 | `\sstitleblock{Topic}` | study-guide title block |
@@ -90,8 +207,14 @@ itemsep-spaced sheet loses the workspace of the last item in each column.
 ```
 
 ### Multi-part problem
-The parent `\problem` takes no workspace (so it emits no answer line of its
-own); each part carries its own blank.
+Each part carries its own blank, and the parent's single answer line is
+**suppressed automatically**: `\ansline`/`\ansblank`/`\answerline` clear the
+auto-emit flag, and `\problem` typesets its stem before testing that flag, so a
+stem that already contains answer locations never also gets a trailing one. One
+"Answer: ____" under a problem with three sub-answers is worse than none, and
+it no longer depends on the author remembering to pass a zero workspace.
+Giving the parent a workspace (`\problem[4cm]{...}`) is therefore safe: the
+parts still own the answers.
 ```latex
 \problem{Given $f(x) = 3x^2 - 2x + 1$, find:}
 \begin{enumerate}[label=(\alph*), itemsep=3cm, leftmargin=1.5cm]
@@ -545,6 +668,36 @@ On the student worksheet, print the same table with empty rows (use `\rule{0pt}{
 
 This is the **third document** generated alongside every worksheet. It's a one-to-two page reference card the student can use while working or studying.
 
+### Page budget (measured, not guessed)
+
+The guide is hard-capped at 2 pages by the `compile-ss` gate. These are the
+real typeset heights at `margin=0.85in, top/bottom=0.7in`:
+
+| Item | Height |
+|---|---|
+| One page of text | 691pt (2 pages = 1382pt) |
+| `\sstitleblock` | ~80pt (one-time) |
+| `\skillheading` | 24pt |
+| `formulabox` | ~45pt |
+| `examplebox` (2 steps + answer) | ~82pt |
+| `tryitbox` | ~45pt |
+| `watchoutbox` | ~38pt |
+
+A full skill section (heading + all four boxes) costs **~234pt**, so the budget
+is `(1382 - 80) / 234` ≈ **5 full skill sections**. Five fit; a sixth spills
+onto page 3 and fails the gate.
+
+Sizing rules:
+- **5 full sections is the ceiling, not a target.** Prefer 3-4 with room to
+  breathe over 5 crammed sections.
+- A long worked example (4+ `\step` lines, displayed fractions, a figure) can
+  double an `examplebox`. Budget 2 long examples as 3 short ones.
+- **Drop in this order when over budget:** `watchoutbox` first (it is the only
+  optional box), then merge two thin skills into one section, then shorten
+  worked examples. Never drop the `tryitbox` — retrieval practice is the point.
+- Do **not** add `\vspace` between boxes. The box environments carry their own
+  `skipabove`/`skipbelow`; hand-added glue is what pushed guides onto page 3.
+
 ### Document shell
 
 The colors, box environments (`formulabox`/`examplebox`/`watchoutbox`), and
@@ -569,8 +722,6 @@ file the worksheet inputs. Only the geometry margins differ:
 $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 \end{formulabox}
 
-\vspace{0.2cm}
-
 \begin{examplebox}
 \textbf{Example:} \quad Factor $x^2 - 7x + 12$
 \step{Product $+12$ with sum $-7$: both numbers are negative --- hunt for a negative factor pair of $12$.}
@@ -578,14 +729,10 @@ $x^2 + bx + c = (x + p)(x + q)$ \quad where $p + q = b$ and $p \cdot q = c$
 $\Rightarrow\quad x^2 - 7x + 12 = \ans{(x-3)(x-4)}$
 \end{examplebox}
 
-\vspace{0.2cm}
-
 \begin{tryitbox}
 \textbf{Try it:} \quad Factor $x^2 - 9x + 20$\\[2pt]
 \rotatebox{180}{\footnotesize check: $\ans{(x-4)(x-5)}$}
 \end{tryitbox}
-
-\vspace{0.2cm}
 
 \begin{watchoutbox}
 % Engine-neutral warning marker: pdflatex cannot typeset a literal Unicode (!),
@@ -610,16 +757,12 @@ If $c < 0$, the factors have \textit{opposite signs}.
 \end{itemize}
 \end{formulabox}
 
-\vspace{0.2cm}
-
 \begin{examplebox}
 \textbf{Example:} \quad Solve $2x^2 - 3x - 5 = 0$
 \step{No obvious factor pair and $a \neq 1$ --- go straight to the quadratic formula.}
 \step{$a = 2,\ b = -3,\ c = -5$: \quad $\Delta = 9 + 40 = 49$, \quad $x = \dfrac{3 \pm 7}{4}$}
 $\Rightarrow\quad\ans{x = \tfrac{5}{2}}$ \quad or \quad $\ans{x = -1}$
 \end{examplebox}
-
-\vspace{0.2cm}
 
 \begin{tryitbox}
 \textbf{Try it:} \quad Solve $3x^2 - 5x - 2 = 0$\\[2pt]

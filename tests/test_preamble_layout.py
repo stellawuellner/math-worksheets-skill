@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+r"""
+test_preamble_layout.py — pin the PRINTED behaviour of the shipped preamble.
+
+These are not source-lint rules: they compile a document and read the resulting
+PDF, because the faults they cover are only visible on the page.
+
+1. OBSERVANT ANSWER LINE. \problem auto-emits one "Answer: ____" when it has
+   workspace. On a multi-part problem that single line is wrong: three
+   sub-parts need three answers, and one trailing blank invites the student to
+   commit a single value. \ansline/\ansblank/\answerline clear the auto-emit
+   flag and \problem tests it AFTER typesetting the stem, so a stem that
+   already carries answer locations suppresses the parent's line. Pinned by
+   counting printed "Answer:" strings.
+
+2. HEADER COLLISION. fancyhdr sets [L] and [R] at their natural widths, so a
+   title longer than the leftover space printed straight through the Name/Date
+   blanks — on every page, because a running head repeats. Both boxes are now
+   shrink-to-fit within a reserved width. Pinned by reading word bounding
+   boxes and asserting the title's right edge is left of the blanks.
+
+3. DATE ON PAGE 1 ONLY. Continuation pages carry "(continued)", not a second
+   set of Name/Date blanks.
+
+Requires pdflatex (or tectonic) and pdftotext. Skips cleanly when absent.
+Exit 0 all pinned, 1 on any regression.
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATES = os.path.join(ROOT, "templates")
+
+DOC = r"""
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\wsheader{Slope, Slope-Intercept Form and Linear Function Modelling Practice Set}
+\begin{document}
+\wstitleblock{Slope and Slope-Intercept Form}{Algebra 1}{}
+\problem[4cm]{Single-answer problem: it should get exactly one answer line.}
+\problem[4cm]{Multi-part WITH workspace: the parent must NOT add its own line.
+\begin{enumerate}[label=(\alph*), itemsep=2.5cm, leftmargin=1.5cm]
+  \item first part \ansline
+  \item second part \ansline
+\end{enumerate}}
+\newpage
+\problem[4cm]{A page-two problem.}
+\end{document}
+"""
+
+failures = []
+
+
+def check(label, cond, detail=""):
+    print(("  ok   " if cond else "  FAIL ") + label + ("" if cond else f" -- {detail}"))
+    if not cond:
+        failures.append(label)
+
+
+def words_with_boxes(pdf, page):
+    xml = subprocess.run(["pdftotext", "-bbox", "-f", str(page), "-l", str(page), pdf, "-"],
+                         capture_output=True, text=True).stdout
+    return [(float(a), float(b), float(c), t) for a, b, c, t in re.findall(
+        r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="[\d.]+">([^<]*)</word>', xml)]
+
+
+def main():
+    engine = shutil.which("pdflatex") or shutil.which("tectonic")
+    if not engine or not shutil.which("pdftotext"):
+        print("test_preamble_layout: no LaTeX engine or pdftotext — skipped")
+        return 0
+
+    with tempfile.TemporaryDirectory() as d:
+        for f in os.listdir(TEMPLATES):
+            if f.endswith(".tex"):
+                shutil.copy(os.path.join(TEMPLATES, f), d)
+        tex = os.path.join(d, "t.tex")
+        open(tex, "w").write(DOC)
+        cmd = ([engine, "-interaction=nonstopmode", "t.tex"] if engine.endswith("pdflatex")
+               else [engine, "t.tex"])
+        subprocess.run(cmd, cwd=d, capture_output=True)
+        pdf = os.path.join(d, "t.pdf")
+        if not os.path.exists(pdf):
+            print("  FAIL document did not compile")
+            return 1
+
+        print("1. observant answer line")
+        p1 = subprocess.run(["pdftotext", "-f", "1", "-l", "1", pdf, "-"],
+                            capture_output=True, text=True).stdout
+        n = p1.count("Answer:")
+        # problem 1 contributes 1; problem 2 contributes 2 (one per part) and
+        # its parent must contribute none. A regression re-adds the parent's
+        # line and makes this 4.
+        check("multi-part parent adds no extra answer line", n == 3,
+              f"expected 3 printed 'Answer:' on page 1, got {n}")
+
+        print("2. header does not collide")
+        w = words_with_boxes(pdf, 1)
+        band = min(x[1] for x in w)
+        head = [x for x in w if abs(x[1] - band) < 6]
+        left = [x for x in head if x[3] not in ("Name:", "Date:")]
+        right = [x for x in head if x[3] in ("Name:", "Date:")]
+        check("Name/Date blanks present in the page-1 head", bool(right))
+        if left and right:
+            tmax = max(x[2] for x in left)
+            bmin = min(x[0] for x in right)
+            check("title clears the Name/Date blanks", tmax < bmin,
+                  f"title right edge {tmax:.1f} overlaps first blank at {bmin:.1f}")
+
+        print("3. date blanks on page 1 only")
+        p2 = subprocess.run(["pdftotext", "-f", "2", "-l", "2", pdf, "-"],
+                            capture_output=True, text=True).stdout
+        check("page 2 has no second Date blank", "Date:" not in p2)
+        check("page 2 carries the continuation marker", "(continued)" in p2)
+
+    if failures:
+        print(f"\n❌ {len(failures)} preamble layout regression(s)")
+        return 1
+    print("\n✅ preamble layout pinned")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

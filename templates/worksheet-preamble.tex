@@ -51,12 +51,26 @@
 %              enforces the pairing in both directions). Also suppresses the
 %              auto \ansline so a unit problem never gets two blanks.
 \makeatletter
+\newif\ifmws@sans
+\newif\ifmws@bigblanks
 \newif\ifmws@ans
 \mws@anstrue
 \newdimen\mws@wsdim
 \newcommand{\noansline}{\global\mws@ansfalse}
-\newcommand{\ansline}{\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \rule[-1pt]{3.5cm}{0.4pt}}
-\newcommand{\ansblank}{\rule[-1pt]{1.8cm}{0.4pt}}
+% \ansline and \ansblank BOTH clear the flag, which is what makes the auto
+% answer line observant instead of unconditional. \problem typesets its stem
+% BEFORE testing the flag, so any answer location the stem already contains —
+% a per-part \ansline in a nested (a)/(b)/(c) list, or an inline \ansblank in
+% a drill — has cleared the flag by the time the test runs, and the parent's
+% single trailing line is suppressed. One "Answer: ____" under a problem whose
+% three sub-parts each need their own answer is worse than none: it invites the
+% student to commit one value for a question that has three.
+% Self-clearing is harmless for the parent's own auto-emitted line: it fires
+% after the test, and \problem re-arms the flag at the start of every problem.
+% Blank length and rule weight grow in an accessibility mode: a student who
+% needs 17pt type also needs a blank big enough to write 17pt digits in.
+\newcommand{\ansline}{\global\mws@ansfalse\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \ifmws@bigblanks\rule[-2pt]{5cm}{0.8pt}\else\rule[-1pt]{3.5cm}{0.4pt}\fi}
+\newcommand{\ansblank}{\global\mws@ansfalse\ifmws@bigblanks\rule[-2pt]{2.6cm}{0.8pt}\else\rule[-1pt]{1.8cm}{0.4pt}\fi}
 \newcommand{\answerline}[1]{\global\mws@ansfalse\par\nopagebreak\vspace{4pt}\hfill\textbf{Answer:}\ \rule[-2pt]{3.5cm}{0.4pt}\ #1}
 
 % ── Problem numbering ───────────────────────────────────────────────────────
@@ -75,6 +89,84 @@
 \newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\global\mws@anstrue\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\mws@wsdim=#1\relax\ifdim\mws@wsdim>0pt\ifmws@ans\ansline\fi\fi\end{minipage}\par}
 \makeatother
 
+% ── Accessibility modes ─────────────────────────────────────────────────────
+% A student whose IEP or 504 plan entitles them to large-print materials could
+% not use this tool at all before these existed. Type SIZE must come from the
+% document class (article offers only 10/11/12pt), so a large-print sheet opens
+%   \documentclass[14pt]{extarticle}   % or 17pt
+% and everything below adapts the rest of the page to it.
+%
+%   \accessiblemode{large}     roomier leading and bigger answer blanks
+%   \accessiblemode{dyslexia}  sans-serif text AND math, 1.5 leading, no italics
+%   \accessiblemode{both}      both
+%
+% The dyslexia settings follow the British Dyslexia Association style guide:
+% sans-serif faces, generous line spacing, and no italics (italic letterforms
+% are the ones most often reported as blurring). sfmath switches MATH to sans
+% too, which matters more here than in prose: a worksheet is mostly math, and
+% leaving formulas in serif would defeat the point.
+% The page budget needs no change: it is computed from content, so a larger
+% type size simply produces more pages, which is the honest outcome.
+\usepackage{setspace}
+\makeatletter
+\newcommand{\accessiblemode}[1]{%
+  \def\mws@am{#1}%
+  \def\mws@amlarge{large}\def\mws@amdys{dyslexia}\def\mws@amboth{both}%
+  \ifx\mws@am\mws@amlarge\setstretch{1.25}\global\mws@bigblankstrue\fi
+  \ifx\mws@am\mws@amdys\global\mws@sanstrue\setstretch{1.5}\global\mws@bigblankstrue\fi
+  \ifx\mws@am\mws@amboth\global\mws@sanstrue\setstretch{1.5}\global\mws@bigblankstrue\fi
+  \ifmws@sans
+    \renewcommand{\familydefault}{\sfdefault}%
+    % sans MATH as well as sans prose: a worksheet is mostly math, so leaving
+    % formulas in serif would defeat the purpose of the mode
+    \@ifundefined{sfmath@loaded}{\RequirePackage{sfmath}\global\let\sfmath@loaded\relax}{}%
+    % italic letterforms are the ones most often reported as blurring, so
+    % emphasis becomes bold instead of italic
+    \renewcommand{\emph}[1]{\textbf{##1}}%
+  \fi}
+\makeatother
+
+% ── Locale ──────────────────────────────────────────────────────────────────
+% Supporting A4 paper but not the notation that goes with it is half a job. Most
+% of the countries that use A4 write the decimal COMMA: a student in Germany or
+% France reading "1.5" parses that period as a thousands separator, so this is a
+% correctness problem, not a cosmetic one. The multiplication sign differs too
+% (\times is taught where \cdot is not, and vice versa).
+%
+%   \mwslocale{us}   1.5   a \cdot b     (default)
+%   \mwslocale{eu}   1,5   a \times b
+%
+% The verify JSON always stays canonical (period decimals, ASCII operators) so
+% the verifier and every gate keep one unambiguous number format. Only the
+% PRINTED form is localised, via these macros:
+%
+%   \dec{3.75}   prints 3.75 or 3,75
+%   \mtimes      prints \cdot or \times
+%
+% Use \dec{} for every decimal in problem text and answer keys when a locale is
+% set; a bare 3.75 in the source prints a period regardless and is the one way
+% to defeat this.
+\makeatletter
+\newif\ifmws@eu
+\newcommand{\mwslocale}[1]{%
+  \def\mws@loc{#1}\def\mws@loceu{eu}%
+  \ifx\mws@loc\mws@loceu\global\mws@eutrue\fi}
+\newcommand{\dec}[1]{\ifmws@eu\mws@deccomma#1.\@nil\else#1\fi}
+\def\mws@deccomma#1.#2\@nil{#1\ifx\relax#2\relax\else{,}\mws@stripdot#2\fi}
+\def\mws@stripdot#1.{#1}
+\newcommand{\mtimes}{\ifmws@eu\times\else\cdot\fi}
+\makeatother
+
+% ── Common wrong answers (answer key) ───────────────────────────────────────
+% The key proves the RIGHT answer but says nothing about how to grade a wrong
+% one. The verify JSON already declares "traps": the misconception, the
+% expression a student following it would evaluate, and the value it produces —
+% all machine-checked. Printing that turns grading into teaching: seeing 7.37
+% tells the grader the student used cos where tan was needed, which is a
+% different conversation from "wrong, minus two".
+% Rendered from the JSON by scripts/render_quick_answers.py, never hand-typed.
+\newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}}
+
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox
 % comes from graphicx, which tikz already loads.) ────────────────────────────
@@ -84,9 +176,35 @@
   \ifdim\fittedw>\linewidth\resizebox{\linewidth}{!}{\bfseries #1}%
   \else{\LARGE\bfseries #1}\fi}
 
-% ── Running headers. Keep the left title SHORT (<= ~28 chars, e.g. "Triangle
-% Trig Practice", not the full course name) — it shares the header line with
-% the Name/Date blanks and a long title overlaps them. ──────────────────────
+% ── Running headers ─────────────────────────────────────────────────────────
+% The running head is ONE line split into two fixed-width boxes: title on the
+% left, blanks or a continuation marker on the right. fancyhdr sets [L] and [R]
+% at their natural widths, so a title longer than the leftover space simply
+% overprinted the Name/Date blanks — and because a running head repeats, the
+% collision appeared on EVERY page. Both boxes are now shrink-to-fit within a
+% reserved width, so the head can never collide and can never wrap to a second
+% line (a wrapped head overprints the body text below it).
+% Keeping the title short (<= ~28 chars) is still the right habit: shrink-to-fit
+% keeps a long one legible and on one line, it does not make it pretty.
+% Ask GEOMETRY for the taller head rather than patching \headheight after the
+% fact. geometry computes \topmargin, \headsep and \textheight together; a raw
+% \setlength afterwards changes one of them and leaves the rest derived from the
+% old value, so the header drifts into the headsep gap and the body sits a few
+% points off where every other measurement assumes. \geometry{} re-runs the whole
+% computation, which is the only way to keep the page self-consistent.
+\geometry{headheight=15pt}
+\makeatletter
+\newlength{\mws@boxw}
+% left-aligned / right-aligned single-line box of exactly the given width
+\newcommand{\mws@fitl}[2]{\setlength{\mws@boxw}{#1}\settowidth{\fittedw}{#2}%
+  \ifdim\fittedw>\mws@boxw\resizebox{\mws@boxw}{!}{#2}\else\makebox[\mws@boxw][l]{#2}\fi}
+\newcommand{\mws@fitr}[2]{\setlength{\mws@boxw}{#1}\settowidth{\fittedw}{#2}%
+  \ifdim\fittedw>\mws@boxw\resizebox{\mws@boxw}{!}{#2}\else\makebox[\mws@boxw][r]{#2}\fi}
+% title box = whatever the reserved right-hand box leaves, minus a gutter.
+% \headwidth is evaluated at shipout, when fancyhdr has finished setting it.
+\newcommand{\mws@headtitle}[2]{%
+  \mws@fitl{\dimexpr\headwidth-#1-0.5cm\relax}{\small\bfseries #2}}
+
 % \wsheader{Short Title} — student worksheet
 % Optional branding: set your school or teacher name once and it prints in the
 % footer (bottom-left) of every generated page. Empty by default = no branding.
@@ -95,13 +213,30 @@
 % or override per-document by placing that \renewcommand after \input.
 \newcommand{\schoolname}{}
 
+% The Name/Date blanks belong on page 1 only. A student fills them in once;
+% repeating them on every page asks for the same information four times and
+% eats the header width that the title needs. Continuation pages carry the
+% title and a "(continued)" marker instead, and the footer's page number
+% already identifies each sheet.
+\newlength{\mws@wsright}
+\setlength{\mws@wsright}{8.4cm}    % reserved for the Name/Date blanks
 \newcommand{\wsheader}[1]{%
-  \pagestyle{fancy}\fancyhf{}%
-  \fancyhead[L]{\textbf{\small #1}}%
-  \fancyhead[R]{\small Name: \underline{\hspace{4.5cm}}~Date: \underline{\hspace{1.8cm}}}%
-  \fancyfoot[C]{\thepage}%
-  \fancyfoot[L]{\small\schoolname}%
-  \renewcommand{\headrulewidth}{0.4pt}}
+  \fancypagestyle{mwsfirst}{%
+    \fancyhf{}%
+    \fancyhead[L]{\mws@headtitle{\mws@wsright}{#1}}%
+    \fancyhead[R]{\mws@fitr{\mws@wsright}{\small Name: \underline{\hspace{4.1cm}}\ Date: \underline{\hspace{1.8cm}}}}%
+    \fancyfoot[C]{\thepage}%
+    \fancyfoot[L]{\small\schoolname}%
+    \renewcommand{\headrulewidth}{0.4pt}}%
+  \fancypagestyle{mwscont}{%
+    \fancyhf{}%
+    \fancyhead[L]{\mws@headtitle{2.6cm}{#1}}%
+    \fancyhead[R]{\mws@fitr{2.6cm}{\small\itshape (continued)}}%
+    \fancyfoot[C]{\thepage}%
+    \fancyfoot[L]{\small\schoolname}%
+    \renewcommand{\headrulewidth}{0.4pt}}%
+  \pagestyle{mwscont}%
+  \AtBeginDocument{\thispagestyle{mwsfirst}}}
 
 % \akheader{Short Topic} — answer key
 % Also switches \ans{...} to the COMPACT boxed form: check_answer_key.py binds
@@ -115,8 +250,13 @@
 % (\ssheader never redefines \ans).
 \newcommand{\akheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
-  \fancyhead[L]{\textbf{\small #1 --- Answer Key}}%
-  \fancyhead[R]{\textit{\small For instructor/parent use}}%
+  % The right slot carries nothing: "For instructor/parent use" restated what
+  % "Answer Key" already says, and every centimetre it held was width the title
+  % could not use — which is what forced the title to shrink. Reserve 0cm and
+  % the title gets the whole head. Rule: the header's right slot is for
+  % information the reader must ACT on (the Name/Date blanks). Labels that only
+  % restate the document type belong nowhere.
+  \fancyhead[L]{\mws@headtitle{0cm}{#1 --- Answer Key}}%
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}%
@@ -125,11 +265,13 @@
 % \ssheader{Topic} — skills summary / study guide
 \newcommand{\ssheader}[1]{%
   \pagestyle{fancy}\fancyhf{}%
-  \fancyhead[L]{\textbf{Skills Summary: #1}}%
-  \fancyhead[R]{\small\textit{Study Guide \& Reference}}%
+  % Same rule as \akheader: "Study Guide & Reference" restated "Skills Summary".
+  \fancyhead[L]{\mws@headtitle{0cm}{Skills Summary: #1}}%
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}}
+
+\makeatother
 
 % ── Title blocks ────────────────────────────────────────────────────────────
 % \mwssubtitle{Course}{Date} — the "Course * Date" line under the title. Either
@@ -165,15 +307,18 @@
   \end{center}}
 
 % \sstitleblock{Topic}
+% Trimmed from 105pt to ~80pt: the running header already says "Skills Summary:
+% <topic>", so the title block is reinforcement, not new information, and every
+% point it spends comes straight out of the 2-page content budget.
 \newcommand{\sstitleblock}[1]{%
   \begin{center}
-    {\LARGE\textbf{Skills Summary}}\\[0.2cm]
-    {\large\textbf{#1}}\\[0.1cm]
+    {\LARGE\textbf{Skills Summary}}\\[0.12cm]
+    {\large\textbf{#1}}\\[0.06cm]
     {\small\textit{Use this reference while completing your worksheet or when studying.}}
   \end{center}
-  \vspace{0.1cm}
+  \vspace{0.04cm}
   \noindent\rule{\linewidth}{1.5pt}
-  \vspace{0.3cm}}
+  \vspace{0.16cm}}
 
 % ── Study-guide color palette and boxes ─────────────────────────────────────
 \definecolor{skillblue}{RGB}{30,100,180}
@@ -188,10 +333,10 @@
 % Formula/rule box
 \newmdenv[
   backgroundcolor=skillbluebg,
-  linecolor=skillblue, linewidth=1.5pt,
-  innertopmargin=6pt, innerbottommargin=6pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=6pt, skipbelow=4pt
+  linecolor=skillblue, linewidth=1.6pt,
+  innertopmargin=4pt, innerbottommargin=4pt,
+  innerleftmargin=9pt, innerrightmargin=9pt,
+  skipabove=4pt, skipbelow=3pt, nobreak=true
 ]{formulabox}
 
 % Mini example box. The mdframed environment is the INNER shell: examplebox
@@ -199,10 +344,10 @@
 % at 1 in every worked example without the author touching the counter.
 \newmdenv[
   backgroundcolor=exgreenbg,
-  linecolor=exgreen, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
+  linecolor=exgreen, linewidth=0.6pt,
+  innertopmargin=4pt, innerbottommargin=4pt,
+  innerleftmargin=9pt, innerrightmargin=9pt,
+  skipabove=3pt, skipbelow=3pt, nobreak=true
 ]{exampleboxinner}
 \newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}}{\end{exampleboxinner}}
 
@@ -225,19 +370,21 @@
 % tikz already loads.)
 \newmdenv[
   backgroundcolor=tryvioletbg,
-  linecolor=tryviolet, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
+  linecolor=tryviolet, linewidth=2.5pt,
+  topline=false, bottomline=false, rightline=false,
+  innertopmargin=4pt, innerbottommargin=4pt,
+  innerleftmargin=9pt, innerrightmargin=9pt,
+  skipabove=3pt, skipbelow=3pt, nobreak=true
 ]{tryitbox}
 
 % Watch-out box
 \newmdenv[
   backgroundcolor=warnbg,
-  linecolor=warnorange, linewidth=1pt,
-  innertopmargin=5pt, innerbottommargin=5pt,
-  innerleftmargin=10pt, innerrightmargin=10pt,
-  skipabove=4pt, skipbelow=4pt
+  linecolor=warnorange, linewidth=1.6pt,
+  leftline=false, rightline=false,
+  innertopmargin=4pt, innerbottommargin=4pt,
+  innerleftmargin=9pt, innerrightmargin=9pt,
+  skipabove=3pt, skipbelow=3pt, nobreak=true
 ]{watchoutbox}
 
 % \ans{...} — the printed final answer of a worked example. check_answer_key.py
@@ -246,10 +393,16 @@
 \newcommand{\ans}[1]{\boldsymbol{#1}}
 
 % Skill section heading
+% Tightened from 0.4/0.1/0.2cm (35.3pt) to 24pt. On a 2-page reference card the
+% per-skill furniture is charged 2-5 times, so heading padding is one of the
+% largest controllable costs. \needspace keeps a heading from stranding itself
+% at the foot of a page with its formula box overleaf.
 \newcommand{\skillheading}[1]{%
-  \vspace{0.4cm}
+  \needspace{4\baselineskip}%  keeps a heading with its formula box; 7 over-reserved
+  
+  \vspace{0.25cm}
   {\large\textbf{\textcolor{skillblue}{#1}}}
-  \vspace{0.1cm}
+  \vspace{0.06cm}
   \hrule height 1pt
-  \vspace{0.2cm}
+  \vspace{0.14cm}
 }

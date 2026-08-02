@@ -1,0 +1,34 @@
+{
+  "topic": "transformations with multiple parameters (study guide)",
+  "problem_count": 6,
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "3*(x + 1)**2 - 2", "at": {"x": 1},
+     "expected": 10,
+     "skill": "table-transform", "facet": "table-transform",
+     "standard": "HSF-BF.A.1c", "difficulty": 2, "bloom": "apply"},
+
+    {"id": 2, "type": "eval", "expr": "-(x - 2)**2 + 6", "at": {"x": 5},
+     "expected": -3, "role": "tryit",
+     "skill": "table-transform", "facet": "table-transform",
+     "standard": "HSF-BF.A.1c", "difficulty": 3, "bloom": "apply"},
+
+    {"id": 3, "type": "equiv", "expr": "2*sin(3*x + pi/2)",
+     "expected": "2*sin(3*(x + pi/6))",
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-TF.B.5", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 4, "type": "equiv", "expr": "5*cos(4*x - pi)",
+     "expected": "5*cos(4*(x - pi/4))", "role": "tryit",
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-TF.B.5", "difficulty": 4, "bloom": "analyze"},
+
+    {"id": 5, "type": "equiv", "expr": "3*(x + 5)", "expected": "3*x + 15",
+     "skill": "composition-order", "facet": "composition-order",
+     "standard": "HSF-BF.A.1c", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 6, "type": "equiv", "expr": "4*(x - 2)", "expected": "4*x - 8",
+     "role": "tryit",
+     "skill": "composition-order", "facet": "composition-order",
+     "standard": "HSF-BF.A.1c", "difficulty": 3, "bloom": "analyze"}
+  ]
+}

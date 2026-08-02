@@ -141,7 +141,17 @@ HEADER_BUDGET = {
     "wsheader": 36,   # measured 39; the tightest slot, and the common case
     "akheader": 60,   # measured 68 (" --- Answer Key" already subtracted)
     "ssheader": 60,   # measured 67 ("Skills Summary: " already subtracted)
+    # \skillheading had a budget in fact but not in this table, so it was the
+    # one head with no pre-compile check: three separate eval-run agents
+    # overflowed it and only found out at compile-ss, with an overfull hbox and
+    # no hint of the cause. It sits in the study-guide body at margin=0.85in and
+    # SKILL.md encourages appending the skill slug to it, which is exactly what
+    # pushes it over. Measured: overflow begins just past 57 characters.
+    "skillheading": 57,
 }
+# The study guide runs at a wider text block than the running head, so it does
+# not take the A4 running-head penalty.
+BODY_HEADS = {"skillheading"}
 # A4 is 6mm narrower than Letter, so every head slot loses about 4 characters.
 # Scaling the budget by the width ratio keeps one rule honest on both papers
 # instead of quietly passing on Letter and overflowing on A4.
@@ -152,7 +162,7 @@ A4_WIDTH_RATIO = 21.0 / 21.59
 # 7.04pt at 17pt. A large-print sheet is exactly the one that must not have a
 # shrunken header, so the budget scales rather than being waived.
 SIZE_RATIO = {10: 1.15, 11: 1.07, 12: 1.00, 14: 0.93, 17: 0.78, 20: 0.66}
-HEADER_RE = re.compile(r"\\(wsheader|akheader|ssheader)\{([^{}]*)\}")
+HEADER_RE = re.compile(r"\\(wsheader|akheader|ssheader|skillheading)\{([^{}]*)\}")
 
 
 def visible_len(title):
@@ -172,19 +182,24 @@ def header_title_faults(doc):
         macro, title = m.group(1), m.group(2)
         n = visible_len(title)
         cap = HEADER_BUDGET[macro]
-        if a4:
+        if a4 and macro not in BODY_HEADS:
             cap = int(cap * A4_WIDTH_RATIO)
         cap = int(cap * SIZE_RATIO.get(size, 1.0))
         if n > cap:
             out.append(
-                f"\\{macro} title is {n} characters; the running-head slot fits "
-                f"about {cap}"
+                f"\\{macro} title is {n} characters; "
+                + ("the study-guide text block fits "
+                   if macro in BODY_HEADS else "the running-head slot fits ")
+                + f"about {cap}"
                 f"{' on A4' if a4 else ''}{f' at {size}pt' if size != 12 else ''}"
-                f". It will be shrunk to fit on "
-                f"EVERY page, which is "
-                f"legible but visibly degraded. Use a short running title "
-                f"(\"Triangle Trig Practice\", not the full course name) — the "
-                f"full topic still gets its full size in the title block.")
+                + (". It will overflow the text block and fail compile-ss. "
+                   "Name the skill in plain words and leave the slug to the "
+                   "JSON — the coverage gate reads the tag, not the heading."
+                   if macro in BODY_HEADS else
+                   ". It will be shrunk to fit on EVERY page, which is "
+                   "legible but visibly degraded. Use a short running title "
+                   "(\"Triangle Trig Practice\", not the full course name) — the "
+                   "full topic still gets its full size in the title block."))
     return out
 
 

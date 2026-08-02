@@ -1,7 +1,14 @@
 # Standards Map & Difficulty Ladders
 
 Tag every verify-JSON problem with `"standard"` (a code from THIS file — never
-invent codes) and `"difficulty"` (1–5 per the ladders below). Ramp difficulty
+invent codes) and `"difficulty"` (1–5 per the ladders below).
+
+**If the topic you need has no row, say so rather than reaching for the nearest
+one.** "Never invent a code" is the right rule, but when the map is short it
+quietly forces an off-grade tag: a grade 4–5 measurement sheet was labelled
+`2.MD / 3.MD` because grades 4–5 measurement was missing, which is worse than an
+honest gap. Add the row (with the real CCSS/AP code) in the same change as the
+worksheet that needed it. Ramp difficulty
 across the worksheet; `verify.py` reports coverage and flags ramp drops.
 
 ## Common Core codes by topic (grades K–4, early elementary)
@@ -19,6 +26,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Fractions: understand & equivalence | 3.NF.A / 4.NF.A |
 | Fractions: add/subtract like denominators | 4.NF.B.3 |
 | Measurement & data (length, mass, time) | 2.MD / 3.MD |
+| Measurement conversion, volume, angles (gr 4–5) | 4.MD / 5.MD |
 | Area & perimeter | 3.MD.C.7 / 3.MD.D.8 |
 | Shapes & attributes | K.G / 1.G / 2.G / 3.G.A |
 
@@ -26,7 +34,8 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 
 | Topic | Code |
 |---|---|
-| Fraction operations | 5.NF.A.1 / 6.NS.A.1 |
+| Fraction operations | 5.NF.A.1 / 6.NS.A.1 / 5.NF.B |
+| Expressions: write, read, evaluate, equivalent | 6.EE.A / 7.EE.A |
 | Decimals & operations | 5.NBT.B.7 / 6.NS.B.3 |
 | Ratios & unit rates | 6.RP.A.2, 6.RP.A.3 |
 | Percent problems | 6.RP.A.3.c / 7.RP.A.3 |
@@ -69,6 +78,10 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Right-triangle trig (solve sides/angles, elevation/depression) | HSG-SRT.C.8 |
 | Circles (arcs, sectors) | HSG-C.B.5 |
 | Coordinate geometry proofs | HSG-GPE.B.4–B.7 |
+| Sequences & series (explicit/recursive) | HSF-BF.A.2, HSF-LE.A.2 |
+| Binomial theorem & Pascal's triangle | HSA-APR.C.5 |
+| Radicals & rational exponents | HSN-RN.A.1, HSN-RN.A.2 |
+| Radical/rational equations (extraneous roots) | HSA-REI.A.2 |
 
 ## AP Calculus (CED unit codes)
 

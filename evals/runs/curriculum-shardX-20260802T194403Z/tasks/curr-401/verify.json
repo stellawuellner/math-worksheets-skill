@@ -1,0 +1,56 @@
+{
+  "topic": "analyzing transformations with multiple parameters",
+  "problem_count": 10,
+  "facets": ["table-transform", "parameters-from-equation", "composition-order"],
+  "subtitle": "Transformations from a table, parameters inside an equation, and the order of composition",
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "2*(x - 3)**2 - 5", "at": {"x": 5},
+     "expected": 3,
+     "skill": "table-transform", "facet": "table-transform",
+     "standard": "HSF-BF.A.1c", "difficulty": 1, "bloom": "apply"},
+
+    {"id": 2, "type": "eval", "expr": "-(x + 1)**2 + 4", "at": {"x": 2},
+     "expected": -5,
+     "skill": "table-transform", "facet": "table-transform",
+     "standard": "HSF-BF.A.1c", "difficulty": 2, "bloom": "apply"},
+
+    {"id": 3, "type": "solve", "expr": "3*sqrt(x - 4) + 1 - 7", "var": "x",
+     "expected": [8],
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-BF.A.1c", "difficulty": 2, "bloom": "apply"},
+
+    {"id": 4, "type": "eval", "expr": "4*sin(2*(x - pi/6)) + 1", "at": {"x": "5*pi/12"},
+     "expected": 5,
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-TF.B.5", "difficulty": 3, "bloom": "apply"},
+
+    {"id": 5, "type": "equiv", "expr": "2*(x + 4)", "expected": "2*x + 8",
+     "skill": "composition-order", "facet": "composition-order",
+     "standard": "HSF-BF.A.1c", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 6, "type": "solve", "expr": "2*(x + 4) - 20", "var": "x",
+     "expected": [6],
+     "skill": "composition-order", "facet": "composition-order",
+     "standard": "HSF-BF.A.1c", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 7, "type": "equiv", "expr": "3*sin(2*x - pi/3)",
+     "expected": "3*sin(2*(x - pi/6))",
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-TF.B.5", "difficulty": 4, "bloom": "analyze"},
+
+    {"id": 8, "type": "eval", "expr": "-2*sqrt(3*(x - 1)) + 5", "at": {"x": 4},
+     "expected": -1,
+     "skill": "table-transform", "facet": "table-transform",
+     "standard": "HSF-BF.A.1c", "difficulty": 4, "bloom": "apply"},
+
+    {"id": 9, "type": "solve", "expr": "2*sqrt(x + 3) - 4", "var": "x",
+     "expected": [1],
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-BF.A.1c", "difficulty": 4, "bloom": "analyze"},
+
+    {"id": 10, "type": "manual",
+     "desc": "Graph sketch plus written analysis: from the given parent graph, sketch y = -2f(x/2 + 1) + 3 and list the four parameters in a correct order of application, explaining why the inside must be factored to x/2 + 1 = (1/2)(x + 2) before the horizontal shift can be read as 2 units left. Open construction and explanation - verify the sketch visually and read the ordering argument.",
+     "skill": "parameters-from-equation", "facet": "parameters-from-equation",
+     "standard": "HSF-BF.A.1c", "difficulty": 5, "bloom": "justify"}
+  ]
+}

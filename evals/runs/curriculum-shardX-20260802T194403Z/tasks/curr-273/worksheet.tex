@@ -1,0 +1,80 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\wsheader{Recursive Arithmetic Formulas}
+\begin{document}
+\wstitleblock{Arithmetic Sequences as Linear Functions}{Algebra 1}{}
+
+\begin{center}
+Writing recursive rules from listed sequences and from applications, using a
+recursive rule to reach a later term, and rewriting a recursive rule as an
+explicit linear function
+\end{center}
+
+\noindent\small\textbf{Directions.} A recursive formula needs \emph{two} lines:
+the starting value $a_1$ and the step rule $a_n = a_{n-1} + d$ for $n \geq 2$,
+where $d$ is the common difference. \textbf{Write both lines for every problem}
+--- with units where the problem has them --- and then answer the question that
+follows. The answer line is for the final numerical answer.\normalsize
+
+\problem[5cm]{A growing tile pattern uses this many tiles in each stage:
+\[ 4, \quad 11, \quad 18, \quad 25, \quad \ldots \]
+Write the recursive formula for $a_n$, the number of tiles in stage $n$, then
+find the number of tiles in stage 6.}
+
+\problem[5cm]{A drone descends in equal steps. Its height in meters at each
+reading is
+\[ 63, \quad 58, \quad 53, \quad \ldots \]
+Write the recursive formula for $a_n$, the height at reading $n$, then find the
+height at reading 9. (Watch the sign of $d$.)}
+
+\problem[5cm]{A tank already holds 240 liters of water at the end of hour 1, and
+a pump adds 85 liters during each hour after that.\\[3pt]
+Write the recursive formula for $a_n$, the number of liters in the tank at the
+end of hour $n$. Then find how much water the tank holds at the end of hour 5.
+\answerline{L}}
+
+\problem[5cm]{A sequence is defined by
+\[ a_1 = 12, \qquad a_n = a_{n-1} + 9 \quad (n \geq 2). \]
+Say in one sentence what this rule tells you to do, then find $a_{10}$.}
+
+\problem[6cm]{A sequence is defined by
+\[ a_1 = 7, \qquad a_n = a_{n-1} + 4 \quad (n \geq 2). \]
+Because the same amount is added each step, this sequence is a linear function of
+$n$. Rewrite it as an explicit rule $a_n = mn + b$, state what $m$ and $b$ mean
+in terms of the recursive rule, and use the explicit rule to find $a_{20}$.}
+
+\problem[5cm]{A sequence is defined by
+\[ a_1 = 5, \qquad a_n = a_{n-1} + 6 \quad (n \geq 2). \]
+One term of this sequence equals 89. Which term is it? Give the term number $n$.}
+
+\problem[5cm]{One chair is 84 centimeters tall. Each additional chair stacked on
+top of the pile adds 9 centimeters to the total height.\\[3pt]
+Write the recursive formula for $a_n$, the height in centimeters of a pile of $n$
+chairs. Then find the height of a pile of 12 chairs.
+\answerline{cm}}
+
+\problem[6cm]{An arithmetic sequence is recorded in this table, but the first two
+terms were lost.
+\begin{center}\large
+\begin{tabular}{|c|c|c|c|c|c|c|c|}\hline
+\rule{0pt}{0.7cm}$n$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\\hline
+\rule{0pt}{0.7cm}$a_n$ & ? & ? & 20 & & & & 44 \\\hline
+\end{tabular}
+\end{center}
+Find the common difference from the two known terms, write the recursive formula,
+and give the missing value of $a_1$.}
+
+\problem[5cm]{A student's savings account holds 45 dollars at the end of week 1,
+and the student deposits 18 dollars at the end of every week after that.\\[3pt]
+Write the recursive formula for $a_n$, the balance in dollars at the end of week
+$n$. In which week does the balance first reach 405 dollars? Give the week
+number.}
+
+\problem[6cm]{\textbf{Synthesis.} A theater is built so that row 1 has 22 seats
+and each row after it has 3 more seats than the row in front of it.\\[3pt]
+(i) Write the recursive formula for $a_n$, the number of seats in row $n$.
+(ii) Explain in one sentence why a recursive rule alone is awkward for this next
+question. (iii) Find the total number of seats in the first 15 rows.}
+
+\end{document}

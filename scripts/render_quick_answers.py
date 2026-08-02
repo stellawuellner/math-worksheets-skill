@@ -119,6 +119,26 @@ def render(data):
     return "\n".join(lines)
 
 
+# A trap description is prose written by whoever authored the JSON, and it lands
+# verbatim in LaTeX text mode. A desc reading "wrote (x - 6)^2 for a shift LEFT"
+# produced "Missing $ inserted" and killed compile-ak — the JSON was correct and
+# machine-checked, and the document still would not build. Escaping here rather
+# than forbidding the characters keeps the failure impossible instead of merely
+# documented.
+_TEX_ESCAPES = {"\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$",
+                "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}",
+                "^": r"\textasciicircum{}", "~": r"\textasciitilde{}"}
+
+
+def _texsafe(text):
+    """Escape prose for LaTeX text mode, backslash first so it is not re-escaped."""
+    out = str(text).replace("\\", "\x00")
+    for ch, rep in _TEX_ESCAPES.items():
+        if ch != "\\":
+            out = out.replace(ch, rep)
+    return out.replace("\x00", _TEX_ESCAPES["\\"])
+
+
 def common_errors(by_id, n):
     """A "Common wrong answers" block built from the declared traps.
 
@@ -150,7 +170,7 @@ def common_errors(by_id, n):
         "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak",
     ]
     for i, val, desc in rows:
-        out.append(f"\\commonerror{{{i}}}{{{val}}}{{{desc}}}")
+        out.append(f"\\commonerror{{{i}}}{{{val}}}{{{_texsafe(desc)}}}")
     out += ["\\noindent\\rule{\\linewidth}{0.4pt}\\medskip", ""]
     return out
 

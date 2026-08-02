@@ -1,0 +1,192 @@
+
+── step 1 · discover documents for stem 'recseq_curr273' in /tmp/evalbuild/curr-273
+   ws: /tmp/evalbuild/curr-273/ws_recseq_curr273.tex
+   ak: /tmp/evalbuild/curr-273/ak_recseq_curr273.tex
+   ss: /tmp/evalbuild/curr-273/ss_recseq_curr273.tex  (verify: /tmp/evalbuild/curr-273/verify_ss_recseq_curr273.json)
+
+── step 2 · template shell on ws_recseq_curr273.tex
+Template-use report: /tmp/evalbuild/curr-273/ws_recseq_curr273.tex
+✅ template shell ok — shipped preamble \input, nothing shadowed.
+
+── step 3 · template shell on ak_recseq_curr273.tex
+Template-use report: /tmp/evalbuild/curr-273/ak_recseq_curr273.tex
+✅ template shell ok — shipped preamble \input, nothing shadowed.
+
+── step 4 · template shell on ss_recseq_curr273.tex
+Template-use report: /tmp/evalbuild/curr-273/ss_recseq_curr273.tex
+✅ template shell ok — shipped preamble \input, nothing shadowed.
+
+── step 5 · verify worksheet JSON (verify_recseq_curr273.json)
+Verifying: writing recursive arithmetic sequence formulas (10 problems) · SymPy 1.14.0
+
+  ✅ [PASS] Problem 1: eval(a + (n - 1)*k at {'a': 4, 'n': 6, 'k': 7}) → 39 (expected 39)
+  ✅ [PASS] Problem 2: eval(a + (n - 1)*k at {'a': 63, 'n': 9, 'k': -5}) → 23 (expected 23)
+  ✅ [PASS] Problem 3: eval(a + (n - 1)*k at {'a': 240, 'n': 5, 'k': 85}) → 580 (expected 580)
+  ✅ [PASS] Problem 4: eval(a + (n - 1)*k at {'a': 12, 'n': 10, 'k': 9}) → 93 (expected 93)
+  ✅ [PASS] Problem 5: eval(a + (n - 1)*k at {'a': 7, 'n': 20, 'k': 4}) → 83 (expected 83)
+  ✅ [PASS] Problem 6: solve(5 + (n - 1)*6 - 89, domain=real) → [15] (expected [15])
+  ✅ [PASS] Problem 7: eval(a + (n - 1)*k at {'a': 84, 'n': 12, 'k': 9}) → 183 (expected 183)
+  ✅ [PASS] Problem 8: eval(c - 2*(b - c)/4 at {'c': 20, 'b': 44}) → 8 (expected 8)
+  ✅ [PASS] Problem 9: solve(45 + (n - 1)*18 - 405, domain=real) → [21] (expected [21])
+  ✅ [PASS] Problem 10: sum(22 + (n - 1)*3, n=1..15) → 645 (expected 645)
+
+10 passed · 0 failed · 0 manual
+bloom mix: apply×5, analyze×5
+standards: HSF-BF.A.1c×10
+skill mix: recursive-from-context×4, recursive-from-sequence×3, recursive-to-explicit×1, term-from-recursive×2
+facets: recursive-from-sequence×3, recursive-from-context×4, term-from-recursive×2, recursive-to-explicit×1
+traps: 3 declared, all distinguishable
+    problem 2: trap 'added the common difference instead of subtracting it': 63 + 8*5 → 103 (rejected by the problem's own check)
+    problem 3: trap 'multiplied by n instead of n - 1 (counted hour 1 as a step)': 240 + 5*85 → 665 (rejected by the problem's own check)
+    problem 7: trap 'added 9 cm for all 12 chairs instead of for the 11 stacked on top': 84 + 12*9 → 192 (rejected by the problem's own check)
+facet mix: recursive-from-sequence×3, recursive-from-context×4, term-from-recursive×2, recursive-to-explicit×1; max in-window run: 2
+difficulty ramp: [1, 1, 2, 2, 3, 3, 3, 4, 4, 5]
+
+✅ All checks passed — safe to compile.
+
+── step 6 · verify study-guide JSON (verify_ss_recseq_curr273.json)
+Verifying: study guide: recursive arithmetic sequence formulas (8 problems) · SymPy 1.14.0
+
+  ✅ [PASS] Problem 1: eval(a + (n - 1)*k at {'a': 6, 'n': 7, 'k': 4}) → 30 (expected 30)
+  ✅ [PASS] Problem 2: eval(a + (n - 1)*k at {'a': 9, 'n': 5, 'k': 7}) → 37 (expected 37)
+  ✅ [PASS] Problem 3: eval(a + (n - 1)*k at {'a': 12, 'n': 9, 'k': 5}) → 52 (expected 52)
+  ✅ [PASS] Problem 4: eval(a + (n - 1)*k at {'a': 30, 'n': 6, 'k': 7}) → 65 (expected 65)
+  ✅ [PASS] Problem 5: eval(a + (n - 1)*k at {'a': 3, 'n': 12, 'k': 8}) → 91 (expected 91)
+  ✅ [PASS] Problem 6: eval(a + (n - 1)*k at {'a': 100, 'n': 10, 'k': -6}) → 46 (expected 46)
+  ✅ [PASS] Problem 7: eval(a + (n - 1)*k at {'a': 5, 'n': 30, 'k': 7}) → 208 (expected 208)
+  ✅ [PASS] Problem 8: eval(a + (n - 1)*k at {'a': 11, 'n': 25, 'k': 4}) → 107 (expected 107)
+
+8 passed · 0 failed · 0 manual
+bloom mix: apply×5, analyze×3
+standards: HSF-BF.A.1c×8
+skill mix: recursive-from-context×2, recursive-from-sequence×2, recursive-to-explicit×2, term-from-recursive×2
+facets: recursive-from-sequence×2, recursive-from-context×2, term-from-recursive×2, recursive-to-explicit×2
+facet mix: recursive-from-sequence×2, recursive-from-context×2, term-from-recursive×2, recursive-to-explicit×2; max in-window run: 2
+difficulty ramp: [1, 2, 2, 2, 2, 3, 3, 3]
+
+✅ All checks passed — safe to compile.
+
+── step 7 · skill coverage: verify_recseq_curr273.json → verify_ss_recseq_curr273.json
+Skill coverage: /tmp/evalbuild/curr-273/verify_recseq_curr273.json → /tmp/evalbuild/curr-273/verify_ss_recseq_curr273.json
+  ✅ 4 worksheet skill(s), all covered by the study guide
+
+── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
+facet coverage: worksheet facets ['recursive-from-context', 'recursive-from-sequence', 'recursive-to-explicit', 'term-from-recursive'] all have study-guide examples
+subtitle bound: 'Writing recursive rules from listed sequences and from applications, using a recursive rule to reach a later term, and rewriting a recursive rule as an explicit linear function' found in the title block
+
+── step 9 · render figures
+   no triangle-type or "figure" problems in the JSON — skipping.
+
+── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
+Wrote /tmp/evalbuild/curr-273/meta_recseq_curr273.tex
+
+── step 11 · quick-answer bank for the answer key
+Wrote /tmp/evalbuild/curr-273/qa_recseq_curr273.tex
+
+── step 12 · layout check (figure scope + work space + answer location) on ws_recseq_curr273.tex
+Layout report: /tmp/evalbuild/curr-273/ws_recseq_curr273.tex
+  problem blocks: figure scope ok (no 10 problems carry valued figures)
+  problem blocks: work space ok (all 10 problems ≥ 2.5cm)
+
+✅ layout ok — figures are unambiguous and every problem has room to work.
+
+── step 13 · answer-line binding (answer_unit) on ws_recseq_curr273.tex
+Answer-line binding: /tmp/evalbuild/curr-273/ws_recseq_curr273.tex (10 problem segments, 2 declared unit(s))
+✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
+Page budget (ws, letter): 10 problems, 66.0cm of content
+  ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+
+── step 14 · compile ws_recseq_curr273.tex → /tmp/evalbuild/curr-273  (page budget: 5)
+Compiling: ws_recseq_curr273.tex → /tmp/evalbuild/curr-273/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 5-page budget.
+✅ PDF ready: /tmp/evalbuild/curr-273/ws_recseq_curr273.pdf
+/tmp/evalbuild/curr-273/ws_recseq_curr273.pdf
+
+── step 15 · compile ak_recseq_curr273.tex → /tmp/evalbuild/curr-273  (page budget: 5)
+Compiling: ak_recseq_curr273.tex → /tmp/evalbuild/curr-273/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
+✅ PDF ready: /tmp/evalbuild/curr-273/ak_recseq_curr273.pdf
+/tmp/evalbuild/curr-273/ak_recseq_curr273.pdf
+
+── step 16 · compile ss_recseq_curr273.tex → /tmp/evalbuild/curr-273  (page budget: 2)
+Compiling: ss_recseq_curr273.tex → /tmp/evalbuild/curr-273/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
+✅ PDF ready: /tmp/evalbuild/curr-273/ss_recseq_curr273.pdf
+/tmp/evalbuild/curr-273/ss_recseq_curr273.pdf
+
+── step 17 · answer-key binding: ak_recseq_curr273.tex ↔ verify_recseq_curr273.json
+Answer-key binding: /tmp/evalbuild/curr-273/ak_recseq_curr273.tex
+  10 boxed answers · 10 problem segments
+
+✅ every verified answer is boxed in its own problem
+
+── step 18 · answer-key binding: ss_recseq_curr273.tex ↔ verify_ss_recseq_curr273.json
+Answer-key binding: /tmp/evalbuild/curr-273/ss_recseq_curr273.tex
+  8 boxed answers · 8 problem segments
+
+✅ every verified answer is boxed in its own problem
+
+── step 19 · study-guide structure (strategy steps) on ss_recseq_curr273.tex
+Study-guide structure: /tmp/evalbuild/curr-273/ss_recseq_curr273.tex
+  ✅ every worked example opens with a strategy step and prints its answer
+
+── step 20 · prose consistency on ws_recseq_curr273.tex
+Prose-consistency report: /tmp/evalbuild/curr-273/ws_recseq_curr273.tex
+  problem 1: 5 prose numbers  ⚠ missing from JSON: [11.0, 18.0, 25.0]
+  problem 2: 4 prose numbers  ⚠ missing from JSON: [53.0, 58.0]
+  problem 3: 4 prose numbers  ok
+  problem 4: 5 prose numbers  ok
+  problem 5: 5 prose numbers  ⚠ missing from JSON: [2.0]
+  problem 6: 5 prose numbers  ⚠ missing from JSON: [2.0]
+  problem 7: 3 prose numbers  ok
+  problem 8: 10 prose numbers  ⚠ missing from JSON: [0.7, 1.0, 3.0, 5.0, 6.0, 7.0]
+  problem 9: 4 prose numbers  ok
+  problem 10: 4 prose numbers  ok
+
+Match rate: 36/49 (73.5%) across 10 problem block(s)
+Figure labels: all consistent with JSON givens.
+(heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── step 21 · prose consistency on ss_recseq_curr273.tex
+Prose-consistency report: /tmp/evalbuild/curr-273/ss_recseq_curr273.tex
+  problem 1: 8 prose numbers  ⚠ missing from JSON: [14.0, 18.0]
+  problem 2: 5 prose numbers  ⚠ missing from JSON: [16.0, 23.0]
+  problem 3: 6 prose numbers  ⚠ missing from JSON: [8.0]
+  problem 4: 5 prose numbers  ok
+  problem 5: 6 prose numbers  ⚠ missing from JSON: [11.0]
+  problem 6: 5 prose numbers  ⚠ missing from JSON: [6.0]
+  problem 7: 6 prose numbers  ⚠ missing from JSON: [2.0]
+  problem 8: 5 prose numbers  ok
+
+Match rate: 38/46 (82.6%) across 8 problem block(s)
+Figure labels: all consistent with JSON givens.
+(heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── gate summary ──────────────────────────────
+   discover         PASS
+   template-ws      PASS
+   template-ak      PASS
+   template-ss      PASS
+   verify-ws        PASS
+   verify-ss        PASS
+   coverage-ss      PASS
+   facet-coverage   PASS
+   render-figures   SKIPPED(no figure problems)
+   render-meta      PASS
+   quick-answers    PASS
+   layout-ws        PASS
+   answer-line-ws   PASS
+   compile-ws       PASS
+   compile-ak       PASS
+   compile-ss       PASS
+   answer-key-ak    PASS
+   answer-key-ss    PASS
+   ss-structure     PASS
+   prose-ws         PASS
+   prose-ss         PASS
+── PDFs ──────────────────────────────────────
+   /tmp/evalbuild/curr-273/ws_recseq_curr273.pdf
+   /tmp/evalbuild/curr-273/ak_recseq_curr273.pdf
+   /tmp/evalbuild/curr-273/ss_recseq_curr273.pdf
+
+✅ BUILD PASSED — all gates green

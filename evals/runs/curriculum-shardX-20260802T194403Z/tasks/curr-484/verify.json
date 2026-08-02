@@ -1,0 +1,50 @@
+{
+  "topic": "diagnosing separation and initial-condition errors in differential equations",
+  "problem_count": 8,
+  "problems": [
+    {"id": 1, "type": "integrate", "expr": "6*x**2 - 4*x",
+     "expected": "2*x**3 - 2*x**2",
+     "skill": "integrate-both-sides", "standard": "FUN-7",
+     "difficulty": 1, "bloom": "apply"},
+
+    {"id": 2, "type": "eval", "expr": "2*x**3 - 2*x**2 + 5", "at": {"x": 2},
+     "expected": 13,
+     "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 2, "bloom": "apply",
+     "traps": [{"desc": "dropped the constant of integration when evaluating the particular solution",
+                "expr": "2*2**3 - 2*2**2"}]},
+
+    {"id": 3, "type": "approx", "expr": "2*exp(2**2/2)", "expected": 14.78, "tol": 0.01,
+     "skill": "separate-variables", "standard": "FUN-7",
+     "difficulty": 2, "bloom": "analyze",
+     "traps": [{"desc": "integrated the right side as if y were a constant instead of separating the variables first",
+                "expr": "2**2/2 + 2", "value": 4}]},
+
+    {"id": 4, "type": "approx", "expr": "4*exp(3)", "expected": 80.34, "tol": 0.01,
+     "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 3, "bloom": "analyze",
+     "traps": [{"desc": "added the constant after exponentiating instead of carrying it through as a factor",
+                "expr": "exp(3) + 3", "value": 23.09}]},
+
+    {"id": 5, "type": "approx", "expr": "sqrt(4**2 + 9)", "expected": 5,
+     "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 3, "bloom": "analyze",
+     "traps": [{"desc": "took the square root term by term before applying the initial condition",
+                "expr": "sqrt(4**2) + 3", "value": 7}]},
+
+    {"id": 6, "type": "approx", "expr": "1/(1 - 0.5)", "expected": 2,
+     "skill": "separate-variables", "standard": "FUN-7",
+     "difficulty": 4, "bloom": "analyze",
+     "traps": [{"desc": "lost the minus sign from the integral of y to the negative second power",
+                "expr": "1/(0.5 + 1)", "value": 0.67}]},
+
+    {"id": 7, "type": "approx", "expr": "ln(2**2 + 1) + 1", "expected": 2.61, "tol": 0.01,
+     "skill": "integrate-both-sides", "standard": "FUN-7",
+     "difficulty": 4, "bloom": "apply"},
+
+    {"id": 8, "type": "manual",
+     "desc": "Student argues why the constant of integration must be applied before exponentiating, using a derivative test of y = e^(3x) + 3 against dy/dx = 3y - read the reasoning by hand",
+     "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 5, "bloom": "justify"}
+  ]
+}

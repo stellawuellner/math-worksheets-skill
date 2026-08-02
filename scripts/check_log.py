@@ -62,12 +62,38 @@ VBOX_RE = re.compile(r"Overfull \\vbox \((\d+(?:\.\d+)?)pt too.*")
 # The engine's own final page count: "Output written on <file>.pdf (N pages,"
 # (singular "1 page," for one). Both tectonic (--keep-logs) and pdflatex end
 # their logs with this line, so the count is read, never estimated.
-OUTPUT_RE = re.compile(r"Output written on .*\((\d+) pages?[,)]")
+#
+# TeX hard-wraps its log at 79 columns, ANYWHERE — including mid-path and
+# between "pages" and the comma that used to be required here. That made this
+# gate a function of how long the output path happened to be: a build in
+# /tmp/evalbuild/curr-251/ with a 21-character stem wrapped right after
+# "(5 pages", the match failed, and the build died claiming the log had no page
+# count at all while the log plainly did. Found in an eval run, where the long
+# per-task directories made it reproducible. So: unwrap first, and do not
+# require the trailing delimiter.
+OUTPUT_RE = re.compile(r"Output written on .*?\((\d+)\s*pages?")
+WRAP = 79
 
 
 def page_count(log_text):
-    """Page count from the log's 'Output written' line, or None if absent."""
+    """Page count from the log's 'Output written' line, or None if absent.
+
+    Matched against BOTH the raw log and an unwrapped copy, because the line may
+    be split at the engine's column limit. Unwrapping only joins lines that are
+    exactly at the wrap width, so genuinely separate lines stay separate.
+    """
     m = OUTPUT_RE.search(log_text)
+    if m:
+        return int(m.group(1))
+    joined, buf = [], ""
+    for line in log_text.splitlines():
+        buf += line
+        if len(line) < WRAP:
+            joined.append(buf)
+            buf = ""
+    if buf:
+        joined.append(buf)
+    m = OUTPUT_RE.search("\n".join(joined))
     return int(m.group(1)) if m else None
 
 

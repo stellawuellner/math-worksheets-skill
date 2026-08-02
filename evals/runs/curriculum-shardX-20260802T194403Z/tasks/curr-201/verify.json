@@ -1,0 +1,171 @@
+{
+  "topic": "classifying rational and irrational numbers",
+  "problem_count": 10,
+  "subtitle": "perfect-square roots, non-perfect roots, decimals and fractions, comparing and ordering",
+  "facets": [
+    "perfect-square-root",
+    "nonperfect-root",
+    "decimal-and-fraction",
+    "compare-order"
+  ],
+  "problems": [
+    {
+      "id": 1,
+      "type": "eval",
+      "expr": "sqrt(a)",
+      "at": {
+        "a": 49
+      },
+      "expected": 7,
+      "skill": "perfect-square-root",
+      "facet": "perfect-square-root",
+      "difficulty": 1,
+      "bloom": "recall",
+      "note": "Rational: sqrt(49) = 7 = 7/1, an integer ratio."
+    },
+    {
+      "id": 2,
+      "type": "eval",
+      "expr": "sqrt(a)",
+      "at": {
+        "a": 196
+      },
+      "expected": 14,
+      "skill": "perfect-square-root",
+      "facet": "perfect-square-root",
+      "difficulty": 2,
+      "bloom": "apply",
+      "note": "Rational: 196 appears in the square table, so the root is exact."
+    },
+    {
+      "id": 3,
+      "type": "eval",
+      "expr": "a/b",
+      "at": {
+        "a": 35,
+        "b": 100
+      },
+      "expected": "7/20",
+      "skill": "decimal-and-fraction",
+      "facet": "decimal-and-fraction",
+      "difficulty": 2,
+      "bloom": "apply",
+      "note": "Terminating decimal 0.35 = 35/100 = 7/20, so it is rational."
+    },
+    {
+      "id": 4,
+      "type": "approx",
+      "expr": "sqrt(50)",
+      "expected": 7.07,
+      "skill": "nonperfect-root",
+      "facet": "nonperfect-root",
+      "difficulty": 2,
+      "bloom": "apply",
+      "note": "50 is not a perfect square, so sqrt(50) is irrational; 7.07 is only a rounded stand-in.",
+      "traps": [
+        {
+          "desc": "divided the radicand by 2 instead of taking the square root, so sqrt(50) came out as 50/2",
+          "expr": "50/2",
+          "value": 25
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "compare",
+      "values": [
+        "sqrt(13)",
+        "3.5",
+        "18/5"
+      ],
+      "order": "asc",
+      "expected": [
+        "3.5",
+        "18/5",
+        "sqrt(13)"
+      ],
+      "skill": "compare-order",
+      "facet": "compare-order",
+      "difficulty": 3,
+      "bloom": "analyze"
+    },
+    {
+      "id": 6,
+      "type": "eval",
+      "expr": "a/b",
+      "at": {
+        "a": 45,
+        "b": 99
+      },
+      "expected": "5/11",
+      "skill": "decimal-and-fraction",
+      "facet": "decimal-and-fraction",
+      "difficulty": 3,
+      "bloom": "apply",
+      "note": "Repeating decimal 0.454545... = 45/99 = 5/11, so it is rational."
+    },
+    {
+      "id": 7,
+      "type": "approx",
+      "expr": "sqrt(30)",
+      "expected": 5.48,
+      "skill": "nonperfect-root",
+      "facet": "nonperfect-root",
+      "difficulty": 3,
+      "bloom": "apply",
+      "note": "Between 5 and 6 because 25 < 30 < 36.",
+      "traps": [
+        {
+          "desc": "divided the radicand by 2 instead of taking the square root, so sqrt(30) came out as 30/2",
+          "expr": "30/2",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "compare",
+      "values": [
+        "sqrt(2)",
+        "1.41"
+      ],
+      "order": "relation",
+      "expected": ">",
+      "skill": "compare-order",
+      "facet": "compare-order",
+      "difficulty": 3,
+      "bloom": "analyze",
+      "note": "1.41 is a rational approximation of sqrt(2), not equal to it."
+    },
+    {
+      "id": 9,
+      "type": "eval",
+      "expr": "sqrt(a/b)",
+      "at": {
+        "a": 9,
+        "b": 16
+      },
+      "expected": "3/4",
+      "skill": "perfect-square-root",
+      "facet": "perfect-square-root",
+      "difficulty": 4,
+      "bloom": "analyze",
+      "note": "Both 9 and 16 are perfect squares, so the root of the fraction is rational."
+    },
+    {
+      "id": 10,
+      "type": "eval",
+      "expr": "sqrt(a)*sqrt(b)",
+      "at": {
+        "a": 8,
+        "b": 2
+      },
+      "expected": 4,
+      "skill": "nonperfect-root",
+      "facet": "nonperfect-root",
+      "difficulty": 4,
+      "bloom": "analyze",
+      "note": "Two irrational factors whose product is rational - the counterexample problem."
+    }
+  ]
+}

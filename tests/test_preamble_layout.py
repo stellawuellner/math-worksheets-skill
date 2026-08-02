@@ -22,6 +22,13 @@ PDF, because the faults they cover are only visible on the page.
 3. DATE ON PAGE 1 ONLY. Continuation pages carry "(continued)", not a second
    set of Name/Date blanks.
 
+4. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
+   close one, so the closing full-width \rule of the generated "Common wrong
+   answers" block joined the last entry's text line and overflowed it by ~200pt.
+   Every answer key declaring a trap failed compile-ak, while the feature's own
+   fixtures only ever checked the JSON. Three separate eval-run agents hit it
+   before any test did. Pinned by compiling the block and reading the log.
+
 Requires pdflatex (or tectonic) and pdftotext. Skips cleanly when absent.
 Exit 0 all pinned, 1 on any regression.
 """
@@ -54,6 +61,25 @@ DOC = r"""
 """
 
 failures = []
+
+
+# A minimal answer key carrying the generated block, entries then closing rule —
+# byte-for-byte the shape render_quick_answers.py emits.
+COMMON_ERROR_DOC = r"""
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\akheader{Trap Check}
+\begin{document}
+\aktitleblock{Trap Check}{Test}{}
+\medskip\noindent{\small\textbf{Common wrong answers}}\par\nopagebreak
+\vspace{2pt}\noindent\rule{\linewidth}{0.4pt}\par\nopagebreak
+\commonerror{1}{7.37}{used cos instead of tan}
+\commonerror{2}{12.9}{added the legs instead of using the hypotenuse}
+\noindent\rule{\linewidth}{0.4pt}\medskip
+\problem{$9\tan 35^\circ = \ans{6.30}$}
+\end{document}
+"""
 
 
 def check(label, cond, detail=""):
@@ -117,6 +143,26 @@ def main():
                             capture_output=True, text=True).stdout
         check("page 2 has no second Date blank", "Date:" not in p2)
         check("page 2 carries the continuation marker", "(continued)" in p2)
+
+        print("4. common-error block fits the line")
+        ce = os.path.join(d, "ce.tex")
+        with open(ce, "w") as fh:
+            fh.write(COMMON_ERROR_DOC)
+        cecmd = ([engine, "-interaction=nonstopmode", "ce.tex"]
+                 if engine.endswith("pdflatex") else [engine, "ce.tex"])
+        r = subprocess.run(cecmd, cwd=d, capture_output=True, text=True)
+        log = os.path.join(d, "ce.log")
+        text = open(log, encoding="utf-8", errors="replace").read() if os.path.isfile(log) else r.stdout
+        over = [m for m in re.findall(r"Overfull \\hbox \(([0-9.]+)pt too wide\)", text)
+                if float(m) > 2.0]
+        check("a trap-bearing answer key has no overfull line",
+              not over, f"overfull by {', '.join(over)}pt")
+        cepdf = os.path.join(d, "ce.pdf")
+        if os.path.isfile(cepdf):
+            body = subprocess.run(["pdftotext", cepdf, "-"],
+                                  capture_output=True, text=True).stdout
+            check("the common-wrong-answer text still prints",
+                  "used cos instead of tan" in body)
 
     if failures:
         print(f"\n❌ {len(failures)} preamble layout regression(s)")

@@ -1,0 +1,92 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
+\input{worksheet-preamble}
+\ssheader{Parabola Transformations}
+\begin{document}
+
+\sstitleblock{Sign Errors in Parabola Transformations}
+
+\begin{formulabox}
+\textbf{Vertex form:} \quad $y = a(x - h)^2 + k$ \quad vertex $(h, k)$, axis of symmetry $x = h$.\par
+\textbf{The one question that settles every sign:} \emph{what value of $x$ makes the
+squared factor zero?} That value \textbf{is} $h$. Read $h$ that way and you never have to
+remember a direction rule.\par
+$a$ multiplies \textbf{outputs}: $|a| > 1$ stretches, $0 < |a| < 1$ compresses, and $a < 0$
+flips the parabola over its own vertex. $a$ never moves the vertex.
+\end{formulabox}
+
+\skillheading{Skill 1 --- Reading the vertex out of the form (vertex-from-form)}
+
+\begin{formulabox}
+\textbf{Rule:} the horizontal shift goes \emph{opposite} the printed sign, because the form
+subtracts $h$.\par
+\begin{tabular}{@{}ll@{}}
+$(x - 5)$ \ $\Rightarrow$ \ $h = 5$: & right 5\\
+$(x + 3)$ \ $\Rightarrow$ \ $h = -3$: & left 3\\
+\end{tabular}\par
+The vertical part has no such twist: $+k$ is up, $-k$ is down.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:} \quad Find the minimum value of $y = (x - 5)^2 - 2$.
+\step{The minimum of an upward parabola happens at the vertex, so I need $h$ --- the $x$ that makes the squared factor zero.}
+\step{$x - 5 = 0$ gives $x = 5$ (right 5, not left). Then $y = (5 - 5)^2 - 2 = 0 - 2$.}
+$\Rightarrow\quad$ minimum value $= \ans{-2}$ at the point $(5, -2)$
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Find the minimum value of $y = (x + 3)^2 + 4$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{4}$}
+\end{tryitbox}
+
+\skillheading{Skill 2 --- Writing the equation from a description (transform-to-equation)}
+
+\begin{formulabox}
+\textbf{Build it in this order:} reflection and stretch into $a$, horizontal shift inside
+the parentheses (\emph{opposite} sign), vertical shift outside (same sign).\par
+right $p$: $(x - p)$ \quad left $p$: $(x + p)$ \quad up $q$: $+q$ \quad down $q$: $-q$
+\quad reflect over the $x$-axis: $a < 0$
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:} \quad Reflect $y = x^2$ over the $x$-axis, shift right 4 and down 1. What is the value at $x = 6$?
+\step{Each described move maps to one slot of $a(x-h)^2 + k$, so I write the equation first and only then substitute.}
+\step{$a = -1$, right 4 gives $(x - 4)$, down 1 gives $-1$: \ $y = -(x - 4)^2 - 1$. Then $y(6) = -(6-4)^2 - 1 = -4 - 1$.}
+$\Rightarrow\quad \ans{-5}$
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad Reflect $y = x^2$ over the $x$-axis, shift left 3 and up 2. What is the value at $x = -1$?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{-2}$}
+\end{tryitbox}
+
+\skillheading{Skill 3 --- Finding and fixing a sign error (find-and-fix)}
+
+\begin{formulabox}
+\textbf{How to audit someone's work in three checks:}
+\par\textbf{1.} Does their $h$ make the squared factor zero? If not, the shift direction is flipped.
+\par\textbf{2.} Is their vertex value the largest or smallest output? A wrong $h$ still gives a real point --- it is just not the vertex.
+\par\textbf{3.} Did the sign of $a$ survive? Losing it turns a maximum into a minimum.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:} \quad A student says the vertex of $y = (x + 6)^2 - 5$ is at $x = 6$ and the minimum is 139. Fix it.
+\step{Check 1 first: does their $h$ zero the squared factor? $6 + 6 = 12 \ne 0$, so their $h$ is the culprit.}
+\step{$x + 6 = 0$ gives $x = -6$, so $y = (-6 + 6)^2 - 5 = 0 - 5$. Their 139 is $y(6)$ --- a genuine point on the curve, just not the lowest.}
+$\Rightarrow\quad$ true minimum $= \ans{-5}$ at $(-6, -5)$
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:} \quad A student reports the vertex of $y = (x - 4)^2 - 6$ as $x = -4$ with minimum 58. What is the real minimum?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{-6}$}
+\end{tryitbox}
+
+\begin{watchoutbox}
+\textbf{(!) Watch out:} A wrong $h$ almost never produces an obviously silly number --- it
+produces a real point on the parabola, which is why these errors survive. Always test the
+candidate vertex by checking that the squared factor is zero there. And remember that a
+negative $a$ reflects the graph without moving it: the shifts stay exactly where $h$ and
+$k$ put them.
+\end{watchoutbox}
+
+\end{document}

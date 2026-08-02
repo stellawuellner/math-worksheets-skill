@@ -165,7 +165,12 @@
 % tells the grader the student used cos where tan was needed, which is a
 % different conversation from "wrong, minus two".
 % Rendered from the JSON by scripts/render_quick_answers.py, never hand-typed.
-\newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}}
+% Opens AND closes its own paragraph. Without the trailing \par the next thing
+% in the block — the closing \rule{\linewidth} — joined this text line and
+% overflowed it by ~200pt, so EVERY answer key carrying a declared trap failed
+% compile-ak. Found by an eval-run agent, not by a test: the feature shipped
+% with no fixture that declared a trap and compiled the key.
+\newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}\par}
 
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox

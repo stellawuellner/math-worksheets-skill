@@ -1,0 +1,105 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
+\input{worksheet-preamble}
+\ssheader{Binomial Coefficients}
+\begin{document}
+\sstitleblock{Sequences, Series, and the Binomial Theorem}
+
+\skillheading{Skill 1 --- Binomial coefficients (binomial-coefficient)}
+
+\begin{formulabox}
+\textbf{Definition and shortcuts:}
+\[ \binom{n}{k} = \frac{n!}{k!\,(n-k)!} \]
+Cancel the larger factorial first: $\dbinom{n}{k}$ is a product of $k$ falling
+factors over $k!$. Symmetry: $\dbinom{n}{k} = \dbinom{n}{n-k}$. Row $n$ of
+Pascal's triangle lists $\dbinom{n}{0}$ through $\dbinom{n}{n}$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Evaluate $\dbinom{7}{2}$.
+\step{Order does not matter here --- this is a combination, so use
+$n!/(k!(n-k)!)$ rather than a permutation count.}
+\step{$\dfrac{7!}{2!\,5!} = \dfrac{7 \cdot 6}{2 \cdot 1} = \ans{21}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Evaluate $\dbinom{9}{3}$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{84}$}
+\end{tryitbox}
+
+\skillheading{Skill 2 --- Expanding a binomial power (full-expansion)}
+
+\begin{formulabox}
+\textbf{Binomial theorem:}
+\[ (u+v)^n = \sum_{k=0}^{n} \binom{n}{k} u^{\,n-k} v^{\,k} \]
+The exponents of $u$ count down while those of $v$ count up, and the two always
+sum to $n$. Whatever stands in the $v$ slot --- including a coefficient or a
+sign --- is raised to the power $k$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Expand $(x+3)^3$.
+\step{All four terms are wanted, so run the whole binomial theorem with row 3 of
+Pascal's triangle: 1, 3, 3, 1.}
+\step{$x^3 + 3x^2(3) + 3x(9) + 27 = \ans{x^3 + 9x^2 + 27x + 27}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Expand $(x-2)^3$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{x^3 - 6x^2 + 12x - 8}$}
+\end{tryitbox}
+
+\skillheading{Skill 3 --- One specific term (specific-term)}
+
+\begin{formulabox}
+\textbf{Rule:}\\[4pt]
+To get the coefficient of $u^{k}$ in $(u+v)^n$, use the \emph{one} term
+$\dbinom{n}{k}u^{k}v^{\,n-k}$ --- do not expand everything.\par
+\smallskip
+The coefficient is $\dbinom{n}{k}$ \textbf{times} the power of the constant. Two
+factors, never just the binomial coefficient.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Find the coefficient of $x^2$ in $(x+4)^5$.
+\step{Only one term carries $x^2$, so pick $k = 2$ instead of expanding all six
+terms.}
+\step{$\dbinom{5}{2}4^{\,5-2} = 10 \cdot 64 = \ans{640}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Find the coefficient of $x^3$ in $(x+2)^6$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{160}$}
+\end{tryitbox}
+
+\skillheading{Skill 4 --- Structure of a row of coefficients (sequence-structure)}
+
+\begin{formulabox}
+\textbf{Rules that come from the row itself:}
+\[ \sum_{k=0}^{n}\binom{n}{k} = 2^{n}, \qquad
+   \sum_{k=0}^{n}\binom{n}{k}c^{\,k} = (1+c)^{n} \]
+Adding every coefficient of an expansion is the same as substituting 1 for each
+variable --- that is why the sums above are so short.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Add row 4 of Pascal's triangle:
+$\dbinom{4}{0} + \dbinom{4}{1} + \dbinom{4}{2} + \dbinom{4}{3} + \dbinom{4}{4}$.
+\step{This is the sum of a whole row, so use the row-sum rule instead of adding
+blindly (then check by adding).}
+\step{$2^4 = \ans{16}$, and indeed $1 + 4 + 6 + 4 + 1 = 16$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Add all the coefficients in the expansion of $(x+1)^6$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{64}$}
+\end{tryitbox}
+
+\begin{watchoutbox}
+\textbf{(!) Watch out:} $\dbinom{n}{k}$ alone is the coefficient only when both
+parts of the binomial are bare, as in $(x+y)^n$. In $(2x-1)^4$ or $(x+4)^5$ the
+constant's power multiplies it, and a minus sign makes every odd-$k$ term
+negative.
+\end{watchoutbox}
+
+\end{document}

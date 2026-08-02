@@ -1,0 +1,32 @@
+{
+  "topic": "study guide: classifying rational and irrational numbers",
+  "problem_count": 8,
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "sqrt(a)", "at": {"a": 81}, "expected": 9,
+     "skill": "perfect-square-root", "facet": "perfect-square-root",
+     "difficulty": 1, "bloom": "recall"},
+    {"id": 2, "type": "eval", "expr": "sqrt(a)", "at": {"a": 144}, "expected": 12,
+     "role": "tryit", "skill": "perfect-square-root", "facet": "perfect-square-root",
+     "difficulty": 2, "bloom": "apply"},
+    {"id": 3, "type": "approx", "expr": "sqrt(20)", "expected": 4.47,
+     "skill": "nonperfect-root", "facet": "nonperfect-root",
+     "difficulty": 2, "bloom": "apply"},
+    {"id": 4, "type": "approx", "expr": "sqrt(40)", "expected": 6.32,
+     "role": "tryit", "skill": "nonperfect-root", "facet": "nonperfect-root",
+     "difficulty": 3, "bloom": "apply"},
+    {"id": 5, "type": "eval", "expr": "a/b", "at": {"a": 125, "b": 1000}, "expected": "1/8",
+     "skill": "decimal-and-fraction", "facet": "decimal-and-fraction",
+     "difficulty": 3, "bloom": "apply"},
+    {"id": 6, "type": "eval", "expr": "a/b", "at": {"a": 24, "b": 100}, "expected": "6/25",
+     "role": "tryit", "skill": "decimal-and-fraction", "facet": "decimal-and-fraction",
+     "difficulty": 3, "bloom": "apply"},
+    {"id": 7, "type": "compare", "values": ["2.5", "sqrt(7)", "11/4"], "order": "asc",
+     "expected": ["2.5", "sqrt(7)", "11/4"],
+     "skill": "compare-order", "facet": "compare-order",
+     "difficulty": 3, "bloom": "analyze"},
+    {"id": 8, "type": "compare", "values": ["1.7", "sqrt(3)", "9/5"], "order": "asc",
+     "expected": ["1.7", "sqrt(3)", "9/5"],
+     "role": "tryit", "skill": "compare-order", "facet": "compare-order",
+     "difficulty": 4, "bloom": "analyze"}
+  ]
+}

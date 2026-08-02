@@ -1,0 +1,115 @@
+\documentclass[12pt]{article}
+\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
+\input{worksheet-preamble}
+\ssheader{Recursive Arithmetic Formulas}
+\begin{document}
+\sstitleblock{Arithmetic Sequences as Linear Functions}
+
+\skillheading{Skill 1 --- Recursive rule from a listed sequence (recursive-from-sequence)}
+
+\begin{formulabox}
+\textbf{A recursive formula always has two lines:}\\[4pt]
+$a_1 = \text{first term}$ \qquad $a_n = a_{n-1} + d$ \quad for $n \geq 2$\par
+\smallskip
+$d$ is the \textbf{common difference}: $d = a_2 - a_1 = a_3 - a_2 = \ldots$
+Check at least two pairs --- if the differences disagree, the sequence is not
+arithmetic. Reaching $a_n$ from $a_1$ takes $n - 1$ steps, not $n$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Write the recursive formula for $6, 10, 14, 18, \ldots$ and
+find $a_7$.
+\step{The terms are listed, so test for a constant difference first --- that is
+what licenses a recursive arithmetic rule.}
+\step{$10 - 6 = 4$ and $14 - 10 = 4$, so $a_1 = 6$, $a_n = a_{n-1} + 4$; then
+$a_7 = 6 + 6(4) = \ans{30}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Write the recursive formula for $9, 16, 23, \ldots$ and find
+$a_5$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{37}$}
+\end{tryitbox}
+
+\skillheading{Skill 2 --- Recursive rule from a situation (recursive-from-context)}
+
+\begin{formulabox}
+\textbf{Translating a story:}\\[4pt]
+``starts at / already has'' $\rightarrow a_1$ \qquad
+``each additional / every hour after'' $\rightarrow d$\par
+\smallskip
+Carry the \textbf{units} into both lines, and say what $n$ counts (hours, chairs,
+weeks). If the starting amount happens at step 1, then step $n$ is $n-1$ additions
+later.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad A seedling is 12 cm tall on day 1 and grows 5 cm each day
+after that. How tall is it on day 9?
+\step{``Is 12 cm on day 1'' names $a_1$ and ``grows 5 cm each day'' names $d$, so
+the situation is arithmetic and recursive.}
+\step{$a_1 = 12$, $a_n = a_{n-1} + 5$; day 9 is $9 - 1 = 8$ growth days, so
+$a_9 = 12 + 8(5) = \ans{52}$ cm.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad A jar holds 30 marbles on day 1 and 7 marbles are added each
+day after that. How many marbles on day 6?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{65}$}
+\end{tryitbox}
+
+\skillheading{Skill 3 --- Reaching a later term (term-from-recursive)}
+
+\begin{formulabox}
+\textbf{Rule:}\\[4pt]
+Given $a_1$ and $a_n = a_{n-1} + d$, the $n$th term is
+\[ a_n = a_1 + (n-1)d. \]
+Adding $d$ term by term always works; the $(n-1)$ shortcut is the same thing done
+all at once. A decreasing sequence simply has $d < 0$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad For $a_1 = 3$ and $a_n = a_{n-1} + 8$, find $a_{12}$.
+\step{Listing twelve terms is slow, so count the steps instead and use
+$a_1 + (n-1)d$.}
+\step{From term 1 to term 12 is $12 - 1 = 11$ steps of 8:
+$a_{12} = 3 + 11(8) = \ans{91}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad For $a_1 = 100$ and $a_n = a_{n-1} - 6$, find $a_{10}$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{46}$}
+\end{tryitbox}
+
+\skillheading{Skill 4 --- Recursive $\rightarrow$ explicit linear rule (recursive-to-explicit)}
+
+\begin{formulabox}
+\textbf{Same sequence, two views:}\\[4pt]
+recursive $a_n = a_{n-1} + d$ \quad $\Longleftrightarrow$ \quad
+explicit $a_n = dn + (a_1 - d)$\par
+\smallskip
+The common difference $d$ is the \textbf{slope}, so an arithmetic sequence is a
+linear function of $n$. The intercept is $a_1 - d$, the value one step
+\emph{before} the first term.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Write $a_1 = 5$, $a_n = a_{n-1} + 7$ as an explicit rule and
+find $a_{30}$.
+\step{The question asks for a far-out term, so convert the step rule into a linear
+function of $n$ rather than iterating.}
+\step{$a_n = 5 + (n-1)7 = 7n - 2$, so $a_{30} = 7(30) - 2 = \ans{208}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Write $a_1 = 11$, $a_n = a_{n-1} + 4$ explicitly and find
+$a_{25}$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{107}$}
+\end{tryitbox}
+
+\begin{watchoutbox}
+\textbf{(!) Watch out:} The commonest error is multiplying by $n$ instead of
+$n - 1$. The first term costs no steps: reaching term 5 takes 4 additions.
+\end{watchoutbox}
+
+\end{document}

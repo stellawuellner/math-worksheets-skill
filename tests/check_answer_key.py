@@ -125,6 +125,33 @@ def any_match(v, tokens):
     return any(value_matches(v, val, tok) for val, tok in tokens)
 
 
+# `compare` with "order": "relation" has an answer of "<", ">" or "=" — no
+# numeric token at all, so the numeric binding below found nothing to check and
+# `continue`d past the problem. A key printing \ans{>} against a verified "<"
+# passed as "every verified answer is boxed". Found in an eval run, on a sheet
+# this repository had itself produced.
+RELATIONS = {"<", ">", "=", "<=", ">=", "\\le", "\\ge", "\\leq", "\\geq"}
+RELATION_ALIASES = {"<=": ("<=", "\\le", "\\leq"), ">=": (">=", "\\ge", "\\geq"),
+                    "<": ("<",), ">": (">",), "=": ("=",)}
+
+
+def json_expected_relation(entry):
+    """The relation an entry's answer IS, when its answer is a relation."""
+    exp = entry.get("expected")
+    if entry.get("type") == "compare" and isinstance(exp, str) and exp.strip() in RELATIONS:
+        return exp.strip()
+    return None
+
+
+def boxed_relations(text):
+    """Relation symbols appearing in boxed content, longest form first."""
+    found = set()
+    for token in ("\\leq", "\\geq", "\\le", "\\ge", "<=", ">=", "<", ">", "="):
+        if token in text:
+            found.add(token)
+    return found
+
+
 def json_expected_nums(entry):
     found = set()
 
@@ -295,9 +322,11 @@ def main():
               "restore the hard per-problem gate.")
 
     seg_boxes = []   # per segment: number tokens of its concatenated boxes
+    seg_box_text = []  # ...and their raw text, for answers that are not numbers
     for a, b in spans:
         content = " ".join(c for s, c in boxes if a <= s < b)
         seg_boxes.append(num_tokens(content))
+        seg_box_text.append(content)
     doc_tokens = num_tokens(tex)
 
     hard = []      # per-problem binding failure — wrong/missing boxed value
@@ -306,6 +335,16 @@ def main():
         entries = by_id[i]
         if all(e.get("type") == "manual" for e in entries):
             continue
+        relations = {r for r in (json_expected_relation(e) for e in entries) if r}
+        if relations:
+            printed = boxed_relations(seg_box_text[i - 1]
+                                      if i - 1 < len(seg_box_text) else "")
+            for r in sorted(relations):
+                if not (printed & set(RELATION_ALIASES.get(r, (r,)))):
+                    where = ("no relation symbol is boxed in this problem"
+                             if not printed
+                             else f"the boxed relation is {sorted(printed)[0]!r}")
+                    hard.append((i, r, f"is the verified comparison, but {where}"))
         expected = set().union(*(json_expected_nums(e) for e in entries))
         expected = {v for v in expected if abs(v) > 1e-9}  # skip trivial 0
         if not expected:
@@ -370,7 +409,8 @@ def main():
                 f"so the unit is verified, or remove it")
 
     for pid, v, why in hard:
-        print(f"  ❌ problem {pid}: verified value {v:g} {why}.")
+        shown = v if isinstance(v, str) else f"{v:g}"
+        print(f"  ❌ problem {pid}: verified value {shown} {why}.")
     for msg in unit_faults:
         print(f"  ❌ {msg}.")
     for pid, v in soft:

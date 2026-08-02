@@ -1,0 +1,100 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\akheader{Binomial Coefficients}
+\begin{document}
+\aktitleblock{Sequences, Series, and the Binomial Theorem}{Algebra 2}{}
+\begingroup\raggedright
+\input{qa_binomial_curr395}
+\par\endgroup
+
+\problem{\textbf{Evaluate $\dbinom{6}{2}$.}\\
+Step 1 (write the formula): $\dbinom{6}{2} = \dfrac{6!}{2!\,4!}$.
+Step 2 (cancel before multiplying): $\dfrac{6 \cdot 5 \cdot 4!}{2 \cdot 1 \cdot 4!}
+= \dfrac{30}{2}$.
+Step 3: $\ans{15}$ --- also read off row 6 of Pascal's triangle,
+1, 6, 15, 20, 15, 6, 1.}
+
+\problem{\textbf{Evaluate $\dbinom{8}{3}$ and say what it counts.}\\
+Step 1: $\dbinom{8}{3} = \dfrac{8!}{3!\,5!} = \dfrac{8 \cdot 7 \cdot 6}{3 \cdot 2
+\cdot 1}$.
+Step 2: $\dfrac{336}{6} = \ans{56}$.
+Step 3 (meaning): it counts the ways to choose which 3 of the 8 factors of
+$(u+v)^8$ contribute a $v$, which is exactly the coefficient of $u^5v^3$.}
+
+\problem{\textbf{Expand $(x+2)^3$.}\\
+Step 1 (write the general term): $\dbinom{3}{k}x^{\,3-k}2^{\,k}$ for
+$k = 0, 1, 2, 3$, with coefficients 1, 3, 3, 1 from row 3.
+Step 2 (build the terms): $1 \cdot x^3$, $3 \cdot x^2 \cdot 2$,
+$3 \cdot x \cdot 4$, $1 \cdot 8$.
+Step 3 (collect): $\ans{x^3 + 6x^2 + 12x + 8}$.}
+
+\problem{\textbf{Add the six coefficients in row 5.}\\
+Step 1 (list the row): $\dbinom{5}{0}, \ldots, \dbinom{5}{5}$ are
+1, 5, 10, 10, 5, 1.
+Step 2 (add): $1 + 5 + 10 + 10 + 5 + 1 = \ans{32}$.
+Step 3 (structure): every row of Pascal's triangle sums to $2^n$, and
+$2^5 = 32$ --- setting $u = v = 1$ in $(u+v)^5$ says the same thing.}
+
+\problem{\textbf{Coefficient of $x^3$ in $(x+2)^5$.}\\
+Step 1 (pick the right term): the general term is
+$\dbinom{5}{k}x^{k}2^{\,5-k}$, so $x^3$ needs $k = 3$ --- no other term
+contributes.
+Step 2 (evaluate the two pieces): $\dbinom{5}{3} = 10$ and $2^{\,5-3} = 4$.
+Step 3 (multiply): $10 \cdot 4 = \ans{40}$. The coefficient is not 10 alone; the
+power of 2 belongs to it.}
+
+\problem{\textbf{Expand $(2x-1)^4$.}\\
+Step 1 (general term): $\dbinom{4}{k}(2x)^{\,4-k}(-1)^{k}$, with row 4
+coefficients 1, 4, 6, 4, 1.
+Step 2 (raise the whole first term, keep the signs):
+$16x^4$, \ $4 \cdot 8x^3 \cdot (-1) = -32x^3$, \
+$6 \cdot 4x^2 = 24x^2$, \ $4 \cdot 2x \cdot (-1) = -8x$, \ $+1$.
+Step 3 (collect): $\ans{16x^4 - 32x^3 + 24x^2 - 8x + 1}$.}
+
+\problem{\textbf{Coefficient of $y^2$ in $(3+y)^6$.}\\
+Step 1 (match the pattern): with the constant written first, the general term is
+$\dbinom{6}{k}3^{\,6-k}y^{k}$, so $y^2$ means $k = 2$.
+Step 2 (evaluate): $\dbinom{6}{2} = 15$ and $3^{\,6-2} = 3^4 = 81$.
+Step 3 (multiply): $15 \cdot 81 = \ans{1215}$. Using $3^2$ instead of $3^4$ is the
+usual slip and gives 135.}
+
+\problem{\textbf{Sum of all coefficients of $(2x+1)^5$.}\\
+Step 1 (write the sum): the coefficients are $\dbinom{5}{n}2^{\,n}$, so the total
+is $\sum_{n=0}^{5}\dbinom{5}{n}2^{\,n}$.
+Step 2 (add term by term): $1 + 10 + 40 + 80 + 80 + 32 = 243$.
+Step 3 (confirm structurally): setting $x = 1$ gives $(2+1)^5 = 3^5 = \ans{243}$
+--- the same number, which is the fast check.}
+
+\problem{\textbf{For which $n$ is $\dbinom{n}{2} = 45$?}\\
+Step 1 (turn the coefficient into a polynomial):
+$\dbinom{n}{2} = \dfrac{n(n-1)}{2}$, so $\dfrac{n(n-1)}{2} = 45$.
+Step 2 (solve): $n^2 - n - 90 = 0$, so $(n - 10)(n + 9) = 0$.
+Step 3 (choose the root that fits): an exponent must be a positive integer, so
+$\ans{n = 10 \quad (n = -9 \text{ rejected})}$.}
+
+\problem{\textbf{Coefficient of $x^3y^2$ in $(2x+y)^5$.}\\
+Step 1 (locate the term): the general term is
+$\dbinom{5}{k}(2x)^{k}y^{\,5-k}$, and $x^3y^2$ forces $k = 3$.
+Step 2 (evaluate both pieces): $\dbinom{5}{3} = 10$ and $(2)^3 = 8$ from the
+$2x$.
+Step 3 (multiply): $10 \cdot 8 = \ans{80}$, so the term is $80x^3y^2$.}
+
+\problem{\textbf{Expand $(a+3b)^3$.}\\
+Step 1 (general term): $\dbinom{3}{k}a^{\,3-k}(3b)^{k}$ with row 3 coefficients
+1, 3, 3, 1.
+Step 2 (raise $3b$ each time): $a^3$; \ $3 \cdot a^2 \cdot 3b = 9a^2b$; \
+$3 \cdot a \cdot 9b^2 = 27ab^2$; \ $27b^3$.
+Step 3 (collect): $\ans{a^3 + 9a^2b + 27ab^2 + 27b^3}$. The 1, 3, 3, 1 of row 3
+is still visible, multiplied by the powers of 3.}
+
+\problem{\textbf{Synthesis: $(3x-2)^4$, general term and sum of coefficients.}\\
+Step 1 (general term): $\dbinom{4}{n}(3)^{\,4-n}(-2)^{n}x^{\,4-n}$, so the
+coefficient list is $\dbinom{4}{n}3^{\,4-n}(-2)^n$ for $n = 0$ to 4.
+Step 2 (add the five coefficients):
+$81 - 216 + 216 - 96 + 16 = \ans{1}$.
+Step 3 (why it had to be 1): substituting $x = 1$ makes every power of $x$ equal
+to 1, so the sum of the coefficients is just $(3 - 2)^4 = 1$. The large positive
+and negative coefficients must cancel down to that.}
+
+\end{document}

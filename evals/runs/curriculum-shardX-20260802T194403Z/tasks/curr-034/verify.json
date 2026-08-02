@@ -1,0 +1,33 @@
+{
+  "topic": "teen numbers: fixing swapped tens and ones",
+  "problem_count": 6,
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "10*t + n", "at": {"t": 1, "n": 4}, "expected": 14,
+     "skill": "read-tens-and-ones", "standard": "1.NBT", "difficulty": 1, "bloom": "recall",
+     "traps": [{"desc": "counted the ones as tens and the ten as ones (swapped)",
+                "expr": "10*4 + 1", "value": 41}]},
+
+    {"id": 2, "type": "eval", "expr": "10*t + n", "at": {"t": 1, "n": 6}, "expected": 16,
+     "skill": "fix-swapped-digits", "standard": "1.NBT", "difficulty": 2, "bloom": "analyze",
+     "traps": [{"desc": "wrote the ones digit in the tens place (swapped)",
+                "expr": "10*6 + 1", "value": 61}]},
+
+    {"id": 3, "type": "eval", "expr": "10*t + n", "at": {"t": 1, "n": 8}, "expected": 18,
+     "skill": "fix-swapped-digits", "standard": "1.NBT", "difficulty": 2, "bloom": "analyze",
+     "traps": [{"desc": "wrote eight-teen as 8 tens and 1 one (swapped)",
+                "expr": "10*8 + 1", "value": 81}]},
+
+    {"id": 4, "type": "compare", "values": ["10*1 + 3", "10*3 + 1"], "order": "relation",
+     "expected": "<", "skill": "compare-swapped-pair", "standard": "1.NBT",
+     "difficulty": 3, "bloom": "apply"},
+
+    {"id": 5, "type": "eval", "expr": "10*t + n", "at": {"t": 1, "n": 7}, "expected": 17,
+     "skill": "fix-swapped-digits", "standard": "1.NBT", "difficulty": 3, "bloom": "analyze",
+     "traps": [{"desc": "read the full ten-frame as ones and the loose dots as tens (swapped)",
+                "expr": "10*7 + 1", "value": 71}]},
+
+    {"id": 6, "type": "compare", "values": ["10*9 + 1", "10*1 + 9"], "order": "relation",
+     "expected": ">", "skill": "compare-swapped-pair", "standard": "1.NBT",
+     "difficulty": 4, "bloom": "analyze"}
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "topic": "binomial coefficients and sequence structure in expansions",
+  "problem_count": 12,
+  "facets": ["binomial-coefficient", "full-expansion", "specific-term", "sequence-structure"],
+  "subtitle": "Evaluating binomial coefficients, expanding a binomial power in full, extracting one specific term, and using the sequence structure of a row of coefficients",
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "factorial(n)/(factorial(k)*factorial(n - k))",
+     "at": {"n": 6, "k": 2}, "expected": 15,
+     "skill": "binomial-coefficient", "facet": "binomial-coefficient",
+     "standard": "HSA-APR.A.1", "difficulty": 1, "bloom": "recall"},
+
+    {"id": 2, "type": "eval", "expr": "factorial(n)/(factorial(k)*factorial(n - k))",
+     "at": {"n": 8, "k": 3}, "expected": 56,
+     "skill": "binomial-coefficient", "facet": "binomial-coefficient",
+     "standard": "HSA-APR.A.1", "difficulty": 1, "bloom": "recall",
+     "traps": [{"desc": "forgot the k! in the denominator (permutations, not combinations)",
+                "expr": "factorial(8)/factorial(5)", "value": 336}]},
+
+    {"id": 3, "type": "expand", "expr": "(x + 2)**3", "expected": "x**3 + 6*x**2 + 12*x + 8",
+     "skill": "full-expansion", "facet": "full-expansion",
+     "standard": "HSA-APR.A.1", "difficulty": 2, "bloom": "apply"},
+
+    {"id": 4, "type": "series", "term": "factorial(5)/(factorial(n)*factorial(5 - n))",
+     "var": "n", "from": 0, "to": 5, "expected": 32,
+     "skill": "sequence-structure", "facet": "sequence-structure",
+     "standard": "HSA-SSE.B.3", "difficulty": 2, "bloom": "apply"},
+
+    {"id": 5, "type": "eval", "expr": "factorial(5)/(factorial(k)*factorial(5 - k))*2**(5 - k)",
+     "at": {"k": 3}, "expected": 40,
+     "skill": "specific-term", "facet": "specific-term",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "apply",
+     "traps": [{"desc": "used the binomial coefficient alone and forgot the 2 raised to a power",
+                "expr": "factorial(5)/(factorial(3)*factorial(2))", "value": 10}]},
+
+    {"id": 6, "type": "expand", "expr": "(2*x - 1)**4",
+     "expected": "16*x**4 - 32*x**3 + 24*x**2 - 8*x + 1",
+     "skill": "full-expansion", "facet": "full-expansion",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "apply"},
+
+    {"id": 7, "type": "eval", "expr": "factorial(6)/(factorial(k)*factorial(6 - k))*3**(6 - k)",
+     "at": {"k": 2}, "expected": 1215,
+     "skill": "specific-term", "facet": "specific-term",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "analyze",
+     "traps": [{"desc": "raised 3 to the wrong power (used the y-exponent instead of 6 - k)",
+                "expr": "factorial(6)/(factorial(2)*factorial(4))*3**2", "value": 135}]},
+
+    {"id": 8, "type": "series", "term": "factorial(5)/(factorial(n)*factorial(5 - n))*2**n",
+     "var": "n", "from": 0, "to": 5, "expected": 243,
+     "skill": "sequence-structure", "facet": "sequence-structure",
+     "standard": "HSA-SSE.B.3", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 9, "type": "solve", "expr": "n*(n - 1)/2 - 45", "var": "n", "expected": [-9, 10],
+     "skill": "binomial-coefficient", "facet": "binomial-coefficient",
+     "standard": "HSA-APR.A.1", "difficulty": 4, "bloom": "analyze"},
+
+    {"id": 10, "type": "eval", "expr": "factorial(5)/(factorial(k)*factorial(5 - k))*2**k",
+     "at": {"k": 3}, "expected": 80,
+     "skill": "specific-term", "facet": "specific-term",
+     "standard": "HSA-APR.A.1", "difficulty": 4, "bloom": "analyze",
+     "traps": [{"desc": "left the 2 inside 2x unraised, using only the binomial coefficient",
+                "expr": "factorial(5)/(factorial(3)*factorial(2))", "value": 10}]},
+
+    {"id": 11, "type": "expand", "expr": "(a + 3*b)**3",
+     "expected": "a**3 + 9*a**2*b + 27*a*b**2 + 27*b**3",
+     "skill": "full-expansion", "facet": "full-expansion",
+     "standard": "HSA-APR.A.1", "difficulty": 4, "bloom": "analyze"},
+
+    {"id": 12, "type": "series",
+     "term": "factorial(4)/(factorial(n)*factorial(4 - n))*3**(4 - n)*(-2)**n",
+     "var": "n", "from": 0, "to": 4, "expected": 1,
+     "skill": "sequence-structure", "facet": "sequence-structure",
+     "standard": "HSA-SSE.B.3", "difficulty": 5, "bloom": "analyze"}
+  ]
+}

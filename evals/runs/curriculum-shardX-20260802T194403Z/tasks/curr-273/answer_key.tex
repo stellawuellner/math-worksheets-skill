@@ -1,0 +1,101 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\akheader{Recursive Arithmetic Formulas}
+\begin{document}
+\aktitleblock{Arithmetic Sequences as Linear Functions}{Algebra 1}{}
+\begingroup\raggedright
+\input{qa_recseq_curr273}
+\par\endgroup
+
+\problem{\textbf{Tile pattern 4, 11, 18, 25, \ldots\ --- recursive formula and
+stage 6.}\\
+Step 1 (find $d$): subtract consecutive terms --- $11 - 4 = 7$, $18 - 11 = 7$,
+$25 - 18 = 7$. The difference is constant, so the sequence is arithmetic with
+$d = 7$.
+Step 2 (write both lines): $a_1 = 4$ and $a_n = a_{n-1} + 7$ for $n \geq 2$.
+Step 3 (reach stage 6): from stage 1 to stage 6 there are $6 - 1 = 5$ steps, so
+$a_6 = 4 + 5(7) = \ans{39}$ tiles. (By hand: 4, 11, 18, 25, 32, 39.)}
+
+\problem{\textbf{Drone heights 63, 58, 53, \ldots\ --- recursive formula and
+reading 9.}\\
+Step 1 (find $d$): $58 - 63 = -5$ and $53 - 58 = -5$, so the common difference is
+negative: $d = -5$. A falling sequence still \emph{adds} $d$; $d$ itself is
+negative.
+Step 2 (write both lines): $a_1 = 63$ and $a_n = a_{n-1} - 5$ for $n \geq 2$.
+Step 3 (reach reading 9): $9 - 1 = 8$ steps, so
+$a_9 = 63 + 8(-5) = 63 - 40 = \ans{23}$ meters.}
+
+\problem{\textbf{Tank: 240 L at the end of hour 1, $+85$ L each later hour ---
+liters at the end of hour 5.}\\
+Step 1 (identify the givens with units): $a_1 = 240$ liters (end of hour 1) and
+$d = +85$ liters per hour.
+Step 2 (write both lines): $a_1 = 240$ and $a_n = a_{n-1} + 85$ for $n \geq 2$,
+where $a_n$ is in liters.
+Step 3 (reach hour 5): hour 1 is the starting value, so hours 2, 3, 4, 5 are
+$5 - 1 = 4$ steps: $a_5 = 240 + 4(85) = 240 + 340 = \ans{580 \text{ L}}$.}
+
+\problem{\textbf{$a_1 = 12$, $a_n = a_{n-1} + 9$ --- read the rule, then find
+$a_{10}$.}\\
+Step 1 (say the rule in words): start at 12, and to get any term add 9 to the term
+before it.
+Step 2 (count the steps): reaching $a_{10}$ from $a_1$ takes $10 - 1 = 9$ additions
+of 9, not 10.
+Step 3 (compute): $a_{10} = 12 + 9(9) = 12 + 81 = \ans{93}$.}
+
+\problem{\textbf{$a_1 = 7$, $a_n = a_{n-1} + 4$ --- explicit rule and $a_{20}$.}\\
+Step 1 (translate the pieces): the common difference $d = 4$ is the slope $m$,
+because each step of 1 in $n$ changes the value by 4.
+Step 2 (find the intercept): $a_n = 7 + (n-1)4 = 4n + 3$, so $m = 4$ and $b = 3$.
+Here $b$ is the value the line would take at $n = 0$ --- one step \emph{before}
+the first term, not the first term itself.
+Step 3 (evaluate): $a_{20} = 4(20) + 3 = \ans{83}$, which matches
+$7 + 19(4) = 83$.}
+
+\problem{\textbf{$a_1 = 5$, $a_n = a_{n-1} + 6$ --- which term equals 89?}\\
+Step 1 (set up an equation instead of listing): the explicit form of the recursive
+rule is $a_n = 5 + (n-1)6$, and we need that to equal 89.
+Step 2 (solve): $5 + 6(n-1) = 89 \Rightarrow 6(n-1) = 84 \Rightarrow n - 1 = 14$.
+Step 3: $n = \ans{15}$, so the 15th term is 89. (Check: $5 + 14(6) = 89$.)}
+
+\problem{\textbf{Chair stack: 84 cm for one chair, $+9$ cm per added chair ---
+height of 12 chairs.}\\
+Step 1 (identify the givens with units): $a_1 = 84$ centimeters for the first
+chair, and each chair after that adds $d = 9$ centimeters.
+Step 2 (write both lines): $a_1 = 84$ and $a_n = a_{n-1} + 9$ for $n \geq 2$,
+with $a_n$ in centimeters.
+Step 3 (reach 12 chairs): 12 chairs means the first chair plus $12 - 1 = 11$ added
+chairs: $a_{12} = 84 + 11(9) = 84 + 99 = \ans{183 \text{ cm}}$.}
+
+\problem{\textbf{Table with $a_3 = 20$ and $a_7 = 44$ --- recursive formula and
+$a_1$.}\\
+Step 1 (count the steps between the known terms): going from $n = 3$ to $n = 7$
+takes $7 - 3 = 4$ equal steps, and the total change is $44 - 20 = 24$.
+Step 2 (find $d$): $d = 24 \div 4 = 6$, so the recursive rule is
+$a_n = a_{n-1} + 6$.
+Step 3 (walk backwards to $a_1$): from $a_3$ back to $a_1$ is 2 steps
+\emph{down}: $a_1 = 20 - 2(6) = \ans{8}$. (Check forward: 8, 14, 20, 26, 32, 38,
+44.)}
+
+\problem{\textbf{Savings: 45 dollars at end of week 1, $+18$ dollars weekly ---
+first week the balance reaches 405 dollars.}\\
+Step 1 (write both lines): $a_1 = 45$ dollars and $a_n = a_{n-1} + 18$ for
+$n \geq 2$, with $a_n$ the balance in dollars at the end of week $n$.
+Step 2 (set up the equation): the explicit form is $a_n = 45 + (n-1)18$; set it
+equal to 405.
+Step 3 (solve): $18(n-1) = 360 \Rightarrow n - 1 = 20$, so $n = \ans{21}$ --- the
+balance first reaches 405 dollars at the end of week 21.}
+
+\problem{\textbf{Theater: row 1 has 22 seats, each later row has 3 more --- total
+seats in the first 15 rows.}\\
+Step 1 (recursive rule): $a_1 = 22$ seats and $a_n = a_{n-1} + 3$ for $n \geq 2$.
+(ii) A recursive rule gives one row at a time, so to total 15 rows you would have
+to generate all 15 terms first --- the rule describes the \emph{step}, not the
+\emph{sum}.
+Step 2 (list what you need): the last row is
+$a_{15} = 22 + 14(3) = 64$ seats.
+Step 3 (add the arithmetic series by pairing first and last):
+$S_{15} = \dfrac{15(22 + 64)}{2} = \dfrac{15 \cdot 86}{2} = \ans{645}$ seats in
+the first 15 rows.}
+
+\end{document}

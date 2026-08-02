@@ -1,0 +1,75 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\wsheader{Binomial Coefficients}
+\begin{document}
+\wstitleblock{Sequences, Series, and the Binomial Theorem}{Algebra 2}{}
+
+\begin{center}
+Evaluating binomial coefficients, expanding a binomial power in full, extracting
+one specific term, and using the sequence structure of a row of coefficients
+\end{center}
+
+\noindent\small\textbf{Directions.} The binomial theorem says
+\[ (u + v)^n = \sum_{k=0}^{n} \binom{n}{k} u^{\,n-k} v^{\,k},
+   \qquad \binom{n}{k} = \frac{n!}{k!\,(n-k)!}. \]
+Decide for each problem whether you need one coefficient, one term, or the whole
+expansion --- the method is not the same.\par
+\textbf{Reference} (rows of Pascal's triangle --- no problem values here; take
+each problem's own numbers from its statement):
+\begin{center}\small
+\begin{tabular}{r@{\quad}l}
+row $n = 3$: & 1 \quad 3 \quad 3 \quad 1\\
+row $n = 4$: & 1 \quad 4 \quad 6 \quad 4 \quad 1\\
+row $n = 5$: & 1 \quad 5 \quad 10 \quad 10 \quad 5 \quad 1\\
+row $n = 6$: & 1 \quad 6 \quad 15 \quad 20 \quad 15 \quad 6 \quad 1
+\end{tabular}
+\end{center}\normalsize
+
+\problem[4cm]{Evaluate the binomial coefficient $\dbinom{6}{2}$ using the
+factorial formula. Show the factorials before you cancel.}
+
+\problem[4cm]{Evaluate $\dbinom{8}{3}$. Then state in one sentence what this
+number counts in the expansion of $(u+v)^8$.}
+
+\problem[6cm]{Expand $(x + 2)^3$ completely, writing the coefficient of each term
+as a binomial coefficient times a power of 2 before you simplify.}
+
+\problem[5cm]{Row 5 of Pascal's triangle holds the coefficients of $(u+v)^5$.
+Add all six of those coefficients:
+$\dbinom{5}{0} + \dbinom{5}{1} + \cdots + \dbinom{5}{5}$.
+What is the total?}
+
+\problem[5cm]{In the expansion of $(x + 2)^5$, find the \textbf{coefficient of
+$x^3$} without expanding the whole thing. (Use the term
+$\dbinom{5}{k} x^{k} 2^{\,5-k}$.)}
+
+\problem[6cm]{Expand $(2x - 1)^4$ completely. Watch two things: the 2 inside
+$2x$ gets raised to a power too, and the sign alternates.}
+
+\problem[5cm]{In the expansion of $(3 + y)^6$, find the \textbf{coefficient of
+$y^2$}. Note that here the constant 3 is the \emph{first} term of the binomial.}
+
+\problem[5cm]{Find the sum of all the coefficients in the expansion of
+$(2x + 1)^5$. (Hint: adding every coefficient is the same as evaluating the
+expansion at a particular value of $x$ --- but write the sum
+$\sum_{n=0}^{5}\dbinom{5}{n}2^{\,n}$ and confirm it.)}
+
+\problem[5cm]{In the expansion of $(1 + x)^n$ the coefficient of $x^2$ is
+$\dbinom{n}{2}$. For which $n$ does that coefficient equal 45? Solve the
+resulting quadratic equation and say which root makes sense here.}
+
+\problem[5cm]{In the expansion of $(2x + y)^5$, find the \textbf{coefficient of
+$x^3 y^2$}. Both the binomial coefficient and the power of 2 matter.}
+
+\problem[6cm]{Expand $(a + 3b)^3$ completely, in terms of $a$ and $b$. Then say
+which entry of Pascal's triangle produced each coefficient.}
+
+\problem[6cm]{\textbf{Synthesis.} Consider $(3x - 2)^4$.\\[3pt]
+(i) Write the general term of the expansion using $\dbinom{4}{n}$, a power of 3
+and a power of $-2$.
+(ii) Add all the coefficients by evaluating that sum for $n = 0$ to $n = 4$.
+(iii) Explain in one sentence why the answer had to come out this way, using the
+value of $x$ that makes every $x$-power equal 1.}
+
+\end{document}

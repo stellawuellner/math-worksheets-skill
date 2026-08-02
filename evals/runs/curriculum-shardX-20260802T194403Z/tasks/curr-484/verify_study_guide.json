@@ -1,0 +1,31 @@
+{
+  "topic": "study guide: separable differential equations and initial conditions",
+  "problem_count": 6,
+  "problems": [
+    {"id": 1, "type": "integrate", "expr": "8*x**3 - 3",
+     "expected": "2*x**4 - 3*x",
+     "skill": "integrate-both-sides", "standard": "FUN-7",
+     "difficulty": 1, "bloom": "apply"},
+
+    {"id": 2, "type": "integrate", "expr": "10*x - 6*x**2",
+     "expected": "5*x**2 - 2*x**3",
+     "role": "tryit", "skill": "integrate-both-sides", "standard": "FUN-7",
+     "difficulty": 1, "bloom": "apply"},
+
+    {"id": 3, "type": "approx", "expr": "sqrt(3**2 + 16)", "expected": 5,
+     "skill": "separate-variables", "standard": "FUN-7",
+     "difficulty": 2, "bloom": "apply"},
+
+    {"id": 4, "type": "approx", "expr": "sqrt(5**2 + 144)", "expected": 13,
+     "role": "tryit", "skill": "separate-variables", "standard": "FUN-7",
+     "difficulty": 2, "bloom": "apply"},
+
+    {"id": 5, "type": "approx", "expr": "7*exp(5*0.2)", "expected": 19.03, "tol": 0.01,
+     "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 6, "type": "approx", "expr": "6*exp(2*0.5)", "expected": 16.31, "tol": 0.01,
+     "role": "tryit", "skill": "apply-initial-condition", "standard": "FUN-7",
+     "difficulty": 3, "bloom": "analyze"}
+  ]
+}

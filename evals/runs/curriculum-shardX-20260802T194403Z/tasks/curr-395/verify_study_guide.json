@@ -1,0 +1,39 @@
+{
+  "topic": "study guide: binomial coefficients and expansions",
+  "problem_count": 8,
+  "problems": [
+    {"id": 1, "type": "eval", "expr": "factorial(n)/(factorial(k)*factorial(n - k))",
+     "at": {"n": 7, "k": 2}, "expected": 21,
+     "skill": "binomial-coefficient", "facet": "binomial-coefficient",
+     "standard": "HSA-APR.A.1", "difficulty": 1, "bloom": "recall"},
+    {"id": 2, "type": "eval", "expr": "factorial(n)/(factorial(k)*factorial(n - k))",
+     "at": {"n": 9, "k": 3}, "expected": 84, "role": "tryit",
+     "skill": "binomial-coefficient", "facet": "binomial-coefficient",
+     "standard": "HSA-APR.A.1", "difficulty": 2, "bloom": "recall"},
+
+    {"id": 3, "type": "expand", "expr": "(x + 3)**3", "expected": "x**3 + 9*x**2 + 27*x + 27",
+     "skill": "full-expansion", "facet": "full-expansion",
+     "standard": "HSA-APR.A.1", "difficulty": 2, "bloom": "apply"},
+    {"id": 4, "type": "expand", "expr": "(x - 2)**3", "expected": "x**3 - 6*x**2 + 12*x - 8",
+     "role": "tryit", "skill": "full-expansion", "facet": "full-expansion",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "apply"},
+
+    {"id": 5, "type": "eval", "expr": "factorial(5)/(factorial(k)*factorial(5 - k))*4**(5 - k)",
+     "at": {"k": 2}, "expected": 640,
+     "skill": "specific-term", "facet": "specific-term",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "apply"},
+    {"id": 6, "type": "eval", "expr": "factorial(6)/(factorial(k)*factorial(6 - k))*2**(6 - k)",
+     "at": {"k": 3}, "expected": 160, "role": "tryit",
+     "skill": "specific-term", "facet": "specific-term",
+     "standard": "HSA-APR.A.1", "difficulty": 3, "bloom": "analyze"},
+
+    {"id": 7, "type": "series", "term": "factorial(4)/(factorial(n)*factorial(4 - n))",
+     "var": "n", "from": 0, "to": 4, "expected": 16,
+     "skill": "sequence-structure", "facet": "sequence-structure",
+     "standard": "HSA-SSE.B.3", "difficulty": 2, "bloom": "apply"},
+    {"id": 8, "type": "series", "term": "factorial(6)/(factorial(n)*factorial(6 - n))",
+     "var": "n", "from": 0, "to": 6, "expected": 64, "role": "tryit",
+     "skill": "sequence-structure", "facet": "sequence-structure",
+     "standard": "HSA-SSE.B.3", "difficulty": 3, "bloom": "analyze"}
+  ]
+}

@@ -40,6 +40,9 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Rational number operations (signed) | 6.NS.C / 7.NS.A |
 | Area, surface area, volume (gr 6–7) | 6.G.A / 7.G.B |
 | Scale drawings & scale factor | 7.G.A.1 |
+| Rational vs irrational numbers, roots | 8.NS.A |
+| Exponents, scientific notation, square/cube roots | 8.EE.A |
+| Linear equations in one variable | 8.EE.C.7 |
 | Transformations, congruence, similarity (gr 8) | 8.G.A |
 | Pythagorean theorem & converse | 8.G.B.6–B.8 |
 | Volume of cones, cylinders, spheres | 8.G.C.9 |

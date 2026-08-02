@@ -670,6 +670,14 @@ This is the **third document** generated alongside every worksheet. It's a one-t
 
 ### Page budget (measured, not guessed)
 
+**Study-guide section cost is quantised, not additive.** `\skillheading` carries
+`\needspace{4\baselineskip}` and the boxes are unbreakable `mdframed`
+environments, so a section whose formula box will not fit in the page remainder
+moves *entirely* to the next page. The per-section figure below is an average,
+not a ceiling: a `formulabox` holding displayed math or a bulleted list runs 2–3×
+the quoted cost. Budget four sections when any section carries a figure or
+displayed math, and five only when every section is prose-and-formula.
+
 The guide is hard-capped at 2 pages by the `compile-ss` gate. These are the
 real typeset heights at `margin=0.85in, top/bottom=0.7in`:
 

@@ -170,6 +170,20 @@ def has_valued_figure(item):
         for q in re.finditer(r'"\s*\$?([^"$]*)\$?\s*"', fig.group(0)):
             if re.search(r"\d", q.group(1)):
                 return True
+    # pgfplots draws numeric tick labels BY DEFAULT, and it draws them as axis
+    # ticks rather than as \node text, so the tikz scan above never saw them: a
+    # coordinate plane with a full numbered grid read as value-free and the
+    # all-or-nothing figure rule silently did not apply. Found by an eval agent
+    # whose worksheet carried graphs on 3 of 12 problems and passed layout-ws
+    # anyway. An axis therefore counts as valued unless BOTH tick sets are
+    # explicitly emptied — the same "assume valued" stance as \includegraphics,
+    # because the false direction here is a silent PASS.
+    for ax in re.finditer(r"\\begin\{axis\}(?:\[(.*?)\])?", item, re.S):
+        opts = ax.group(1) or ""
+        blank = (re.search(r"xtick\s*=\s*\\empty", opts)
+                 and re.search(r"ytick\s*=\s*\\empty", opts))
+        if not blank:
+            return True
     # \includegraphics is an opaque image: no checker can read the values it
     # almost certainly shows (a figure worth including carries labels), so it
     # must be ASSUMED valued and the all-or-nothing scope rule applies

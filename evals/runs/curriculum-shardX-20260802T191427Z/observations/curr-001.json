@@ -1,0 +1,28 @@
+{
+  "task_id": "curr-001",
+  "recorded": "2026-08-02T19:14:27Z",
+  "latency_seconds": 900.0,
+  "notes": "",
+  "artifacts_present": {
+    "prompt.txt": true,
+    "task.json": true,
+    "worksheet.pdf": true,
+    "answer_key.pdf": true,
+    "study_guide.pdf": true,
+    "verify.json": true,
+    "gate_log.txt": true,
+    "verify_study_guide.json": true,
+    "final_response.md": true,
+    "worksheet.tex": true,
+    "answer_key.tex": true,
+    "study_guide.tex": true
+  },
+  "expected_problem_count": 8,
+  "declared_problem_count": 8,
+  "unique_verified_problems": 8,
+  "problem_count_matches": true,
+  "gate_chain_passed": true,
+  "gate_chain_manual_flags": false,
+  "worksheet_pages": 3,
+  "capture_problems": []
+}

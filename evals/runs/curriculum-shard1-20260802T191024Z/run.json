@@ -1,0 +1,41 @@
+{
+  "run_id": "curriculum-shard1-20260802T191024Z",
+  "started": "2026-08-02T19:10:24Z",
+  "suite": "curriculum",
+  "suite_file": "evals/curriculum-suite-500.json",
+  "shard": "1/20",
+  "repo_commit": "b1985dfd3aebd5fea4315d6353abab6e7b187fb6",
+  "label": "first curriculum acceptance run",
+  "generator": {
+    "agent": "claude-code",
+    "model": "claude-opus-5"
+  },
+  "condition": "skill_on",
+  "task_ids": [
+    "curr-001",
+    "curr-002",
+    "curr-003",
+    "curr-004",
+    "curr-005",
+    "curr-006",
+    "curr-007",
+    "curr-008",
+    "curr-009",
+    "curr-010",
+    "curr-011",
+    "curr-012",
+    "curr-013",
+    "curr-014",
+    "curr-015",
+    "curr-016",
+    "curr-017",
+    "curr-018",
+    "curr-019",
+    "curr-020",
+    "curr-021",
+    "curr-022",
+    "curr-023",
+    "curr-024",
+    "curr-025"
+  ]
+}

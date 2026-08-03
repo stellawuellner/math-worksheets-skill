@@ -32,8 +32,11 @@ one says which graph it means --- \emph{no graph belongs to any other problem.}
   tick label style={font=\scriptsize},
   yticklabel style={fill=white, inner sep=1pt}]
   \addplot[thick, blue, domain=-1.4:5.4] {x+2};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
-    coordinates {(2,4)};
+  % Mark points with a tikz path, NOT a second marks plot: layering a
+  % marks plot on a function plot makes the engine typeset a stray 0.1pt in
+  % nullfont (five fatal "Missing character" faults, erratic in `samples`).
+  % See references/latex-templates.md, "Completed graph".
+  \draw[blue, thick, fill=white] (axis cs:2,4) circle (2.6pt);
 \end{axis}
 \end{tikzpicture}\\[-2pt]
 {\small\textbf{Graph A} --- the function $g$ (problem 3).}
@@ -49,10 +52,9 @@ one says which graph it means --- \emph{no graph belongs to any other problem.}
   yticklabel style={fill=white, inner sep=1pt}]
   \addplot[thick, blue, domain=-1.4:1] {x+1};
   \addplot[thick, blue, domain=1:3.4] {4-x};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
-    coordinates {(1,2)};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=blue]
-    coordinates {(1,3)};
+  % tikz paths, not an only-marks plot --- see the note on Graph A above.
+  \draw[blue, thick, fill=white] (axis cs:1,2) circle (2.6pt);
+  \fill[blue] (axis cs:1,3) circle (2.6pt);
 \end{axis}
 \end{tikzpicture}\\[-2pt]
 {\small\textbf{Graph B} --- the function $h$ (problem 7).}

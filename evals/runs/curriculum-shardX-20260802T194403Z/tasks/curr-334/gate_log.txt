@@ -1,19 +1,19 @@
 
-── step 1 · discover documents for stem 'quadprop_c334' in /tmp/evalbuild/curr-334
-   ws: /tmp/evalbuild/curr-334/ws_quadprop_c334.tex
-   ak: /tmp/evalbuild/curr-334/ak_quadprop_c334.tex
-   ss: /tmp/evalbuild/curr-334/ss_quadprop_c334.tex  (verify: /tmp/evalbuild/curr-334/verify_ss_quadprop_c334.json)
+── step 1 · discover documents for stem 'quadprop_c334' in /tmp/evalfig/curr-334
+   ws: /tmp/evalfig/curr-334/ws_quadprop_c334.tex
+   ak: /tmp/evalfig/curr-334/ak_quadprop_c334.tex
+   ss: /tmp/evalfig/curr-334/ss_quadprop_c334.tex  (verify: /tmp/evalfig/curr-334/verify_ss_quadprop_c334.json)
 
 ── step 2 · template shell on ws_quadprop_c334.tex
-Template-use report: /tmp/evalbuild/curr-334/ws_quadprop_c334.tex
+Template-use report: /tmp/evalfig/curr-334/ws_quadprop_c334.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 3 · template shell on ak_quadprop_c334.tex
-Template-use report: /tmp/evalbuild/curr-334/ak_quadprop_c334.tex
+Template-use report: /tmp/evalfig/curr-334/ak_quadprop_c334.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 4 · template shell on ss_quadprop_c334.tex
-Template-use report: /tmp/evalbuild/curr-334/ss_quadprop_c334.tex
+Template-use report: /tmp/evalfig/curr-334/ss_quadprop_c334.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 5 · verify worksheet JSON (verify_quadprop_c334.json)
@@ -44,7 +44,7 @@ traps: 3 declared, all distinguishable
     problem 2: trap "assumed a rhombus has congruent diagonals, so reported AC's length for BD": sqrt(72) → 8.48528 (rejected by the problem's own check)
     problem 4: trap "assumed perpendicular diagonals force all four sides congruent, so reported AB's length for BC": sqrt(45) → 6.7082 (rejected by the problem's own check)
     problem 5: trap 'subtracted the 5 instead of adding it when moving it across the equals sign': (11 - 5)/2 → 3 (rejected by the problem's own check)
-facet mix: algebraic-condition×4, diagonal-test×6, counterexample×1, side-length-test×4; max in-window run: 3
+facet mix: algebraic-condition×2, diagonal-test×1, counterexample×1, side-length-test×2; max in-window run: 1
 difficulty ramp: [2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 5, 5, 5, 5]
 
 👁  6 problem(s) need manual review (9 machine-verified) — safe to compile.
@@ -72,7 +72,7 @@ difficulty ramp: [2, 2, 3, 3, 3, 3, 4, 4]
 ✅ All checks passed — safe to compile.
 
 ── step 7 · skill coverage: verify_quadprop_c334.json → verify_ss_quadprop_c334.json
-Skill coverage: /tmp/evalbuild/curr-334/verify_quadprop_c334.json → /tmp/evalbuild/curr-334/verify_ss_quadprop_c334.json
+Skill coverage: /tmp/evalfig/curr-334/verify_quadprop_c334.json → /tmp/evalfig/curr-334/verify_ss_quadprop_c334.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -83,83 +83,83 @@ subtitle bound: 'Testing one-way implications with algebra, side lengths, diagon
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-334/meta_quadprop_c334.tex
+Wrote /tmp/evalfig/curr-334/meta_quadprop_c334.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-334/qa_quadprop_c334.tex
+Wrote /tmp/evalfig/curr-334/qa_quadprop_c334.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_quadprop_c334.tex
-Layout report: /tmp/evalbuild/curr-334/ws_quadprop_c334.tex
+Layout report: /tmp/evalfig/curr-334/ws_quadprop_c334.tex
   problem blocks: figure scope ok (no 6 problems carry valued figures)
   problem blocks: work space ok (all 6 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
 ── step 13 · answer-line binding (answer_unit) on ws_quadprop_c334.tex
-Answer-line binding: /tmp/evalbuild/curr-334/ws_quadprop_c334.tex (6 problem segments, 0 declared unit(s))
+Answer-line binding: /tmp/evalfig/curr-334/ws_quadprop_c334.tex (6 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 6 problems, 40.8cm of content
   ideal 2 page(s) · accepted range 1-4 · 1 sheet(s) of paper double-sided
 
-── step 14 · compile ws_quadprop_c334.tex → /tmp/evalbuild/curr-334  (page budget: 4)
-Compiling: ws_quadprop_c334.tex → /tmp/evalbuild/curr-334/
+── step 14 · compile ws_quadprop_c334.tex → /tmp/evalfig/curr-334  (page budget: 4)
+Compiling: ws_quadprop_c334.tex → /tmp/evalfig/curr-334/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 4-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-334/ws_quadprop_c334.pdf
-/tmp/evalbuild/curr-334/ws_quadprop_c334.pdf
+✅ PDF ready: /tmp/evalfig/curr-334/ws_quadprop_c334.pdf
+/tmp/evalfig/curr-334/ws_quadprop_c334.pdf
 
-── step 15 · compile ak_quadprop_c334.tex → /tmp/evalbuild/curr-334  (page budget: 4)
-Compiling: ak_quadprop_c334.tex → /tmp/evalbuild/curr-334/
+── step 15 · compile ak_quadprop_c334.tex → /tmp/evalfig/curr-334  (page budget: 4)
+Compiling: ak_quadprop_c334.tex → /tmp/evalfig/curr-334/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 4-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-334/ak_quadprop_c334.pdf
-/tmp/evalbuild/curr-334/ak_quadprop_c334.pdf
+✅ PDF ready: /tmp/evalfig/curr-334/ak_quadprop_c334.pdf
+/tmp/evalfig/curr-334/ak_quadprop_c334.pdf
 
-── step 16 · compile ss_quadprop_c334.tex → /tmp/evalbuild/curr-334  (page budget: 2)
-Compiling: ss_quadprop_c334.tex → /tmp/evalbuild/curr-334/
+── step 16 · compile ss_quadprop_c334.tex → /tmp/evalfig/curr-334  (page budget: 2)
+Compiling: ss_quadprop_c334.tex → /tmp/evalfig/curr-334/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-334/ss_quadprop_c334.pdf
-/tmp/evalbuild/curr-334/ss_quadprop_c334.pdf
+✅ PDF ready: /tmp/evalfig/curr-334/ss_quadprop_c334.pdf
+/tmp/evalfig/curr-334/ss_quadprop_c334.pdf
 
 ── step 17 · answer-key binding: ak_quadprop_c334.tex ↔ verify_quadprop_c334.json
-Answer-key binding: /tmp/evalbuild/curr-334/ak_quadprop_c334.tex
+Answer-key binding: /tmp/evalfig/curr-334/ak_quadprop_c334.tex
   9 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
 ── step 18 · answer-key binding: ss_quadprop_c334.tex ↔ verify_ss_quadprop_c334.json
-Answer-key binding: /tmp/evalbuild/curr-334/ss_quadprop_c334.tex
+Answer-key binding: /tmp/evalfig/curr-334/ss_quadprop_c334.tex
   9 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
 ── step 19 · study-guide structure (strategy steps) on ss_quadprop_c334.tex
-Study-guide structure: /tmp/evalbuild/curr-334/ss_quadprop_c334.tex
+Study-guide structure: /tmp/evalfig/curr-334/ss_quadprop_c334.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
 ── step 20 · prose consistency on ws_quadprop_c334.tex
-Prose-consistency report: /tmp/evalbuild/curr-334/ws_quadprop_c334.tex
+Prose-consistency report: /tmp/evalfig/curr-334/ws_quadprop_c334.tex
   problem 1: 4 prose numbers  ok
-  problem 2: 6 prose numbers  ⚠ missing from JSON: [5.6]
+  problem 2: 6 prose numbers  ⚠ missing from JSON: [2.0]
   problem 3: 0 prose numbers  ok
-  problem 4: 5 prose numbers  ⚠ missing from JSON: [2.0]
+  problem 4: 6 prose numbers  ⚠ missing from JSON: [4.0]
   problem 5: 3 prose numbers  ok
   problem 6: 7 prose numbers  ⚠ missing from JSON: [6.0]
 
-Match rate: 22/25 (88.0%) across 6 problem block(s)
+Match rate: 23/26 (88.5%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_quadprop_c334.tex
-Prose-consistency report: /tmp/evalbuild/curr-334/ss_quadprop_c334.tex
+Prose-consistency report: /tmp/evalfig/curr-334/ss_quadprop_c334.tex
   problem 1: 9 prose numbers  ⚠ missing from JSON: [5.0, 110.0]
   problem 2: 3 prose numbers  ok
   problem 3: 8 prose numbers  ⚠ missing from JSON: [3.61, 13.0, 29.0]
   problem 4: 6 prose numbers  ⚠ missing from JSON: [4.0, 5.39]
-  problem 5: 7 prose numbers  ⚠ missing from JSON: [2.0, 20.0]
+  problem 5: 7 prose numbers  ⚠ missing from JSON: [20.0]
   problem 6: 4 prose numbers  ⚠ missing from JSON: [2.0, 4.0]
   problem 7: 8 prose numbers  ⚠ missing from JSON: [2.0, 6.0, 34.0]
   problem 8: 6 prose numbers  ⚠ missing from JSON: [2.0, 8.0]
 
-Match rate: 35/51 (68.6%) across 8 problem block(s)
+Match rate: 36/51 (70.6%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
@@ -186,8 +186,8 @@ Figure labels: all consistent with JSON givens.
    prose-ws         PASS
    prose-ss         PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-334/ws_quadprop_c334.pdf
-   /tmp/evalbuild/curr-334/ak_quadprop_c334.pdf
-   /tmp/evalbuild/curr-334/ss_quadprop_c334.pdf
+   /tmp/evalfig/curr-334/ws_quadprop_c334.pdf
+   /tmp/evalfig/curr-334/ak_quadprop_c334.pdf
+   /tmp/evalfig/curr-334/ss_quadprop_c334.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

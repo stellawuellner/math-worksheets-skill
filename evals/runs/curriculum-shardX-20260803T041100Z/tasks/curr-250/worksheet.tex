@@ -41,9 +41,21 @@ $y = 0.8x + 45$}\\[4pt]
     label style={font=\small},
     width=12cm, height=7.4cm, enlargelimits=false
 ]
-  \addplot[only marks, mark=*, mark size=2pt, black] coordinates
-    {(10,52) (15,58) (20,61) (22,90) (25,68) (30,70) (35,76) (40,79) (45,85) (50,88)};
   \addplot[thick, blue, domain=8:52, samples=2] {0.8*x + 45};
+  % The data dots are \fill circles, NOT an only-marks plot: a marks plot
+  % layered with a function plot makes the engine typeset a stray 0.1pt in
+  % nullfont (fatal "Missing character" faults, erratic in `samples`).
+  % See references/latex-templates.md, "Completed graph".
+  \fill[black] (axis cs:10,52) circle (2pt);
+  \fill[black] (axis cs:15,58) circle (2pt);
+  \fill[black] (axis cs:20,61) circle (2pt);
+  \fill[black] (axis cs:22,90) circle (2pt);
+  \fill[black] (axis cs:25,68) circle (2pt);
+  \fill[black] (axis cs:30,70) circle (2pt);
+  \fill[black] (axis cs:35,76) circle (2pt);
+  \fill[black] (axis cs:40,79) circle (2pt);
+  \fill[black] (axis cs:45,85) circle (2pt);
+  \fill[black] (axis cs:50,88) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}

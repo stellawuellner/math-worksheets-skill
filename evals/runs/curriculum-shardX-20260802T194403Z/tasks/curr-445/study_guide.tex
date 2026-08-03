@@ -80,8 +80,11 @@ $\displaystyle\lim_{x\to2^-}q(x)$.
   samples=2, enlargelimits=false]
   \addplot[thick, blue, domain=-0.4:2] {x-1};
   \addplot[thick, blue, domain=2:4.4] {5-x};
-  \addplot[only marks, mark=*, mark size=2.2pt, draw=blue, fill=white] coordinates {(2,1)};
-  \addplot[only marks, mark=*, mark size=2.2pt, draw=blue, fill=blue] coordinates {(2,3)};
+  % tikz paths, not an only-marks plot --- a marks plot layered on a function
+  % plot makes the engine typeset a stray 0.1pt in nullfont (fatal "Missing
+  % character" faults). See references/latex-templates.md, "Completed graph".
+  \draw[blue, thick, fill=white] (axis cs:2,1) circle (2.2pt);
+  \fill[blue] (axis cs:2,3) circle (2.2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}

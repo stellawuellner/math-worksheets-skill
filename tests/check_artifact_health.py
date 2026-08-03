@@ -95,7 +95,12 @@ def check_task(d, task):
         if re.search(r"\{\\raggedright[^}]*qa_|\\raggedright\s*\\input\{qa_", tex):
             found.append(("workaround", f"{label}: \\raggedright around the quick-"
                                         f"answer bank — same fixed overflow"))
-        if "only marks" in tex:
+        # Match the ADDPLOT, not the bare phrase: a repair agent had to spell
+        # "only-marks" in its explanatory comments to avoid tripping the literal
+        # string, which means a comment could raise a false alarm and a
+        # rephrasing could hide a real one. The option only matters inside
+        # \addplot[...], so look there.
+        if re.search(r"\\addplot\s*\[[^\]]*only\s+marks", tex):
             found.append(("defect", f"{label}: \\addplot[only marks] layered on a "
                                     f"function plot — types a stray 0.1pt in "
                                     f"nullfont on some `samples` values; use \\fill"))

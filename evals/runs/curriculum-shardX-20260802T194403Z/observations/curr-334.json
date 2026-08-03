@@ -1,12 +1,12 @@
 {
   "task_id": "curr-334",
-  "recorded": "2026-08-02T20:12:53Z",
+  "recorded": "2026-08-03T15:10:49Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 1400.0,
-  "notes": "",
+  "latency_seconds": null,
+  "notes": "figure repair",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

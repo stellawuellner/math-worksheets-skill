@@ -83,7 +83,11 @@ passes exactly through the marked point.
   xlabel={\scriptsize hours}, ylabel={\scriptsize kilometres},
   width=7.4cm, height=5.4cm, enlargelimits=false]
 \addplot[thick, blue, domain=0:6] {3*x};
-\addplot[only marks, mark=*, mark size=2pt, red] coordinates {(5,15)};
+% Marked points are \fill circles, NOT a marks plot: layering a
+% marks plot on a function plot makes the engine typeset a stray 0.1pt in
+% nullfont (fatal "Missing character" faults, erratic in `samples`).
+% See references/latex-templates.md, "Completed graph".
+\fill[red] (axis cs:5,15) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}
@@ -101,7 +105,7 @@ line passes through the marked point.
   xlabel={\scriptsize litres of paint}, ylabel={\scriptsize square metres},
   width=7.4cm, height=5.4cm, enlargelimits=false]
 \addplot[thick, blue, domain=0:8] {2.5*x};
-\addplot[only marks, mark=*, mark size=2pt, red] coordinates {(4,10)};
+\fill[red] (axis cs:4,10) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}
@@ -166,7 +170,8 @@ the steeper line; runner B is the shallower one.
   width=7.4cm, height=5.4cm, enlargelimits=false]
 \addplot[thick, blue, domain=0:4.6] {3*x};
 \addplot[thick, orange, dashed, domain=0:6] {2*x};
-\addplot[only marks, mark=*, mark size=2pt, red] coordinates {(4,12) (5,10)};
+\fill[red] (axis cs:4,12) circle (2pt);
+\fill[red] (axis cs:5,10) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}
@@ -184,7 +189,9 @@ second, and say which runner is faster.}
   xlabel={\scriptsize minutes}, ylabel={\scriptsize litres},
   width=7.4cm, height=5.4cm, enlargelimits=false]
 \addplot[thick, blue, domain=0:6] {4*x};
-\addplot[only marks, mark=*, mark size=2pt, red] coordinates {(1,4) (3,12) (5,20)};
+\fill[red] (axis cs:1,4) circle (2pt);
+\fill[red] (axis cs:3,12) circle (2pt);
+\fill[red] (axis cs:5,20) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}
@@ -204,7 +211,7 @@ first few hours only.
   xlabel={\scriptsize hours}, ylabel={\scriptsize hundreds of bottles},
   width=7.4cm, height=5.4cm, enlargelimits=false]
 \addplot[thick, blue, domain=0:6] {3.5*x};
-\addplot[only marks, mark=*, mark size=2pt, red] coordinates {(4,14)};
+\fill[red] (axis cs:4,14) circle (2pt);
 \end{axis}
 \end{tikzpicture}
 \end{center}

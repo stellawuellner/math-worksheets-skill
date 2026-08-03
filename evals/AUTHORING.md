@@ -144,6 +144,14 @@ agent a rebuild.
 - **A prose-filled `\dfrac` is a width hazard.** Put wide `\text{}` fractions in
   display math. If a rebuild returns the *identical* overfull measurement, your
   edit hit the wrong line — the log names the paragraph, not the fraction.
+- **`distance` compares exactly unless you give `tol`.** A rounded irrational
+  (7.07 for 5·sqrt2) hard-fails without `"tol": 0.01`. Unlike `approx`, there is
+  no scale-aware default.
+- **Long prose does not belong inside `\ans{}`.** The box is unbreakable, so a
+  sentence in it always overflows. Box the short answer; put the grading note
+  outside.
+- **A shared display placed before problem 1 is invisible to the page budget.**
+  Charge it to the problems that consume it via `workspace_cm`.
 - **Declare stem furniture in `workspace_cm` BEFORE the first compile.** The
   budget charges a flat 0.6 cm of stem per problem, so a stem holding a table, a
   drawing, or displayed math costs 1.5–2 cm the model cannot see. Note the

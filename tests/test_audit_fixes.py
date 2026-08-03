@@ -236,6 +236,19 @@ check("a numeric expected keeps its sign",
       -7.0 in json_expected_nums({"id": 1, "type": "eval", "expr": "x-10",
                                   "at": {"x": 3}, "expected": -7}))
 
+# The interleave check counts PROBLEMS, not verify entries. A multi-part
+# problem is legitimately several entries under one id, and counting entries
+# made three parts of one problem read as three consecutive same-facet
+# problems — a run that did not exist on the printed page.
+_multi = ([{"id": 1, "facet": "a"}] * 3
+          + [{"id": i, "facet": "abc"[i % 3]} for i in range(2, 13)])
+check("multi-entry ids do not manufacture a facet run",
+      not verify.interleave_report(_multi, 12, None))
+check("a genuine run of four problems still flags",
+      verify.interleave_report(
+          [{"id": i, "facet": "a"} for i in range(1, 9)]
+          + [{"id": i, "facet": "b"} for i in range(9, 13)], 12, None))
+
 # Claimed by two agents and FALSE both times: spacing around a binary minus is
 # said to change extraction. It does not, and the brief said so for a while.
 check("spacing around a minus does not change extraction",

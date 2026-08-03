@@ -938,7 +938,21 @@ def interleave_report(problems, problem_count, fmt):
     unless the sheet declares "format": "drill". Ordering is a FLAG, never
     exit 1 — facet tags are self-reported, and a blocked review sheet is
     sometimes exactly what was asked for."""
-    seq = [p for p in problems if isinstance(p, dict) and p.get("facet")]
+    # One PROBLEM per position, not one verify entry. A multi-part problem is
+    # legitimately several entries under one id (SKILL.md's own encoding for
+    # multi-part items), and counting entries made three parts of one problem
+    # read as three consecutive same-facet problems. Two eval agents reported
+    # a run that did not exist on the printed page; one reordered a correct
+    # sheet to satisfy it. The student sees problems, so the check counts them.
+    seq, seen = [], set()
+    for p in problems:
+        if not (isinstance(p, dict) and p.get("facet")):
+            continue
+        pid = p.get("id")
+        if pid in seen:
+            continue
+        seen.add(pid)
+        seq.append(p)
     if not seq:
         if problem_count >= 12 and fmt != "drill":
             print('⚠ facets: none declared — interleave check skipped; tag '

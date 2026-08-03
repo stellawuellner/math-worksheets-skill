@@ -31,6 +31,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Measurement & data (length, mass, time) | 2.MD / 3.MD |
 | Measurement conversion, volume, angles (gr 4–5) | 4.MD / 5.MD |
 | Area & perimeter | 3.MD.C.7 / 3.MD.D.8 |
+| Coordinate plane, ordered pairs, patterns (gr 5) | 5.G.A.1–A.2 / 5.OA.B.3 |
 | Shapes & attributes | K.G / 1.G / 2.G / 3.G.A |
 
 ## Common Core codes by topic (grades 5–8)

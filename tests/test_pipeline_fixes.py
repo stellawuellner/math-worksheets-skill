@@ -146,6 +146,36 @@ with tempfile.TemporaryDirectory() as td:
           "-m pip install sympy" in r.stderr and "Traceback" not in r.stderr)
 
 print()
+print("Bookkeeping fields are not printed givens:")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+import check_prose_consistency as prose  # noqa: E402
+
+# A "difficulty": 3 tag donated 3 to the set of numbers the prose is allowed to
+# print, so a stem showing a stray 3 that nothing verifies could not be reported
+# as drift. Found because one stem flagged a phantom value in isolation and went
+# quiet in the real run; the only difference was the difficulty tag. The failure
+# direction is a silent pass, which is the direction every other checker here is
+# careful about. "standard" was the same leak and worse: "3.OA.C.7" donated a 3
+# and a 7 to every problem carrying it.
+_ENTRY = {"id": 1, "type": "eval", "expr": "a*b", "at": {"a": 7, "b": 2},
+          "expected": 14, "difficulty": 3, "workspace_cm": 5.0,
+          "standard": "3.OA.C.7", "points": 4}
+_givens = prose.json_numbers(_ENTRY)
+check("the mathematics still donates its givens", {7.0, 2.0, 14.0} <= _givens)
+check("a difficulty tag does not", 3.0 not in _givens)
+check("nor a workspace declaration", 5.0 not in _givens)
+check("nor a points value", 4.0 not in _givens)
+check("nor the digits of a standards code", 7.0 in _givens and 3.0 not in _givens)
+
+print()
+print("Inverse notation is a name, not a number:")
+check("$f^{-1}(x)$ contributes no phantom 1",
+      prose.prose_numbers(r"Find $f^{-1}(x)$ and evaluate $f^{-1}(8)$.") == {8.0})
+# A general exponent CAN be a printed given, so only the -1 is stripped.
+check("a real exponent survives",
+      prose.prose_numbers(r"A square of side $3$ has area $3^2$.") == {2.0, 3.0})
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} pipeline-fix test(s) failed: {FAILS}")
     sys.exit(1)

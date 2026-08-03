@@ -138,6 +138,13 @@ def _prose_stripped(block):
     # reader to ignore the one report line that carries real drift
     block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
     block = re.sub(r"\\\\\[[\d.]+[a-z]{2}\]", "", block)
+    # Inverse-function notation is a NAME, not a number. $f^{-1}(x)$ put a
+    # phantom 1 into every stem on an inverses sheet — six of ten problems on
+    # one, flagged as "missing from JSON" against a topic where the notation is
+    # not optional. Only the -1 exponent is stripped: a general exponent can be
+    # a printed given (the 2 in "a square of side 3 has area $3^2$"), so
+    # removing all of them would hide real drift.
+    block = re.sub(r"\^\s*\{\s*-\s*1\s*\}", "", block)
     return block
 
 
@@ -248,6 +255,15 @@ def includegraphics_problems(blocks):
             if re.search(r"\\includegraphics\b", blank_comments(b))]
 
 
+# Fields that say where a problem SITS rather than what it says. None of these
+# is ever printed on the sheet, so none may count as a printed given.
+_BOOKKEEPING = frozenset({
+    "id", "difficulty", "workspace_cm", "points", "order", "bloom", "skill",
+    "facet", "standard", "review_mode", "answer_unit", "tol", "tol_reason",
+    "domain", "unit", "var", "vars", "subtitle", "type",
+})
+
+
 def json_numbers(entry):
     found = set()
 
@@ -282,7 +298,14 @@ def json_numbers(entry):
                 if k2 not in ("desc", "note"):
                     walk(x)
 
-    walk({k: v for k, v in entry.items() if k != "id"})
+    # Only fields that describe the MATHEMATICS may donate a given. Bookkeeping
+    # fields describe the problem's place in the sheet, and letting them in is a
+    # silent pass: a "difficulty": 3 tag donated 3 to the given set, so a stem
+    # printing a stray 3 that nothing verifies could never be reported as drift.
+    # Found because the same stem flagged a phantom value in isolation and went
+    # quiet in the real run — the only difference was the difficulty tag.
+    # workspace_cm, points and the ordering keys are the same shape of leak.
+    walk({k: v for k, v in entry.items() if k not in _BOOKKEEPING})
     return found
 
 

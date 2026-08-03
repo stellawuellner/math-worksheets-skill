@@ -230,15 +230,36 @@ def main():
               f"directory.", file=sys.stderr)
         return 2
 
-    faults = check(open(doc_path).read(), open(template_path).read(),
-                   template_path)
+    doc = open(doc_path).read()
+    faults = check(doc, open(template_path).read(), template_path)
     name = os.path.basename(doc_path)
     print(f"Template-use report: {doc_path}")
     if not faults:
         print("✅ template shell ok — shipped preamble \\input, nothing shadowed.")
         return 0
+
+    # A title that is too long and a hand-rolled preamble are different faults
+    # with different fixes, and they were printed under one verdict. An author
+    # whose only problem was a 60-character \skillheading got the headline
+    # "hand-rolled shell" and twelve lines telling them to start the document
+    # with the shipped shell — which it already did. Two authors in one run
+    # rebuilt against that misdirection. The rule was right; the verdict it was
+    # filed under was not.
+    title_faults = header_title_faults(doc)
+    shell_faults = [f for f in faults if f not in title_faults]
+
+    if title_faults:
+        print("\n❌ heading too long for its slot:")
+        for f in title_faults:
+            print(f"  • {f}")
+        if not shell_faults:
+            print("\n  The document shell itself is fine — this is only about "
+                  "the heading text.")
+    if not shell_faults:
+        return 1
+
     print("\n❌ hand-rolled shell:")
-    for f in faults:
+    for f in shell_faults:
         print(f"  • {f}")
     print(f"""
   Start {name} with the shipped shell (SKILL.md step 3):

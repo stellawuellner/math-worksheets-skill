@@ -199,8 +199,35 @@ agent a rebuild.
 - **A rational coefficient may be written either way.** `\dfrac{2}{9}(x^3+1)^{3/2}`
   and `\dfrac{2(x^3+1)^{3/2}}{9}` both bind now — the checker offers the
   collapsed value and its parts as alternatives for symbolic answers.
-- **`solve` on a cubic needs `"domain": "real"`** when the other roots are
-  complex — expect it on any "find the growth factor" problem.
+- **`solve` needs `"domain": "real"` whenever the equation has complex roots** —
+  cubics AND exponentials both. `2**(x+1) - 2**(3*x-5)` and `2**x - (1/2)**x`
+  each fail without it, because `b**u = b**v` always carries complex branches.
+  Four problems on one sheet failed this way at once.
+- **`integrate` wants the `Abs` form of a log antiderivative.** `x*tan(x) +
+  ln(cos(x))` is rejected as undefined where the integrand is real;
+  `ln(Abs(cos(x)))` passes, and it is also the form a key should print.
+- **A `system` with `"expected": []` machine-verifies "no solution".** Parallel
+  lines PASS as inconsistent; a DEPENDENT pair with `[]` fails, because that
+  system has infinitely many. The `--schema` output shows only the
+  `{var: value}` shapes, so this is easy to miss and turns a planned `manual`
+  into a real check.
+- **An absolute-value equation verifies directly now** — `Abs(x-3)+2-6` with
+  `expected: [-1, 7]`. No need to square both sides to get it past the checker.
+- **A mixed `manual` + verified pair under one id is the clean way to write
+  "part (a) explain, part (b) compute"** — one answer-key segment, one box, the
+  verified half checked and the open half honestly flagged.
+- **Aim a `\skillheading` at about 40 characters of your own words.** The cap is
+  57 visible characters and a plain-English heading with no slug can still pass
+  it ("Skill 1 --- Naming a shape by counting how many straight sides it has" is
+  69).
+- **When every problem carries a figure, aim the whole block at ≤ 11.5cm so two
+  fit per page.** `\problem` makes the block unbreakable, so a 12.3cm block
+  packs one per page and strands half of every sheet. The page budget now
+  charges for that, and it will tell you — but the fix is a shorter block (a
+  smaller figure, or workspace beside the figure rather than under it), NOT a
+  larger `workspace_cm`. Inflating the declaration raises the ceiling without
+  recovering the stranded space, and the declaration is supposed to be a
+  measurement.
 - **`distance` compares exactly unless you give `tol`.** A rounded irrational
   (7.07 for 5·sqrt2) hard-fails without `"tol": 0.01`. Unlike `approx`, there is
   no scale-aware default.

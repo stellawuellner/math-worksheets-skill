@@ -252,6 +252,26 @@ def budget(spec, paper=DEFAULT_PAPER, size=DEFAULT_SIZE, access=DEFAULT_ACCESS):
     costs = [problem_cost(p, scale) for p in unique]
     total = sum(costs)
 
+    # PAGINATION IS QUANTISED AND THE SUM IS NOT. \problem wraps stem and
+    # workspace in ONE unbreakable minipage, so a block taller than half the
+    # column packs one per page and strands the rest of it. Four authors in one
+    # run hit the same wall: a 12-problem sheet where every problem carries a
+    # figure ran to 10 real pages against a ceiling of 7, and declaring
+    # workspace_cm honestly moved the ceiling to 9 — still short, because the
+    # sum never sees the stranded space. The gate then reads as "declare more
+    # workspace_cm", and an author who follows it literally keeps inflating a
+    # number that is supposed to be a measurement. That is the dishonest
+    # direction, produced by a model that could not describe the page.
+    #
+    # So blocks that cannot share a page are charged what they actually take.
+    # This RAISES ceilings; it never tightens one, because a sheet whose blocks
+    # do pack is unaffected. The remedy the report names changes accordingly:
+    # the fix for a one-per-page sheet is a shorter block, not a bigger number.
+    tall = [c for c in costs if c > page_cm / 2]
+    if tall:
+        packed = sum(c for c in costs if c <= page_cm / 2)
+        total = sum(math.ceil(c / page_cm) * page_cm for c in tall) + packed
+
     # an all-compact sheet is the two-column drill format: two per row
     all_compact = bool(unique) and all(
         WORKSPACE.get(p.get("type", "manual"), STANDARD) == COMPACT
@@ -270,6 +290,7 @@ def budget(spec, paper=DEFAULT_PAPER, size=DEFAULT_SIZE, access=DEFAULT_ACCESS):
         "min_pages": max(1, math.floor(ideal * (1 - SLACK_UNDER))),
         "two_column": all_compact,
         "paper": paper,
+        "tall_blocks": len(tall),
         "type_size": size,
         "accessible": access,
         "sheets_duplex": math.ceil(ideal / 2),
@@ -290,6 +311,15 @@ def render(b, doc="ws"):
         f"{b['min_pages']}-{b['max_pages']} · "
         f"{b['sheets_duplex']} sheet(s) of paper double-sided",
     ]
+    if b.get("tall_blocks"):
+        n = b["tall_blocks"]
+        lines.append(
+            f"  NOTE: {n} problem block(s) are taller than half a page, so only "
+            f"one fits per page and the rest of each page is stranded. The "
+            f"budget charges for that. If this sheet is longer than you want, "
+            f"the fix is a SHORTER BLOCK — a smaller figure, or workspace beside "
+            f"the figure instead of under it — not a larger workspace_cm, which "
+            f"raises the ceiling without recovering the stranded space.")
     for pid, what, cm in b.get("unpriced", []):
         lines.append(
             f"  NOTE: problem {pid}'s stem holds a {what} and declares no "

@@ -175,6 +175,40 @@ finally:
     os.unlink(_probe)
     os.unlink(_ws_tex.name)
 
+# ── Pagination is quantised and the sum is not ──────────────────────────────
+# \problem wraps stem and workspace in ONE unbreakable minipage, so a block
+# taller than half the column packs one per page and strands the rest of it.
+# Four authors in one run hit the same wall: a 12-problem sheet where every
+# problem carried a figure ran to 10 real pages against a ceiling of 7, and
+# declaring workspace_cm honestly moved the ceiling to 9 — still short, because
+# an additive model never sees the stranded space. The gate then reads as
+# "declare more workspace_cm", and an author who follows it literally keeps
+# inflating a number that is supposed to be a measurement.
+print()
+print("blocks that cannot share a page")
+_tall = json_file({"problem_count": 12, "problems": [
+    {"id": i, "type": "triangle", "workspace_cm": 11.0} for i in range(1, 13)]})
+_short = json_file({"problem_count": 12, "problems": [
+    {"id": i, "type": "eval", "workspace_cm": 5.0} for i in range(1, 13)]})
+try:
+    _, tall_out, _ = run_main([_tall])
+    _, tall_max, _ = run_main([_tall, "--max-pages"])
+    _, short_out, _ = run_main([_short])
+    _, short_max, _ = run_main([_short, "--max-pages"])
+    check("a one-per-page sheet is charged for the stranded space",
+          int(tall_max.strip()) >= 12,
+          f"ceiling {tall_max.strip()} for 12 blocks that pack one per page")
+    check("and is told the fix is a shorter block, not a bigger number",
+          "SHORTER BLOCK" in tall_out and "not a larger workspace_cm" in tall_out)
+    # The change may only ever RAISE a ceiling: a sheet whose blocks do pack is
+    # untouched, or this would newly fail work that was passing.
+    check("a sheet whose blocks pack two per page is unaffected",
+          int(short_max.strip()) <= 6, f"ceiling {short_max.strip()}")
+    check("and gets no stranded-space note", "SHORTER BLOCK" not in short_out)
+finally:
+    os.unlink(_tall)
+    os.unlink(_short)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} page-budget test(s) failed:")

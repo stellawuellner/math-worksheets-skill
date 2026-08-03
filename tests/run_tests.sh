@@ -345,6 +345,49 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ test_figure_scope.py (valued figure vs blank workspace)"
 
+# ── Template verdicts are separate faults (check_template_use.py) ────────────
+# A 60-character \skillheading was reported under the headline "hand-rolled
+# shell" with twelve lines telling the author to start the document with the
+# shipped shell — which it already did. Two authors in one run rebuilt against
+# that misdirection. The rule was right; the verdict it was filed under was not.
+tmpl_dir=$(mktemp -d)
+cp "$SCRIPT_DIR/../templates/worksheet-preamble.tex" "$tmpl_dir/"
+LONGHEAD="Skill 1 --- Naming a shape by counting how many straight sides it has"
+write_ss() { # preamble-line heading
+  cat > "$tmpl_dir/ss.tex" <<TEXEOF
+\\documentclass[12pt]{article}
+\\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
+$1
+\\ssheader{Shapes}
+\\begin{document}
+\\sstitleblock{Shapes}
+\\skillheading{$2}
+\\end{document}
+TEXEOF
+}
+write_ss '\\input{worksheet-preamble}' "$LONGHEAD"
+out=$("$PYTHON" "$SCRIPT_DIR/check_template_use.py" "$tmpl_dir/ss.tex" \
+        --template "$tmpl_dir/worksheet-preamble.tex" 2>&1)
+if echo "$out" | grep -q "heading too long" && ! echo "$out" | grep -q "hand-rolled shell"; then
+  echo "✅ a long heading on a correct shell is reported as a heading fault"
+else
+  echo "❌ a long heading is still filed under 'hand-rolled shell'"; exit 1
+fi
+if echo "$out" | grep -q "shell itself is fine"; then
+  echo "✅ and the author is told the shell is not the problem"
+else
+  echo "❌ heading-only fault does not reassure about the shell"; exit 1
+fi
+write_ss '\\newcommand{\\problem}[1]{#1}' "Naming shapes by side count"
+out=$("$PYTHON" "$SCRIPT_DIR/check_template_use.py" "$tmpl_dir/ss.tex" \
+        --template "$tmpl_dir/worksheet-preamble.tex" 2>&1)
+if echo "$out" | grep -q "hand-rolled shell" && echo "$out" | grep -q "Start ss.tex with"; then
+  echo "✅ a genuinely hand-rolled shell still gets the shell verdict and remedy"
+else
+  echo "❌ shell fault lost its verdict or its remedy"; exit 1
+fi
+rm -rf "$tmpl_dir"
+
 # ── Large-print page budget (tests/test_page_budget_type_size.py) ────────────
 # The budget is calibrated at 12pt and SKILL.md offers 14pt/17pt accessible
 # output, claiming it adapted automatically. It did not: a correct 17pt sheet

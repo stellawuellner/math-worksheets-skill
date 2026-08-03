@@ -210,6 +210,28 @@ check("a comma-separated list is not merged",
       prose.prose_numbers(r"$1, 2, 3$") == {1.0, 2.0, 3.0})
 
 print()
+print("The figure-label scan and the JSON side must be able to agree:")
+# Three separate leaks made the audit-3d figure report noise on whole bands.
+check("a fraction tick and a JSON fraction meet",
+      0.125 in prose.figure_label_numbers(r"\node[below] at (1,-0.45) {$\frac{1}{8}$};")
+      and 0.125 in prose.json_numbers(
+          {"id": 1, "type": "stats", "data": ["1/8", "5/8"],
+           "measure": "range", "expected": "1/2"}))
+# The label is the LAST braced group; a computed coordinate is not the label.
+check("a braced coordinate is not read as the label",
+      prose.figure_label_numbers(r"\node[below] at (\v,{0.32*\i}) {$7$};") == {7.0})
+check("an ordinary node label still reads",
+      prose.figure_label_numbers(r"\node at (0,0) {$8$};") == {8.0})
+# A dimension can be a fraction of a length, and \rule hides its thickness in
+# the second argument.
+check("a minipage width fraction does not leak",
+      prose.prose_numbers(r"\begin{minipage}[t]{0.50\linewidth}A\end{minipage}") == set())
+check("a rule's thickness does not leak",
+      prose.prose_numbers(r"\rule{\linewidth}{0.4pt}") == set())
+check("real prose numbers still count",
+      prose.prose_numbers(r"She has $12$ apples and $0.5$ kg.") == {0.5, 12.0})
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} pipeline-fix test(s) failed: {FAILS}")
     sys.exit(1)

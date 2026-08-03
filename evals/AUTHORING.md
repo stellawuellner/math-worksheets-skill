@@ -110,6 +110,18 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **Any inline expression wider than about half a box line needs display math.**
+  Inline math has no break point, so the surrounding prose cannot absorb it —
+  and a `formulabox`'s mdframed inset makes the study guide bite at widths the
+  worksheet survives. It is not only `\dfrac`: an inline `\sqrt` over
+  subscripted binomials overflowed by 22pt, and a row of three inline formulas
+  separated by `\quad` by 11pt. Put them in `\[ ... \]`.
+- **Draw grid lines you can actually see.** `[gray!30, very thin]` at a 0.33cm
+  unit renders as effectively blank paper at reading size; `[gray!55, thin]` at
+  0.38cm is legible. No gate catches this — `check_overprint` and `check_log`
+  both pass an unreadable grid — and visual/print quality is a scored dimension.
+  Render a page and look at it.
+
 - **In a STUDY GUIDE, `\ans{}` must sit inside `$...$`.** The preamble defines
   it as `\boldsymbol`, which is math-only; `\akheader` renews it to a text-mode
   boxed form, so the same markup that is correct in an answer key is a fatal

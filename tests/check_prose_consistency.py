@@ -144,6 +144,15 @@ def _prose_stripped(block):
     # numbers has stripped both spellings all along; only this side was missing
     # them, and an author found it by rewriting the same stems without
     # separators and watching the rate go from 15.4% to 84.6%.
+    # A dimension can be a FRACTION OF A LENGTH, not just "7.2cm": the
+    # two-column figure-beside-questions idiom writes
+    # \begin{minipage}[t]{0.50\linewidth}, and \rule{\linewidth}{0.4pt} puts
+    # its thickness in the SECOND argument with a length macro in the first.
+    # Both leaked on nearly every elementary sheet — one scored 42.1% until the
+    # author hoisted the width into a \newlength and swapped in \hrulefill,
+    # after which the identical content scored 100%.
+    block = re.sub(r"\{\s*[\d.]+\s*\\[a-zA-Z]+\s*\}", "{}", block)
+    block = re.sub(r"\\rule\s*(?:\[[^\]]*\])?\{[^{}]*\}\{[^{}]*\}", "", block)
     block = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", block)
     block = re.sub(r"(?<=\d),(?=\d{3})", "", block)
     block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
@@ -224,8 +233,15 @@ def figure_label_numbers(block):
     JSON (audit 3d: previously the whole tikzpicture was stripped, so a figure
     labeled with a wrong side length was never checked). Excludes coordinates."""
     nums = set()
-    for m in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", block):
-        label = m.group(1)
+    # The label is the LAST braced group of the \node, not the first. The old
+    # pattern stopped its option scan at the first "{", which on
+    # "\node[below] at (\v,{0.32*\i}) {$7$}" is the braced COORDINATE — so the
+    # coordinate arithmetic was read as the label and 0.32 was reported as a
+    # printed figure value on all ten problems of one sheet. Any computed tikz
+    # coordinate hits this.
+    for m in re.finditer(r"\\node\b((?:[^;{]|\{[^{}]*\})*)\{"
+                         r"([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", block):
+        label = m.group(2)
         # A MIXED NUMBER IS ONE VALUE, and the frac rewrite below turns
         # "1\tfrac{1}{2}" into "11/2" — which NUM_RE, having no division
         # branch here, then reads as 11. Every grade-4/5 line plot with
@@ -339,6 +355,18 @@ def json_numbers(entry):
         elif isinstance(v, str):
             for n in NUM_RE.findall(v):
                 found.add(float(n))
+            # A JSON "1/8" and a figure tick of 1/8 are the same quantity, but
+            # the two sides read it differently: the label scanner offers the
+            # value AND the parts, this side offered only the parts, so 0.125
+            # could never be donated and every fraction-marked figure reported
+            # a value "missing from JSON". That is the whole 5.MD.B.2 line-plot
+            # band. Both sides now offer both readings and therefore meet.
+            for a, b in re.findall(r"(-?\d+(?:\.\d+)?)\s*/\s*(-?\d+(?:\.\d+)?)", v):
+                try:
+                    if float(b):
+                        found.add(abs(float(a) / float(b)))
+                except ValueError:
+                    pass
         elif isinstance(v, list):
             for x in v:
                 walk(x)

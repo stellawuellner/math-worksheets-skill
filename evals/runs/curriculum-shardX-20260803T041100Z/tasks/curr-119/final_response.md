@@ -36,13 +36,17 @@ it is not described anywhere as machine-verified. Four planted wrong answers
 (192, 19, 115, 128) are declared misconception traps, so the verifier proved each
 is distinguishably wrong and really is what the overgeneralized rule computes.
 
-**Standard tags omitted, deliberately.** The focus here is grade 4–5 number
-patterns and factor/multiple reasoning (CCSS 4.OA.B / 4.OA.C). `references/
-standards-map.md` has no row for it — its grade K–4 table stops at multiplication
-and division word problems (3.OA.A.3 / 4.OA.A.2) and has no patterns, factors,
-multiples or primes row. Rather than tag an off-grade code, `"standard"` is left
-off every problem, as the brief instructs. Adding a `4.OA.B / 4.OA.C` row to the
-map is the fix, but that file is outside this task's write scope.
+**Standard tags.** The focus here is grade 4–5 number patterns and
+factor/multiple reasoning, so every worksheet problem and every study-guide entry
+is tagged **`4.OA.B.4 / 4.OA.C.5`**, verbatim from the "Factors, multiples,
+primes, number patterns" row of `references/standards-map.md`. That row covers
+both halves of the sheet: generating and analysing a number or shape pattern and
+identifying features the stated rule did not name (4.OA.C.5), and the
+factor/multiple/prime reasoning the counterexamples run on — a multiple of 4 that
+is not a multiple of 8, an odd number that is composite (4.OA.B.4). The earlier
+build left `"standard"` off every problem because that row did not yet exist in
+the map and the nearest available code (3.OA.A.3 / 4.OA.A.2, multiplication and
+division word problems) does not describe this content.
 
 **Gate-log note.** The prose-consistency reports show a match rate near 60% on
 both documents. Every flagged number is a printed *pattern term* (the 9, 12 of

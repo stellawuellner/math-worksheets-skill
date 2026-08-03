@@ -44,15 +44,16 @@ from the correct answer, and they print in the key's "common wrong answers" bloc
 
 Two of the six problems (3 and 5) are explicit find-and-fix items, as requested.
 
-## One honest gap: the standards code
+## The standards code
 
-`references/standards-map.md` has **no row for K–1 measurement**. Its nearest row,
-"Measurement & data (length, mass, time) → 2.MD / 3.MD", is a grade 2–3 code, and the
-map's own guidance says an off-grade tag is worse than an honest gap. So the `standard`
-field is deliberately **left off** every problem in this sheet rather than tagged with a
-code that does not describe a first-grade lesson. The content itself is standard 1.MD
-material (measure a length by iterating a shorter unit end to end with no gaps or
-overlaps); a `1.MD` row should be added to the map.
+`references/standards-map.md` now carries the row this sheet needed —
+"Measurement, length comparison, time (K–1) → `K.MD / 1.MD`" — so all six worksheet
+problems and all six study-guide entries are tagged **`K.MD / 1.MD`**, verbatim from the
+map. That is the code for the content: measuring a length by iterating a shorter unit
+end to end with no gaps or overlaps, comparing two lengths, and answering how-many-more
+questions about the resulting counts. The earlier build left the field off because the
+map's nearest row was then "Measurement & data (length, mass, time) → 2.MD / 3.MD", a
+grade 2–3 code that does not describe a first-grade lesson.
 
 ## Gate chain
 

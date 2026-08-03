@@ -53,19 +53,19 @@ Problem 12(c) also asks for a one-sentence explanation; the key gives a model
 answer and states what to accept. The value on every answer line is the
 machine-checked one.
 
-## One honest gap in the standards map
+## Standards tags
 
-Four problems carry a code from `references/standards-map.md`
-(`5.NBT.B.7 / 6.NS.B.3` for the two decimal-shift problems,
-`2.NBT.B.5 / 3.NBT.A.2 / 4.NBT.B.4` for the two multi-digit estimation
-problems). **The other eight problems have no `standard` field on purpose.**
-The map has no row for grade 4–5 place-value understanding — the codes this
-topic actually lives under are 4.NBT.A.1–A.3 and 5.NBT.A.1–A.2, and neither
-appears in the file. The rule is to use that file verbatim and never invent a
-code, so the field was left off rather than filled with an off-grade or
-made-up one. Everything else (difficulty, Bloom level, skill, facet) is tagged
-on all twelve. Adding a "Place value & powers of ten (gr 4–5) | 4.NBT.A /
-5.NBT.A" row to the map would close this.
+All twelve problems carry a code from `references/standards-map.md`. Four keep
+the codes they already had — `5.NBT.B.7 / 6.NS.B.3` for the two decimal-shift
+problems, `2.NBT.B.5 / 3.NBT.A.2 / 4.NBT.B.4` for the two multi-digit
+estimation problems. The other eight (1, 2, 3, 6, 8, 10, 11, 12) are tagged
+**`4.NBT.A.1–A.3 / 5.NBT.A.1–A.2`**, verbatim from the map's "Place value &
+powers of ten (gr 4–5)" row, which is exactly what they exercise: a digit
+worth ten times the digit to its right, powers of ten in exponent form,
+shifting digits by 10/100/1000, expanded form written with powers of ten, and
+rounding to a named place. The earlier build left those eight untagged because
+that row did not yet exist in the map. Everything else (difficulty, Bloom
+level, skill, facet) was already tagged on all twelve.
 
 ## Study guide
 

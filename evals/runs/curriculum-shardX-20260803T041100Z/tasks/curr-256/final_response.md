@@ -44,16 +44,19 @@ run: 2.
 
 ## Standards note
 
-**No `standard` tag is set on this sheet.** The focus is CCSS **A-REI.A.1**
-("explain each step in solving a simple equation"), and
-`references/standards-map.md` has no row for A-REI.A / A-REI.B as a whole —
-its A-REI entries are `HSA-REI.A.2` (radical/rational, extraneous roots),
-`HSA-REI.B.4` (quadratics) and `HSA-REI.C.6/C.7` (systems), none of which
-describes justifying transformations of a linear equation. The nearest
-in-map codes (`6.EE.B.7 / 7.EE.B.4`, `8.EE.C.7`) are off-grade for Algebra 1.
-Per the brief I left `standard` off rather than tag an off-grade or unrelated
-code; the row that should exist is `Justifying steps in solving equations →
-HSA-REI.A.1`.
+Every entry in both verification files is tagged **`HSA-REI.A.1`**, verbatim
+from the "Justifying steps in solving equations" row of
+`references/standards-map.md`. That is precisely this sheet's subject: A-REI.A.1
+asks the student to explain each step in solving an equation as following from
+the previous step and to justify a solution method, which is what the Step /
+Reason table makes them do on every problem — including the equivalence
+judgements (is this rewrite legal), the find-the-illegal-step items, and the
+inequality items, where the step being justified is multiplying or dividing by
+a negative. Problem 7 also touches HSA-REI.B.4, but what it assesses is the
+illegality of dividing both sides by $x$, so it stays with A-REI.A.1. The
+earlier build left the field off because that row did not yet exist in the map
+and the nearest in-map codes (`6.EE.B.7 / 7.EE.B.4`, `8.EE.C.7`) are off-grade
+for Algebra 1.
 
 ## Gate history
 

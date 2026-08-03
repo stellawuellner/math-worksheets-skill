@@ -1,31 +1,26 @@
 {
-  "topic": "study guide: separable differential equations and initial conditions",
+  "topic": "study guide: separation and initial-condition errors",
   "problem_count": 6,
   "problems": [
-    {"id": 1, "type": "integrate", "expr": "8*x**3 - 3",
-     "expected": "2*x**4 - 3*x",
-     "skill": "integrate-both-sides", "standard": "FUN-7",
-     "difficulty": 1, "bloom": "apply"},
+    {"id": 1, "type": "approx", "expr": "2*exp(2*1**2)", "expected": 14.78, "tol": 0.01,
+     "skill": "separate-variables", "facet": "separate-variables",
+     "standard": "FUN-7", "difficulty": 2, "bloom": "apply"},
+    {"id": 2, "type": "approx", "expr": "exp(3)", "expected": 20.09, "tol": 0.01,
+     "role": "tryit", "skill": "separate-variables", "facet": "separate-variables",
+     "standard": "FUN-7", "difficulty": 3, "bloom": "apply"},
 
-    {"id": 2, "type": "integrate", "expr": "10*x - 6*x**2",
-     "expected": "5*x**2 - 2*x**3",
-     "role": "tryit", "skill": "integrate-both-sides", "standard": "FUN-7",
-     "difficulty": 1, "bloom": "apply"},
+    {"id": 3, "type": "approx", "expr": "4*exp(3)", "expected": 80.34, "tol": 0.01,
+     "skill": "constant-of-integration", "facet": "constant-of-integration",
+     "standard": "FUN-7", "difficulty": 3, "bloom": "apply"},
+    {"id": 4, "type": "approx", "expr": "5*exp(2)", "expected": 36.95, "tol": 0.01,
+     "role": "tryit", "skill": "constant-of-integration", "facet": "constant-of-integration",
+     "standard": "FUN-7", "difficulty": 3, "bloom": "apply"},
 
-    {"id": 3, "type": "approx", "expr": "sqrt(3**2 + 16)", "expected": 5,
-     "skill": "separate-variables", "standard": "FUN-7",
-     "difficulty": 2, "bloom": "apply"},
-
-    {"id": 4, "type": "approx", "expr": "sqrt(5**2 + 144)", "expected": 13,
-     "role": "tryit", "skill": "separate-variables", "standard": "FUN-7",
-     "difficulty": 2, "bloom": "apply"},
-
-    {"id": 5, "type": "approx", "expr": "7*exp(5*0.2)", "expected": 19.03, "tol": 0.01,
-     "skill": "apply-initial-condition", "standard": "FUN-7",
-     "difficulty": 3, "bloom": "analyze"},
-
-    {"id": 6, "type": "approx", "expr": "6*exp(2*0.5)", "expected": 16.31, "tol": 0.01,
-     "role": "tryit", "skill": "apply-initial-condition", "standard": "FUN-7",
-     "difficulty": 3, "bloom": "analyze"}
+    {"id": 5, "type": "approx", "expr": "sqrt(4**2 + 9)", "expected": 5,
+     "skill": "apply-initial-condition", "facet": "apply-initial-condition",
+     "standard": "FUN-7", "difficulty": 4, "bloom": "analyze"},
+    {"id": 6, "type": "approx", "expr": "sqrt(12**2 + 25)", "expected": 13,
+     "role": "tryit", "skill": "apply-initial-condition", "facet": "apply-initial-condition",
+     "standard": "FUN-7", "difficulty": 4, "bloom": "analyze"}
   ]
 }

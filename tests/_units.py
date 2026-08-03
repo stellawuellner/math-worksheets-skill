@@ -36,6 +36,8 @@ _TOKEN_RE = re.compile(r"\\[a-zA-Z]+|[A-Za-z]+|\^|\d+|\S")
 # {\,ft}, cm$^2$ and \mathrm{ft} all reduce to the same core sequence.
 # ("\\" + ",") is the tokenized form of the thin space \, .
 _WRAPPERS = {"\\text", "\\mathrm", "{", "}", "$", "\\", ","}
+# Longest real unit label in the lexicon is two words ("sq ft", "cubic cm").
+_MAX_UNIT_WORDS = 2
 
 
 def tokenize(s):
@@ -85,7 +87,16 @@ def undeclared_units(text, expected_strings, declared=()):
     """
     found = set()
     for m in re.finditer(r"\\(?:text|mathrm)\{([^{}]*)\}", text):
-        toks = _core(tokenize(m.group(1)))
+        body = m.group(1)
+        # \text{} carrying a SENTENCE is prose, not a unit declaration. An
+        # answer reading "2 \text{ marbles in the last box}" was failed for an
+        # undeclared inch, because "in" is a lexicon token. A unit label is one
+        # or two words ("cm", "sq ft"); anything longer is the author writing
+        # English, and scanning it produces false failures on exactly the
+        # plain-language answers elementary sheets are made of.
+        if len(body.split()) > _MAX_UNIT_WORDS:
+            continue
+        toks = _core(tokenize(body))
         i = 0
         while i < len(toks):
             hit = None

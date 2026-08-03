@@ -172,6 +172,63 @@ _entry = {"id": 1, "type": "eval", "expr": "a-b", "at": {"a": 50, "b": 187},
 check("a negative JSON given matches its unsigned printed form",
       137.0 in json_numbers(_entry))
 
+# ── verifier expressiveness (eval run) ───────────────────────────────────────
+print("verifier expressiveness (eval-run findings)")
+check("d is a legal variable (arithmetic common difference)",
+      status({"id": 1, "type": "eval", "expr": "a + 4*d",
+              "at": {"a": 7, "d": 3}, "expected": 19}) == "PASS")
+check("f is a legal variable (function value)",
+      status({"id": 1, "type": "eval", "expr": "f**2 + 1",
+              "at": {"f": 5}, "expected": 26}) == "PASS")
+def _rejected(expr, at):
+    """True when the schema refuses the name outright (raise or non-PASS)."""
+    try:
+        return status({"id": 1, "type": "eval", "expr": expr,
+                       "at": at, "expected": 3}) != "PASS"
+    except verify.VerifyInputError:
+        return True
+
+
+for _reserved in ("e", "i", "o"):
+    check(f"{_reserved!r} stays reserved (reads as a constant or as zero)",
+          _rejected(f"{_reserved}+1", {_reserved: 2}))
+# SKILL.md says lift literals into named variables so the prose checker sees the
+# givens; that made every trap on such a problem illegal, because trap exprs
+# were parsed with no bindings. The two rules contradicted each other.
+def _trap_ok(trap_expr):
+    """check_traps is a pass of its own; call it directly."""
+    return verify.check_traps(
+        {"id": 1, "type": "eval", "expr": "n + 3", "at": {"n": 17},
+         "expected": 20,
+         "traps": [{"desc": "d", "expr": trap_expr, "value": 19}]})[0]
+
+
+check("a trap expression inherits the problem's own bindings", _trap_ok("n + 2"))
+check("a trap with a genuinely unbound symbol is still refused",
+      not _trap_ok("w + 2"))
+
+# \vspace*{} is the layout-correct spelling inside a \problem minipage; the
+# prose stripper had no star, so the checker penalised the very form the layout
+# gate requires. One eval sheet reported 0 of 4 givens matched because of it.
+from check_prose_consistency import prose_numbers   # noqa: E402
+check("starred spacing macros are not read as prose numbers",
+      prose_numbers(r"Find the slope.\vspace*{4.5cm}") == set())
+check("unstarred spacing macros are still stripped",
+      prose_numbers(r"Find the slope.\vspace{4.5cm}") == set())
+check("a real measurement in prose is still counted",
+      prose_numbers(r"She ran 4.5 km.") == {4.5})
+
+# The reverse unit gate scans \text{} inside a boxed answer. A plain-language
+# answer — "2 marbles in the last box" — was failed for an undeclared inch,
+# because "in" is a lexicon token. Elementary answers are made of such prose.
+from _units import undeclared_units   # noqa: E402
+check("a sentence inside a boxed answer is prose, not a unit",
+      undeclared_units(r"\ans{2 \text{ marbles in the last box}}", [], []) == [])
+check("a real one-word unit is still caught",
+      undeclared_units(r"\ans{5 \text{ in}}", [], []) == ["in"])
+check("a declared unit is still accepted",
+      undeclared_units(r"\ans{5 \text{ in}}", [], ["in"]) == [])
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

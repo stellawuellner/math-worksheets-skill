@@ -1,132 +1,112 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \input{worksheet-preamble}
-% The generated quick-answer bank closes its "Common wrong answers" list with a
-% full-width \rule inside the same paragraph as the last \commonerror line;
-% emergency stretch lets TeX take that line break instead of shipping an
-% overfull box.
-\setlength{\emergencystretch}{4cm}
-\akheader{Separation and Initial-Condition Errors}
+\akheader{Separable Equation Errors}
 \begin{document}
 \aktitleblock{Diagnosing Separation and Initial-Condition Errors}{AP Calculus AB/BC $\bullet$ Error Analysis}{}
-\input{qa_diffeq_curr484}
+\input{qa_separable_diffeq_errors_curr484}
 
-\problem{The right side holds no $y$, so this integrates directly:
-$y = \displaystyle\int (6x^{2} - 4x)\,dx$, giving \ans{y = 2x^{3} - 2x^{2} + C}.
+\problem{\textbf{General solution of $\dfrac{dy}{dx} = 8x^{3} - 6x$.}\\
+\textbf{Step 1 (check for separation).} The right side holds no $y$, so the
+variables are already separated and the equation integrates directly.
+\textbf{Step 2 (integrate).}
+$y = \displaystyle\int (8x^{3} - 6x)\,dx$, so \ans{y = 2x^{4} - 3x^{2} + C}.
+\textbf{Step 3 (interpret $C$).} On a slope field, $C$ selects which member of
+the family of parallel solution curves you are on --- every curve has the same
+slope at a given $x$, so they differ only by a vertical shift.}
 
-\smallskip\noindent The constant selects \emph{which} curve of the family you
-are on: the slope field is identical for every value of $C$, and $C$ slides the
-whole solution curve vertically. Without it there is nothing left for an initial
-condition to pin down.}
+\problem{\textbf{Same equation with $y(1) = 4$; evaluate $y(2)$.}\\
+\textbf{Step 1 (integrate first).} The general solution is
+$y = 2x^{4} - 3x^{2} + C$. The initial condition can be used only now, once a
+$C$ exists to solve for --- that is the step it belongs to.
+\textbf{Step 2 (apply the condition).} $y(1) = 2 - 3 + C = 4$, so $C = 5$ and
+the particular solution is $y = 2x^{4} - 3x^{2} + 5$.
+\textbf{Step 3 (evaluate).} $y(2) = 32 - 12 + 5 = \ans{25}$. A student who
+integrates and then evaluates without solving for $C$ reports 20 --- the
+antiderivative, not the solution of this initial-value problem.}
 
-\problem{From problem 1, $y = 2x^{3} - 2x^{2} + C$. Apply the initial condition
-\emph{to the general solution}: $y(1) = 2 - 2 + C = 5$, so $C = 5$ and the
-particular solution is $y = 2x^{3} - 2x^{2} + 5$. Then
-$y(2) = 2(8) - 2(4) + 5 = 16 - 8 + 5$, so \ans{y(2) = 13}.
+\problem{\textbf{Find and fix: $\dfrac{dy}{dx} = 2xy$, $y(0) = 3$, find
+$y(1)$.}\\
+\textbf{Step 1 (name the first wrong line).} The very first line. Wren writes
+$\int dy = \int 2xy\,dx$ and then integrates the right side as if $y$ were a
+constant. It is not: $y$ is the unknown \emph{function} of $x$, so
+$\int 2xy\,dx$ cannot be evaluated at all until the $y$ is moved to the other
+side.
+\textbf{Step 2 (separate, then integrate).}
+$\dfrac{dy}{y} = 2x\,dx$, so $\ln|y| = x^{2} + C$ and $y = Ae^{x^{2}}$ with
+$A = e^{C}$.
+\textbf{Step 3 (apply the condition and evaluate).} $y(0) = A = 3$, so
+$y = 3e^{x^{2}}$ and $y(1) = 3e \approx \ans{8.15}$. Check:
+$y' = 3e^{x^{2}}(2x) = 2xy$ $\checkmark$. Wren's 4 is the answer to a different,
+non-separable computation.}
 
-\smallskip\noindent\textit{Watch for:} $8$, which is this particular solution
-evaluated with the constant thrown away. Check by differentiating:
-$\frac{d}{dx}(2x^{3} - 2x^{2} + 5) = 6x^{2} - 4x$ $\checkmark$}
+\problem{\textbf{Find and fix: $\dfrac{dy}{dx} = 5y$, $y(0) = 6$, find
+$y(1)$.}\\
+\textbf{Step 1 (name the first wrong line).} The second. $\ln|y| = 5x + C$ is
+correct; exponentiating it is not $y = e^{5x} + C$. Exponentiating a
+\emph{sum} gives a \emph{product}: $e^{5x + C} = e^{C}e^{5x}$.
+\textbf{Step 2 (carry the constant as a factor).} Write $A = e^{C}$, so the
+general solution is $y = Ae^{5x}$ --- the constant multiplies, it does not add.
+\textbf{Step 3 (apply the condition and evaluate).} $y(0) = A = 6$, so
+$y = 6e^{5x}$ and $y(1) = 6e^{5} \approx \ans{890.48}$. Check:
+$y' = 30e^{5x} = 5y$ $\checkmark$. Dev's 153.41 fails that check, which is the
+one-line test that would have caught the error before any arithmetic.}
 
-\problem{\textbf{First wrong line:} $\displaystyle\int dy = \int xy\,dx$. Wren
-treated the $y$ on the right as a constant and integrated $xy$ with respect to
-$x$. The equation is not yet separated: every $y$ must be moved to the $dy$ side
-first, because $y$ is a \emph{function of} $x$ and cannot ride along as a
-coefficient.
+\problem{\textbf{Find and fix: $\dfrac{dy}{dx} = \dfrac{x}{y}$, $y(0) = 4$, find
+$y(3)$.}\\
+\textbf{Step 1 (name what is wrong).} The square root was taken term by term.
+$\sqrt{u^{2} + v^{2}}$ is not $u + v$; the radical must be applied to the whole
+side at once, after the constant has been folded in.
+\textbf{Step 2 (do it correctly).} From $\dfrac{y^{2}}{2} = \dfrac{x^{2}}{2} + C$,
+multiply through by 2 to get $y^{2} = x^{2} + K$ with $K = 2C$. Applying
+$y(0) = 4$ gives $16 = 0 + K$, so $K = 16$ and $y = \sqrt{x^{2} + 16}$ (the
+positive root, because $y(0)$ is positive).
+\textbf{Step 3 (evaluate).} $y(3) = \sqrt{9 + 16} = \ans{5}$. Check:
+$y' = \dfrac{x}{\sqrt{x^{2}+16}} = \dfrac{x}{y}$ $\checkmark$. Rosa's 7 is
+exactly $3 + 4$, the signature of the term-by-term root.}
 
-\smallskip\noindent\textbf{Correct solution.} Separate, then integrate:
-\[ \frac{1}{y}\,dy = x\,dx \ \Rightarrow \ \ln|y| = \frac{x^{2}}{2} + C
-   \ \Rightarrow \ y = Ae^{x^{2}/2}. \]
-$y(0) = 2$ gives $A = 2$, so $y = 2e^{x^{2}/2}$ and
-$y(2) = 2e^{2} = 14.7781\ldots$, so \ans{y(2) \approx 14.78}.
+\problem{\textbf{Find and fix: $\dfrac{dy}{dx} = y^{2}$, $y(0) = 2$, find
+$y(0.25)$.}\\
+\textbf{Step 1 (name the missing sign).} $\displaystyle\int y^{-2}dy
+= -\,\dfrac{1}{y}$, not $+\dfrac{1}{y}$. The power rule sends $y^{-2}$ to
+$\dfrac{y^{-1}}{-1}$, and Sam dropped that minus.
+\textbf{Step 2 (redo with the sign).} $-\dfrac{1}{y} = x + C$, and
+$y(0) = 2$ gives $-0.5 = C$. So $-\dfrac{1}{y} = x - 0.5$, that is
+$y = \dfrac{1}{0.5 - x}$.
+\textbf{Step 3 (evaluate and read the behaviour).}
+$y(0.25) = \dfrac{1}{0.25} = \ans{4}$. As $x \to 0.5^{-}$ the denominator goes
+to zero and $y \to \infty$: the solution blows up in finite time, so its
+interval of existence stops at $x = 0.5$. Sam's version, $y = \dfrac{1}{x+0.5}$,
+decays smoothly forever and hides that blow-up entirely --- the sign error
+changes the qualitative behaviour, not just a digit.}
 
-\smallskip\noindent Wren's method reports $4$. The gap between $4$ and $14.78$
-is the whole cost of not separating: exponential growth was flattened into a
-parabola.}
+\problem{\textbf{$\dfrac{dy}{dx} = \dfrac{6x}{x^{2}+1}$, $y(0) = 2$; evaluate
+$y(2)$.}\\
+\textbf{Step 1 (integrate).} With $u = x^{2}+1$ the right side integrates to
+$3\ln(x^{2}+1)$, so $y = 3\ln(x^{2}+1) + C$.
+\textbf{Step 2 (apply the condition).} $y(0) = 3\ln 1 + C = C = 2$, so
+$y = 3\ln(x^{2}+1) + 2$. Applying the condition \emph{before} integrating would
+be meaningless: there is no constant to determine yet, and $\frac{dy}{dx}$ is a
+statement about a slope, not about a value of $y$.
+\textbf{Step 3 (evaluate).} $y(2) = 3\ln 5 + 2 \approx \ans{6.83}$. A student
+who never writes the constant reports 4.83 --- the antiderivative evaluated at
+2, which satisfies the differential equation but not the initial condition.}
 
-\problem{\textbf{First wrong line:} $y = e^{3x} + C$. Exponentiating
-$\ln|y| = 3x + C$ gives $|y| = e^{3x + C} = e^{C}e^{3x}$ --- the constant rides
-along as a \emph{factor}, never as a term, because $e^{a+b} = e^{a}e^{b}$, not
-$e^{a} + b$. Writing $A = e^{C}$ gives $y = Ae^{3x}$.
-
-\smallskip\noindent\textbf{Correct solution.} $y(0) = 4$ gives $A = 4$, so
-$y = 4e^{3x}$ and $y(1) = 4e^{3} = 80.3421\ldots$, so \ans{y(1) \approx 80.34}.
-
-\smallskip\noindent Dev reports $23.09$. Note that his function fails the
-equation itself: if $y = e^{3x} + 3$ then $y' = 3e^{3x}$ while
-$3y = 3e^{3x} + 9$, and those differ by $9$ for every $x$ --- a one-line check
-that would have caught the error before the arithmetic.}
-
-\problem{\textbf{Rosa's line breaks two rules at once.}
-
-\smallskip\noindent (i) $\sqrt{\frac{y^{2}}{2}} \neq y$ and
-$\sqrt{\frac{x^{2}}{2} + C} \neq x + C$: square roots do not distribute across a
-sum, so the root cannot be taken term by term.
-
-\smallskip\noindent (ii) The initial condition must be applied to the equation
-she actually derived, \emph{before} any rearranging that changes what $C$ means.
-Once $C$ has been dragged through a square root it is no longer the same
-constant.
-
-\smallskip\noindent\textbf{Correct solution.} From
-$\frac{y^{2}}{2} = \frac{x^{2}}{2} + C$, substitute $x = 0$, $y = 3$:
-$\frac{9}{2} = C$. Multiply through by $2$: $y^{2} = x^{2} + 9$, so
-$y = \sqrt{x^{2} + 9}$ (positive root, since $y(0) = 3 > 0$). Then
-$y(4) = \sqrt{16 + 9} = \sqrt{25}$, so \ans{y(4) = 5}.
-
-\smallskip\noindent Rosa's method reports $7$ --- and $7$ is what you get by
-adding the legs of a right triangle instead of using the hypotenuse, which is
-the same distributive error seen from a different angle.}
-
-\problem{\textbf{The missing sign.} $\displaystyle\int y^{-2}\,dy
-= \frac{y^{-1}}{-1} = -\frac{1}{y}$. Sam dropped the minus, so his first line
-should read $-\frac{1}{y} = x + C$.
-
-\smallskip\noindent\textbf{Correct solution.} $y(0) = 1$ gives
-$-1 = 0 + C$, so $C = -1$ and $-\frac{1}{y} = x - 1$, that is
-$y = \dfrac{1}{1 - x}$. Then $y(0.5) = \dfrac{1}{0.5}$, so \ans{y(0.5) = 2}.
-
-\smallskip\noindent\textbf{Behaviour near $x = 1$:} the corrected solution blows
-up --- $y \to \infty$ as $x \to 1^{-}$ --- so the solution exists only on
-$(-\infty, 1)$. Sam's version, $y = \frac{1}{x+1}$, is perfectly well behaved
-there and decays to zero, which hides the vertical asymptote entirely. A sign
-error changed the qualitative behaviour of the model, not just a digit.
-
-\smallskip\noindent Sam reports $0.67$.}
-
-\problem{The right side has no $y$, so integrate directly. With
-$u = x^{2} + 1$, $du = 2x\,dx$:
-\[ y = \int \frac{2x}{x^{2}+1}\,dx = \ln(x^{2}+1) + C. \]
-Apply the initial condition to that general solution: $y(0) = \ln(1) + C = 1$,
-so $C = 1$ and $y = \ln(x^{2}+1) + 1$. Then $y(2) = \ln 5 + 1 = 2.6094\ldots$,
-so \ans{y(2) \approx 2.61}.
-
-\smallskip\noindent\textbf{When to apply the condition:} immediately after
-integrating, to the general solution --- and never before. Before integrating
-there is no $C$ in existence to solve for; the initial condition is the
-instruction that picks one curve out of the family that integration produces.}
-
-\problem{\textbf{Manual review --- expected reasoning.} A complete answer does
-the derivative test and then explains the algebra.
-
-\smallskip\noindent\textit{The test.} If $y = e^{3x} + 3$ then
-$\dfrac{dy}{dx} = 3e^{3x}$, while $3y = 3e^{3x} + 9$. These are equal only if
-$9 = 0$, so $y = e^{3x} + 3$ is not a solution of $\frac{dy}{dx} = 3y$ at all.
-More generally $y = e^{3x} + C$ fails for every $C \neq 0$.
-
-\smallskip\noindent\textit{The algebra.} Solving gives $\ln|y| = 3x + C$, and
-exponentiating both sides gives $|y| = e^{3x + C} = e^{C}\cdot e^{3x}$. The
-constant survives as a \emph{multiplier} $A = e^{C}$, not as a term, because
-exponentiation turns sums into products. So the correct family is $y = Ae^{3x}$,
-and $A$ is exactly as arbitrary as $C$ was --- the classmate is right that a
-constant is arbitrary, and wrong that it can be attached anywhere.
-
-\smallskip\noindent\textit{Why it matters:} $y = Ae^{3x}$ scales the whole curve,
-while $y = e^{3x} + C$ shifts it, and only scaling preserves the property that
-the rate is proportional to the amount.
-
-\smallskip\noindent Accept any answer that (a) differentiates and finds the
-mismatch of $9$, and (b) identifies $e^{C}$ as a multiplicative constant. Do not
-accept ``you just have to remember to put $C$ first'' with no justification.}
+\problem{\textbf{Refute: ``a constant may be added before or after
+exponentiating.''} \emph{Open reasoning --- read by hand.}\\
+\textbf{Model argument.} Differentiate the claimed solution:
+if $y = e^{5x} + 5$ then $y' = 5e^{5x}$, while
+$5y = 5e^{5x} + 25$. These differ by 25 for every $x$, so the claimed function
+does not satisfy $\frac{dy}{dx} = 5y$ and the placement of the constant is not a
+matter of taste.
+\textbf{What the constant becomes.} Integrating gives $\ln|y| = 5x + C$;
+exponentiating turns the sum into a product, $y = e^{C}e^{5x} = Ae^{5x}$. So the
+additive constant of integration becomes a \emph{multiplicative} factor $A$, and
+$A$, not $C$, is what the initial condition determines.
+\textbf{Accept:} any argument that produces the mismatch by differentiation, or
+that shows $y = e^{5x} + 5$ fails the equation at a single specific $x$ (for
+example $x = 0$: $y' = 5$ but $5y = 30$).
+\textbf{Do not accept:} ``because the book says $Ae^{5x}$'' with no test, or a
+claim that both forms work on some interval.}
 
 \end{document}

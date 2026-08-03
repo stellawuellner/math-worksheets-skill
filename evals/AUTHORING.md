@@ -96,6 +96,12 @@ agent a rebuild.
 - **A reference figure must sit before the first `\problem`.** Problem regions
   run from one `\problem` to the next, so a figure after the last one is scoped
   into that problem.
+- **Variables `d f g j l p q` are now legal** alongside the originals, so a
+  common difference can be `d` and a function value `f`. `e`, `i` and `o` stay
+  reserved — they read as Euler's number, the imaginary unit, and zero.
+- **A trap's `expr` now sees the problem's `at` bindings**, so lifting literals
+  into named variables no longer makes the problem's traps illegal. A symbol the
+  problem never binds is still refused.
 - **`eval` needs a non-empty `at`.** Lift literals into named variables
   (`"expr": "a/b", "at": {"a": 45, "b": 99}`), which also exposes the givens to
   the prose checker.
@@ -115,6 +121,19 @@ agent a rebuild.
   than mangled.)
 - **Prefer `\underline{\hspace{1.2cm}}` and `\\[0.9cm]`** over bare `\rule{}{}`
   in stems — raw dimensions leak into the prose checker as phantom numbers.
+- **The 57-char `\skillheading` budget includes the `"Skill N --- "` prefix**,
+  which eats about 12. Do not echo the JSON slug in the heading — six agents
+  overflowed it that way, and the coverage gate reads the tag, not the title.
+- **A trap `value` must be the verifier's own rounding of its `expr`**, compared
+  at about six significant figures. On a large-magnitude answer that means
+  sig-fig rounding, not two decimal places.
+- **For `estimate` traps, check the two rounding places actually disagree**
+  before declaring one. Rounding to the nearest hundred and the nearest thousand
+  agree far more often than sin-for-cos does, and an indistinguishable trap is a
+  hard failure.
+- **A prose-filled `\dfrac` is a width hazard.** Put wide `\text{}` fractions in
+  display math. If a rebuild returns the *identical* overfull measurement, your
+  edit hit the wrong line — the log names the paragraph, not the fraction.
 - **Budget four study-guide sections, not five,** when any section carries a
   figure or displayed math. Section cost is quantised: a section that will not
   fit in the page remainder moves entirely to the next page.

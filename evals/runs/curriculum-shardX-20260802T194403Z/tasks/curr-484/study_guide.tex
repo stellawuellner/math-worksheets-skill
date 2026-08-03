@@ -1,72 +1,92 @@
 \documentclass[12pt]{article}
 \usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
 \input{worksheet-preamble}
-\ssheader{Separation and Initial Conditions}
+\ssheader{Separable Equation Errors}
 \begin{document}
-\sstitleblock{Diagnosing Separation and Initial-Condition Errors}
+\sstitleblock{Separation and Initial-Condition Errors}
 
-\skillheading{Skill 1 --- Integrating both sides}
-\begin{formulabox}\textbf{When the right side contains no $y$}, the equation is
-already separated: integrate straight across.\\[3pt]
-$\dfrac{dy}{dx} = f(x) \ \Longrightarrow \ y = \displaystyle\int f(x)\,dx + C$
-\\[3pt]
-One constant is enough --- a $C$ on each side collapses into their difference.
-The $+C$ is not decoration: it is the entire family of solution curves, and the
-initial condition's only job is to choose one of them.
-\end{formulabox}
-\begin{examplebox}\textbf{Example:}\quad Solve $\dfrac{dy}{dx} = 8x^{3} - 3$.
-\step{The right side has no $y$ in it, so no separation step is needed --- this
-is a plain antiderivative question.}
-\step{Integrate term by term: $\displaystyle\int (8x^{3} - 3)\,dx$, giving
-$\ans{y = 2x^{4} - 3x + C}$. Check by differentiating back.}
-\end{examplebox}
-\begin{tryitbox}\textbf{Try it:}\quad Solve $\dfrac{dy}{dx} = 10x - 6x^{2}$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{y = 5x^{2} - 2x^{3} + C}$}\end{tryitbox}
+\skillheading{Skill 1 --- Separate the variables before integrating}
 
-\skillheading{Skill 2 --- Separating the variables}
-\begin{formulabox}\textbf{Rule:} you may integrate only when \emph{every} $y$
-sits with $dy$ and \emph{every} $x$ sits with $dx$:\\[2pt]
-$\dfrac{dy}{dx} = f(x)\,g(y) \ \Longrightarrow \
-\dfrac{1}{g(y)}\,dy = f(x)\,dx \ \Longrightarrow \
-\displaystyle\int \frac{dy}{g(y)} = \int f(x)\,dx$.\\[3pt]
-$y$ is a \emph{function} of $x$, so a stray $y$ on the $dx$ side can never be
-treated as a constant. Two integrals worth memorising:
-$\displaystyle\int \frac{dy}{y} = \ln|y|$ and
-$\displaystyle\int y^{-2}\,dy = -\frac{1}{y}$ (the minus sign is lost constantly).
+\begin{formulabox}
+\textbf{Rule:} an integral cannot be evaluated while the unknown function is
+still on the wrong side.
+\[ \frac{dy}{dx} = g(x)h(y) \ \Longrightarrow \
+   \int \frac{dy}{h(y)} = \int g(x)\,dx \]
+\textbf{Test before integrating:} does the right side contain $y$? If it does,
+move it across first. Treating $y$ as a constant inside
+$\int \ldots dx$ is the single most common wrong first line.
 \end{formulabox}
-\begin{examplebox}\textbf{Example:}\quad $\dfrac{dy}{dx} = \dfrac{x}{y}$, \ $y(0) = 4$. Find $y(3)$.
-\step{There is a $y$ on the right, so nothing may be integrated until it is
-moved across --- multiply both sides by $y$ first.}
-\step{$y\,dy = x\,dx$ gives $\frac{y^{2}}{2} = \frac{x^{2}}{2} + C$. Apply
-$y(0) = 4$ here, in the form you derived: $C = 8$, so $y^{2} = x^{2} + 16$ and
-$y = \sqrt{x^{2} + 16}$; then $y(3) = \sqrt{9 + 16} = \ans{5}$.}
+
+\begin{examplebox}
+\textbf{Example:}\quad Solve $\dfrac{dy}{dx} = 4xy$ with $y(0) = 2$ and find
+$y(1)$.
+\step{The right side contains $y$, so nothing may be integrated until the
+variables are separated.}
+\step{$\dfrac{dy}{y} = 4x\,dx$ gives $\ln|y| = 2x^{2} + C$, so
+$y = Ae^{2x^{2}}$; $y(0) = A = 2$, and $y(1) = 2e^{2} \approx \ans{14.78}$.}
 \end{examplebox}
-\begin{tryitbox}\textbf{Try it:}\quad $\dfrac{dy}{dx} = \dfrac{x}{y}$, \ $y(0) = 12$. Find $y(5)$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{13}$}\end{tryitbox}
-\begin{watchoutbox}\textbf{(!) Watch out:} never square-root term by term.
-$\sqrt{x^{2} + 16} \neq x + 4$. Apply the initial condition to the equation you
-actually derived, before any rearranging that changes what $C$ means.
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Solve $\dfrac{dy}{dx} = 6xy$ with $y(0) = 1$ and find
+$y(1)$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{20.09}$}
+\end{tryitbox}
+
+\skillheading{Skill 2 --- Where the constant of integration goes}
+
+\begin{formulabox}
+\textbf{Rule:} exponentiating a \emph{sum} produces a \emph{product}.
+\[ \ln|y| = kx + C \ \Longrightarrow \ y = e^{C}e^{kx} = Ae^{kx} \]
+So the additive $+C$ becomes the multiplying factor $A$. Writing
+$y = e^{kx} + C$ is the classic error, and it is caught in one line by
+differentiating: $y' = ke^{kx}$ while $ky = ke^{kx} + kC$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Solve $\dfrac{dy}{dx} = 3y$ with $y(0) = 4$ and find
+$y(1)$.
+\step{The equation is already separable in $y$ alone, so the whole question is
+where the constant lands after exponentiating.}
+\step{$\ln|y| = 3x + C$ gives $y = Ae^{3x}$; $y(0) = A = 4$, so
+$y = 4e^{3x}$ and $y(1) = 4e^{3} \approx \ans{80.34}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Solve $\dfrac{dy}{dx} = 2y$ with $y(0) = 5$ and find
+$y(1)$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{36.95}$}
+\end{tryitbox}
+
+\skillheading{Skill 3 --- When to apply the initial condition}
+
+\begin{formulabox}
+\textbf{Rule:} integrate first, solve for the constant second, simplify third.
+An initial condition can only be used once a constant exists to determine.\par
+\smallskip
+\textbf{And solve for $y$ carefully:} from $y^{2} = x^{2} + K$ the root applies
+to the \emph{whole} side, $y = \pm\sqrt{x^{2}+K}$, with the sign chosen by the
+initial condition. $\sqrt{u^{2}+v^{2}} \neq u + v$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad Solve $\dfrac{dy}{dx} = \dfrac{x}{y}$ with $y(0) = 3$ and
+find $y(4)$.
+\step{Separate and integrate before touching the initial condition; the
+condition then fixes the constant inside the radical, not outside it.}
+\step{$y\,dy = x\,dx$ gives $y^{2} = x^{2} + K$; $y(0) = 3$ gives $K = 9$, so
+$y = \sqrt{x^{2}+9}$ and $y(4) = \sqrt{16+9} = \ans{5}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad Solve $\dfrac{dy}{dx} = \dfrac{x}{y}$ with $y(0) = 5$ and
+find $y(12)$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{13}$}
+\end{tryitbox}
+
+\begin{watchoutbox}
+\textbf{(!) Watch out:} every particular solution can be checked in one line ---
+differentiate it and compare with the original right-hand side. A solution that
+fails that test is wrong no matter how tidy the algebra looked.
 \end{watchoutbox}
-
-\skillheading{Skill 3 --- Where the constant of integration goes}
-\begin{formulabox}\textbf{The exponential trap.} Solving $\dfrac{dy}{dx} = ky$
-gives $\ln|y| = kx + C$. Exponentiating turns the sum into a
-\textbf{product}:\\[2pt]
-$|y| = e^{kx + C} = e^{C}e^{kx} \ \Longrightarrow \ y = Ae^{kx}$, \ where
-$A = e^{C}$.\\[3pt]
-So the constant is a \textbf{multiplier}, never a term: $y = e^{kx} + C$ is not
-a solution for any $C \neq 0$. With $y(0) = y_{0}$ the answer is always
-$y = y_{0}e^{kx}$.\\[2pt]
-\textbf{One-line safety check:} differentiate your answer and compare it with
-the original right-hand side.
-\end{formulabox}
-\begin{examplebox}\textbf{Example:}\quad $\dfrac{dy}{dx} = 5y$, \ $y(0) = 7$. Find $y(0.2)$.
-\step{The rate is proportional to the amount, so the solution is exponential and
-the constant must be carried through as a factor, not added afterwards.}
-\step{$y = Ae^{5x}$ with $y(0) = A = 7$, so $y = 7e^{5x}$ and
-$y(0.2) = 7e^{1} = \ans{19.03}$. Check: $y' = 35e^{5x} = 5y$.}
-\end{examplebox}
-\begin{tryitbox}\textbf{Try it:}\quad $\dfrac{dy}{dx} = 2y$, \ $y(0) = 6$. Find $y(0.5)$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{16.31}$}\end{tryitbox}
 
 \end{document}

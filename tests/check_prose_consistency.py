@@ -120,8 +120,14 @@ def _prose_stripped(block):
     # drop \answerline unit arguments — "cm$^2$" would otherwise inject a
     # phantom 2 into the scan (the unit itself is gated by check_answer_line)
     block = re.sub(r"\\answerline\{[^{}]*\}", "", block)
-    # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}
-    block = re.sub(r"\\[a-zA-Z]+\{[\d.]+[a-z]{2}\}", "", block)
+    # drop spacing/format macro arguments like \hspace{4.5cm}, \vspace{5cm}.
+    # The STARRED forms count too: \vspace*{4.5cm} is the correct spelling
+    # inside a \problem minipage (the unstarred one is discarded at a page
+    # break), and without the star here every such stem leaked its dimension
+    # into the prose scan — one eval sheet reported 0 of 4 givens matched
+    # purely because it had used the layout-correct macro. The checker must not
+    # punish the spelling the layout gate requires.
+    block = re.sub(r"\\[a-zA-Z]+\*?\{[\d.]+[a-z]{2}\}", "", block)
     # drop the tryitbox furniture the templates mandate: \rotatebox{180}'s
     # angle argument and \\[2pt]-style line glue are markup, not prose values
     # — without this every try-it box false-flags 180 and 2, training the

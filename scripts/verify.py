@@ -120,8 +120,15 @@ _CONSTS = {"pi": sympy.pi, "E": sympy.E, "oo": sympy.oo, "I": sympy.I}
 
 # real=True matches the K-12/AP domain and lets Abs/ln/sqrt derivatives
 # simplify (complex-root problems are out of allowlist scope — use manual)
+# d f g j l p q were added after eval agents hit the list twice: "d" is the
+# common difference of an arithmetic sequence and "f" names a function, so
+# their absence forced JSON that reads unlike the mathematics it checks
+# (a sequence's common difference re-lettered to k). Deliberately still absent:
+# "e" and "i", which readers take for Euler's number and the imaginary unit —
+# a symbol that LOOKS like a constant is worse than a missing one — and "o",
+# which is indistinguishable from zero in a printed expression.
 _VARS = {v: Symbol(v, real=True) for v in
-         "x y z t u v w a b c h k m n r s theta phi".split()}
+         "x y z t u v w a b c d f g h j k l m n p q r s theta phi".split()}
 
 _ALLOWED_NAMES = set(_FUNCS) | set(_CONSTS) | set(_VARS)
 _SYMPY_LOCALS = {**_FUNCS, **_CONSTS, **_VARS}
@@ -861,6 +868,15 @@ def check_traps(p):
             tv = safe_parse(t["expr"])
         except VerifyInputError as e:
             return (False, f"problem {pid} trap {desc!r}: bad expr — {e}")
+        # A trap describes the wrong method applied to THIS problem's givens, so
+        # it is entitled to the same bindings the problem's own expr gets.
+        at = p.get("at")
+        if tv.free_symbols and isinstance(at, dict) and at:
+            try:
+                tv = tv.subs({_VARS[k]: safe_parse(str(v))
+                              for k, v in at.items() if k in _VARS})
+            except VerifyInputError as e:
+                return (False, f"problem {pid} trap {desc!r}: bad 'at' value — {e}")
         if tv.free_symbols:
             return (False,
                     f"problem {pid} trap {desc!r}: expr must be fully numeric "

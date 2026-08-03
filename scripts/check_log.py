@@ -174,8 +174,14 @@ def main(argv):
                 f"the document runs {pages} pages against its {max_pages}-page "
                 "budget — SKILL.md hard-caps the study guide at 2 pages, and "
                 "worksheets/answer keys get sanity ceilings (build.sh sets "
-                "them). Cut the optional sections (watch-out box, vocabulary), "
-                "tighten workspace, or split the sheet into two"))
+                "them). FIRST: if the overrun is real content the budget could "
+                "not see — a displayed-math stem, a hand-built figure, a table "
+                "in the stem — declare \"workspace_cm\" on those problems and "
+                "the ceiling rises with them. The budget is computed from the "
+                "JSON, so anything it cannot see must be declared. Only if the "
+                "sheet is genuinely padded should you cut optional sections "
+                "(watch-out box, vocabulary) or split it; shrinking work space "
+                "to fit a ceiling is the trade this project rejects"))
 
     for line, advice in warnings:
         print(f"  ⚠ {line}\n    ({advice})")

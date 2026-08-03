@@ -949,8 +949,14 @@ fi
 # unchecked is the same false-green class.
 require_fixture texlog_pages_over.log texlog_pages_at.log texlog_pages_missing.log
 output=$("$PYTHON" "$SCRIPT_DIR/../scripts/check_log.py" "$FIXTURES/texlog_pages_over.log" --max-pages 2 2>&1)
-if [ $? -eq 1 ] && echo "$output" | grep -q "split the sheet"; then
-  echo "✅ check_log fails a 3-page log against --max-pages 2 (and teaches the cut/split fix)"
+# The message must name workspace_cm, and name it BEFORE the cut/split advice.
+# Four eval agents overran a computed ceiling with honest content and were told
+# to "tighten workspace" — the one trade this project rejects — while the field
+# that actually raises the ceiling went unmentioned.
+if [ $? -eq 1 ] \
+   && echo "$output" | grep -q "workspace_cm" \
+   && [ "$(echo "$output" | grep -o "workspace_cm\|split it" | head -1)" = "workspace_cm" ]; then
+  echo "✅ check_log fails a 3-page log against --max-pages 2 (and names workspace_cm first)"
   log_ran=$((log_ran + 1))
 else
   echo "❌ check_log let a 3-page log through --max-pages 2 (or the message doesn't teach)"

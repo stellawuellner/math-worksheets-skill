@@ -265,6 +265,12 @@ def json_numbers(entry):
             for x in v:
                 walk(x)
         elif isinstance(v, dict):
+            # A read_data table's KEYS are printed givens too — the x-column of
+            # a table the student reads. Walking values only made every x-value
+            # look like an unexplained prose number.
+            for k2 in v:
+                if isinstance(k2, str) and NUM_RE.fullmatch(k2.strip()):
+                    found.add(float(k2))
             # desc/note are prose ABOUT the problem at any depth (a trap's
             # "used 3 instead of 4" must not donate 3 and 4 to the given set);
             # a trap's expr/value ARE printed planted numbers and flow through.

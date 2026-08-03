@@ -56,6 +56,21 @@ _FRAC = re.compile(
     r"\{\s*(?:\\[,!;:>]\s*)*(-?\d+(?:\.\d+)?)\s*\}")
 
 
+_MIXED = re.compile(
+    r"(-?\d+)\s*(?:\\[,!;:>]\s*)*\\[dt]?frac\s*"
+    r"\{\s*(?:\\[,!;:>]\s*)*(\d+)\s*\}\s*"
+    r"\{\s*(?:\\[,!;:>]\s*)*(\d+)\s*\}")
+
+
+def _mixed_value(m):
+    """2\tfrac{3}{4} -> 2.75, keeping the sign of the whole part."""
+    whole, num, den = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if den == 0:
+        return m.group(0)
+    sign = -1 if whole < 0 else 1
+    return repr(whole + sign * num / den)
+
+
 def normalize_latex_numbers(text):
     """Rewrite text so the number regex sees actual values.
 
@@ -66,6 +81,11 @@ def normalize_latex_numbers(text):
       false-fails against expected '(x - 3)*(x - 4)' (audit ak_factor).
       A leading sign ('= -4', '{-4}') is preserved.
     """
+    # A mixed number is one value, not two. "2\tfrac{3}{4}" used to concatenate
+    # into "23/4" = 5.75, so a verified 2.75 could never bind to the answer a
+    # reader plainly sees. Handled before _FRAC so the digit is consumed with
+    # its fraction rather than left stranded beside it.
+    text = _MIXED.sub(_mixed_value, text)
     text = _FRAC.sub(r"\1/\2", text)
     text = re.sub(r"(?<=\d),(?=\d{3})", "", text)
     text = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", text)

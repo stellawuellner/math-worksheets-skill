@@ -229,6 +229,23 @@ check("a real one-word unit is still caught",
 check("a declared unit is still accepted",
       undeclared_units(r"\ans{5 \text{ in}}", [], ["in"]) == [])
 
+# A mixed number is ONE value. "2\tfrac{3}{4}" concatenated into "23/4" = 5.75,
+# so a verified 2.75 could never bind to the answer a reader plainly sees.
+check("a mixed number reads as one value",
+      _toks(r"2\tfrac{3}{4}") == [2.75])
+check("the spaced spelling agrees with the direct one",
+      _toks(r"2\,\tfrac{3}{4}") == [2.75])
+check("a negative mixed number keeps its sign",
+      _toks(r"-2\tfrac{1}{2}") == [-2.5])
+check("a bare fraction is untouched by the mixed-number rule",
+      _toks(r"\dfrac{3}{4}") == [0.75])
+
+# A read_data table's KEYS are printed givens — the x-column the student reads.
+check("read_data table keys count as JSON givens",
+      {0.0, 1.0} <= json_numbers({"id": 1, "type": "read_data",
+                                  "data": {"0": 60, "1": 48},
+                                  "query": "total", "expected": 108}))
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

@@ -110,6 +110,54 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **In a STUDY GUIDE, `\ans{}` must sit inside `$...$`.** The preamble defines
+  it as `\boldsymbol`, which is math-only; `\akheader` renews it to a text-mode
+  boxed form, so the same markup that is correct in an answer key is a fatal
+  `! Missing $ inserted` in a study guide. Every ss exemplar in
+  `references/latex-templates.md` happens to write `$\ans{...}$` and none says
+  why. (Checked: `\ans{2}` in ss prose gives four errors, `$\ans{2}$` gives
+  none.)
+- **A claim that did NOT reproduce, recorded so nobody re-derives it.** One
+  author reported that `\ans{}` starting a paragraph in an ANSWER KEY is a fatal
+  `\unskip` in vertical mode, and edited 13 call sites. The `\unskip` is real —
+  it is the first token of the text-mode branch — but six probes (top-level,
+  inside `\problem`, after a display, after an itemize, after a center, with
+  `\meaning` confirming the text-mode branch was active) all compiled clean and
+  printed the box. Whatever failed in that build, this was not it. Put `\ans{}`
+  where it reads best.
+
+- **A presentation-only misconception can never be a distinguishable trap.**
+  "Left the fraction improper instead of regrouping" is `3 + 9/6` against a
+  correct `4 + 1/2` — the same number, so the problem's own check accepts it and
+  the trap gate rejects the declaration, correctly. Unsimplified, unreduced and
+  improper-vs-mixed all have this shape. Declare an error that changes the
+  VALUE ("added the denominators too"), and handle presentation in the prose.
+  (Checked by running both.)
+- **`at` accepts expression strings, exactly like `expected`.**
+  `"at": {"a": "2 + 3/8"}` goes through the same parser, so a mixed-number sheet
+  verifies as exact rational arithmetic and the stem's 2, 3 and 8 all count as
+  givens for the prose checker. The docs stated this only for `expected`.
+- **A study-guide box may carry SEVERAL entries under one id.** The rule is box
+  count = `problem_count` = number of distinct ids — not one entry per box. Two
+  authors read the older wording as a prohibition. Use it when an example needs
+  a distance AND the perimeter built from it: the extra entries make the
+  example's givens machine-checked instead of unexplained prose numbers.
+- **tikz `scale=` does not scale node text.** Captions under scaled shapes
+  collide; the overprint gate catches it, but put the labels in a `tabular` row
+  instead and it cannot happen.
+
+- **`\ans{}` MUST NOT start a paragraph in an answer key — that is a fatal
+  error, and it is the opposite of the study-guide rule.** `\akheader`
+  redefines `\ans` to a compact end-of-proof form beginning with `\unskip`,
+  which needs horizontal mode; a blank line before it gives
+  `! You can't use '\unskip' in vertical mode` and no PDF at all. Attach it to
+  the end of the preceding line. In a STUDY GUIDE `\ans` is `\boldsymbol`,
+  used inside math, and there a blank line before it is correct. One author had
+  to edit 13 call sites in a single key after following the study-guide rule.
+- **Every distinct `answer_unit` on a problem needs its own `\answerline`.**
+  A problem answering in both m and s must print both lines; declaring two and
+  printing one used to pass, because only the first declaration was read.
+
 - **Thousands separators are safe on both sides.** `4{,}187` and `4,187` are
   normalised by the prose checker and the answer-key binder alike. Do not strip
   them from a grade 2–5 place-value sheet; one author did, on an inference from

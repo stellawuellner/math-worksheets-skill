@@ -451,6 +451,40 @@ check("real tolerance comparison is unchanged (outside tol)",
 check("a non-numeric value still compares as unequal rather than crashing",
       not verify.approx_equal(verify.safe_parse("x"), verify.parse_value(1), 0.1))
 
+# ── The sample grid spans negatives, and log does not ───────────────────────
+# The standard logarithm identities are stated on the domain where their sides
+# are real. Sampling into the negatives put log on its complex branch, where
+# log(x**3) genuinely differs from 3*log(x) — so equiv FAILED the power rule,
+# the multi-variable product rule and the quotient rule: most of a
+# logarithm-properties sheet. An author's first draft hit five of them and
+# rewrote problems as two-part "expand, then evaluate at x = 4" to bind
+# anything at all. Agreement is now judged where both sides are real, which is
+# where the identity is claimed.
+def _equiv(a, b):
+    return verify.sym_equal(verify.safe_parse(a), verify.safe_parse(b))
+
+
+check("the power rule holds", _equiv("log(x**3)/log(2)", "3*log(x)/log(2)"))
+check("the product rule holds in two variables",
+      _equiv("log(x**2*y)/log(5)", "2*log(x)/log(5) + log(y)/log(5)"))
+check("the quotient rule holds", _equiv("ln(x**4/y)", "4*ln(x) - ln(y)"))
+check("a radical and a cube together hold",
+      _equiv("ln(sqrt(x)/y**3)", "ln(x)/2 - 3*ln(y)"))
+# ...and none of the ways this could have been softened instead.
+check("a WRONG power rule still fails", not _equiv("log(x**3)", "2*log(x)"))
+check("multiplying logs is still not adding them",
+      not _equiv("log(x*y)", "log(x)*log(y)"))
+# A disagreement between two REAL values is a real difference: sqrt(x**2) and x
+# are both real at negative x and differ there, which is exactly the case a
+# domain-blind relaxation would have broken.
+check("sqrt(x**2) is still not x", not _equiv("sqrt(x**2)", "x"))
+# Real nowhere in common cannot reach the vote threshold.
+check("log(x) is still not log(-x)", not _equiv("log(x)", "log(-x)"))
+check("ordinary algebra is untouched",
+      _equiv("(x-3)*(x-4)", "x**2-7*x+12")
+      and not _equiv("(x-3)*(x-4)", "x**2-7*x+11"))
+check("trig identities are untouched", _equiv("sin(x)**2+cos(x)**2", "1"))
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

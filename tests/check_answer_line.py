@@ -50,32 +50,53 @@ def main():
         return 2
     segments = [tex[a:b] for a, b in spans]
 
+    # EVERY distinct unit a problem declares, not just the first. setdefault
+    # kept one per id, so a problem answering in metres AND square metres was
+    # checked against whichever entry came first and the other was dropped
+    # silently — a sheet declaring two units and printing only the second
+    # passed. check_answer_key already requires all declared units in the box,
+    # so the two gates disagreed about the same document, the sheet side being
+    # the lenient one. Deduped, because two entries declaring the SAME unit
+    # describe one answer line, not two.
+    #
+    # RESIDUAL, stated rather than quietly fixed: unit_in is core-token-sequence
+    # CONTAINMENT by design, so a printed "m$^2$" still satisfies a declared
+    # "m" — a problem declaring m and m^2 passes with only the area line on the
+    # page. Tightening that is a change to the shared unit contract
+    # check_answer_key also binds through, and is not this fix.
     declared = {}
     for e in data.get("problems", []):
         if isinstance(e, dict) and isinstance(e.get("answer_unit"), str):
-            declared.setdefault(int(e.get("id", 0)), e["answer_unit"])
+            units = declared.setdefault(int(e.get("id", 0)), [])
+            if e["answer_unit"] not in units:
+                units.append(e["answer_unit"])
 
     print(f"Answer-line binding: {sys.argv[1]} "
           f"({len(segments)} problem segments, "
-          f"{len(declared)} declared unit(s))")
+          f"{sum(len(v) for v in declared.values())} declared unit(s))")
 
     faults = []
-    for pid, want in sorted(declared.items()):
+    for pid, wants in sorted(declared.items()):
         if pid > len(segments):
             faults.append(
-                f"problem {pid} declares answer_unit '{want}' but the sheet "
+                f"problem {pid} declares answer_unit "
+                f"{', '.join(repr(w) for w in wants)} but the sheet "
                 f"parses only {len(segments)} problem(s) — every declared "
                 f"unit needs a problem (and its \\answerline) on the page")
     for i, seg in enumerate(segments, 1):
         args = ANSWERLINE_RE.findall(seg)
-        want = declared.get(i)
-        if want is not None:
-            if not any(unit_in(arg, want) for arg in args):
-                faults.append(
-                    f"problem {i} declares answer_unit '{want}' but the sheet "
-                    f"has no matching \\answerline — end the problem with "
-                    f"\\answerline{{{want}}} so the student answers in the "
-                    f"verified unit")
+        wants = declared.get(i)
+        if wants:
+            for want in wants:
+                if not any(unit_in(arg, want) for arg in args):
+                    faults.append(
+                        f"problem {i} declares answer_unit '{want}' but the sheet "
+                        f"has no matching \\answerline — end the problem with "
+                        f"\\answerline{{{want}}} so the student answers in the "
+                        f"verified unit"
+                        + (f" (this problem declares {len(wants)} units: "
+                           f"{', '.join(repr(w) for w in wants)} — each needs "
+                           f"its own answer line)" if len(wants) > 1 else ""))
         else:
             for arg in args:
                 if arg.strip():

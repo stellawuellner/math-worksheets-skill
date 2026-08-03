@@ -282,7 +282,7 @@ def numeric_equal(a, b, tol=1e-9):
     agreements is not enough.
     """
     free = sorted(set(a.free_symbols) | set(b.free_symbols), key=str)
-    valid = 0
+    real_valid, any_valid = 0, 0
     for point in _sample_points(free):
         subs = dict(zip(free, point))
         try:
@@ -292,10 +292,38 @@ def numeric_equal(a, b, tol=1e-9):
             continue
         if not (cmath.isfinite(av) and cmath.isfinite(bv)):
             continue
-        if abs(av - bv) > tol * max(1.0, abs(av), abs(bv)):
-            return False
-        valid += 1
-    return valid >= _MIN_VALID_VOTES
+        agree = abs(av - bv) <= tol * max(1.0, abs(av), abs(bv))
+        both_real = (abs(av.imag) <= tol * max(1.0, abs(av))
+                     and abs(bv.imag) <= tol * max(1.0, abs(bv)))
+        if both_real:
+            if not agree:
+                # A disagreement where BOTH sides are real is a real difference,
+                # not a branch artefact. sqrt(x**2) vs x still fails here.
+                return False
+            real_valid += 1
+        if agree:
+            any_valid += 1
+    # THE SAMPLE GRID SPANS NEGATIVES, AND log DOES NOT.
+    #
+    # The standard logarithm identities are stated on the domain where their
+    # sides are real. Sampling into the negatives put log on its complex branch,
+    # where log(x**3) genuinely differs from 3*log(x) — so equiv FAILED the
+    # power rule, the multi-variable product rule and the quotient rule, i.e.
+    # most of a logarithm-properties sheet. An author's first draft hit five of
+    # them and had to rewrite problems as two-part "expand, then evaluate at
+    # x = 4" to bind anything at all.
+    #
+    # So agreement is judged on the points where both sides are REAL, which is
+    # where the identity is claimed. This does not soften the check: a
+    # disagreement between two real values still returns False immediately
+    # above, and an expression pair that is real nowhere in common cannot reach
+    # the vote threshold — log(x) against log(-x) has no such point and stays
+    # unequal.
+    if real_valid >= _MIN_VALID_VOTES:
+        return True
+    # Too few real points to judge on: fall back to the original all-points
+    # rule, so genuinely complex-valued comparisons behave exactly as before.
+    return any_valid >= _MIN_VALID_VOTES
 
 
 _TRANSCENDENTAL = (sympy.sin, sympy.cos, sympy.tan, sympy.asin, sympy.acos,

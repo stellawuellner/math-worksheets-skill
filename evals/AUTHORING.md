@@ -48,6 +48,73 @@ python3 evals/run_eval.py record $TASK --run "$RUN" --from $D \
 run is designed so acceptance can later be broken down by the model that drove
 the skill; a wrong or missing label silently pools two models into one number.
 
+## Fixed since the first 50 — do NOT work around these any more
+
+The first wave of 50 hit ten real faults. All are fixed. If you find yourself
+reaching for one of these workarounds, stop: the bug is gone, and the workaround
+now degrades the artifact.
+
+- **Traps work.** `\commonerror` used to overflow the answer key, so agents
+  deleted their declared traps or wrapped the bank in `\raggedright` /
+  `\emergencystretch`. Do neither. Declare traps freely — a misconception task
+  without them is a worse worksheet.
+- **Trap descriptions may contain any character.** `^`, `%`, `&`, `_` are
+  escaped for you now. Write the description in plain English.
+- **Stem length no longer breaks the page gate.** `check_log.py` reads a wrapped
+  log. Name files for clarity, not brevity.
+- **`workspace_cm` is a legal field** (0 < cm ≤ 24). If a problem genuinely
+  needs more room than its type's default — displayed student work, a
+  hand-built figure, a table to fill in — declare it and the page budget will
+  charge for it. Do not compress a sheet to hit a ceiling; that is the trade
+  this project explicitly rejects.
+- **`\skillheading` is gated at 57 characters** before compile. Name the skill
+  in plain words; leave the slug to the JSON, which is what the coverage gate
+  actually reads.
+- **`standards-map.md` gained 26 rows** (grades 6–8 geometry/ratio/statistics,
+  grade-8 number system, HS congruence, similarity, complex numbers, vectors,
+  matrices, statistics, sequences, binomial theorem, radicals). Check it again
+  before concluding a code is missing. If it still is, say so in `response.md`
+  and leave `standard` off rather than tagging an off-grade code — but a
+  genuinely missing row is now rare.
+
+## Traps that remain, and how to avoid them
+
+Not bugs — real constraints the checkers enforce. Every one cost an earlier
+agent a rebuild.
+
+- **No `enumerate` anywhere in a study guide.** The answer-key segmenter prefers
+  enumerate lists over boxes, so a numbered list inside a `formulabox` makes the
+  guide segment as N "problems" and the binding gate fails with a confusing
+  count mismatch. Use `itemize`.
+- **`\ans{}` ends its paragraph.** A following `\\` is a fatal error. Put
+  `\ans{}` last in a problem block, or start a new paragraph after it.
+- **Put a `\par` before any `tabular` or `\ans` that follows prose**, or the
+  table joins the text line and overfulls.
+- **Directions blocks use `itemize`, never `enumerate`** — the layout checker
+  treats an enumerate in a worksheet as a problem list and applies work-space
+  rules to it.
+- **A reference figure must sit before the first `\problem`.** Problem regions
+  run from one `\problem` to the next, so a figure after the last one is scoped
+  into that problem.
+- **`eval` needs a non-empty `at`.** Lift literals into named variables
+  (`"expr": "a/b", "at": {"a": 45, "b": 99}`), which also exposes the givens to
+  the prose checker.
+- **`solve_interval` on an expanded trig quadratic returns MANUAL**, because the
+  CAS is genuinely incomplete on that form and the verifier now says so instead
+  of passing a short root list. State the expression factored.
+- **Multiple verify entries may share one problem `id`** — the right encoding
+  for a multi-part problem. Every entry for that id must repeat an identical
+  `difficulty`.
+- **Write `expected` strings without spaces around a minus** (`"t**4-3*t**2"`,
+  not `"t**4 - 3*t**2"`) or the binding gate extracts `3` where you meant `-3`.
+- **Avoid `\tfrac{NN...}{d}` with a two-digit numerator** in a boxed answer; the
+  number normalizer mis-splits it. `\dfrac` with a leading `\,` is safe.
+- **Prefer `\underline{\hspace{1.2cm}}` and `\\[0.9cm]`** over bare `\rule{}{}`
+  in stems — raw dimensions leak into the prose checker as phantom numbers.
+- **Budget four study-guide sections, not five,** when any section carries a
+  figure or displayed math. Section cost is quantised: a section that will not
+  fit in the page remainder moves entirely to the next page.
+
 ## What has actually failed here
 
 These are real gate failures from earlier tasks in this suite, not hypotheticals.

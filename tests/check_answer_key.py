@@ -414,6 +414,13 @@ def main():
             box_toks = seg_boxes[i - 1] if i - 1 < len(seg_boxes) else []
             if symbolic:
                 box_toks = [(abs(val), tok) for val, tok in box_toks]
+                for val, tok in list(box_toks):
+                    if "/" in tok:
+                        for part in tok.split("/"):
+                            try:
+                                box_toks.append((abs(float(part)), part))
+                            except ValueError:
+                                pass
             if strict:
                 if any_match(v, box_toks):
                     continue

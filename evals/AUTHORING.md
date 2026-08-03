@@ -144,6 +144,11 @@ agent a rebuild.
 - **A prose-filled `\dfrac` is a width hazard.** Put wide `\text{}` fractions in
   display math. If a rebuild returns the *identical* overfull measurement, your
   edit hit the wrong line — the log names the paragraph, not the fraction.
+- **A rational coefficient may be written either way.** `\dfrac{2}{9}(x^3+1)^{3/2}`
+  and `\dfrac{2(x^3+1)^{3/2}}{9}` both bind now — the checker offers the
+  collapsed value and its parts as alternatives for symbolic answers.
+- **`solve` on a cubic needs `"domain": "real"`** when the other roots are
+  complex — expect it on any "find the growth factor" problem.
 - **`distance` compares exactly unless you give `tol`.** A rounded irrational
   (7.07 for 5·sqrt2) hard-fails without `"tol": 0.01`. Unlike `approx`, there is
   no scale-aware default.

@@ -183,8 +183,17 @@ check("the level is parsed from \\aktitleblock's second argument",
       == "Grade 4--5")
 check("a level-less key parses to no level",
       rqa.AKTITLE_RE.search(r"\aktitleblock{Volume}{}{}").group(1) == "")
-check("TeX specials in a level are escaped, not injected",
-      r"\&" in rqa.render(_curr, "Grade 4 & 5"))
+# The level is reprinted verbatim because it is the SAME string \aktitleblock
+# already expands on the same page — escaping it turned a live \quad into four
+# literal characters in the middle of a course name.
+check("markup in a level survives as markup",
+      r"Geometry \quad Proof" in rqa.render(_curr, r"Geometry \quad Proof"))
+# A standards code is data from the verify JSON, not markup from the document,
+# so that one stays escaped.
+check("a standards code is still escaped",
+      r"\&" in rqa.render({"problem_count": 1, "problems": [
+          {"id": 1, "type": "equiv", "expr": "x", "expected": "x",
+           "standard": "4.MD & 5.MD"}]}, ""))
 
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")

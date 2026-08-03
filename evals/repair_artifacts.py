@@ -131,10 +131,21 @@ def main():
         return 2
 
     ok, failed, skipped = [], [], []
+
+    # Report each task AS IT LANDS, not in three sorted piles at the end. A
+    # hundred-task rebuild is an hour of pdflatex, and a log that stays empty
+    # for an hour is indistinguishable from a hung one — the first instinct is
+    # to kill it and start over. Streaming also puts a failure next to the
+    # tasks either side of it, which is what tells you whether it is one bad
+    # document or the run coming apart.
+    def note(bucket, tid, msg, mark):
+        bucket.append((tid, msg))
+        print(f"  {mark} {tid}: {msg}", flush=True)
+
     for tid in a.tasks:
         src = os.path.join(run_dir, "tasks", tid)
         if not os.path.isfile(os.path.join(src, "verify.json")):
-            skipped.append((tid, "no stored verify.json"))
+            note(skipped, tid, "no stored verify.json", "·")
             continue
         d = os.path.join(WORK, tid)
         shutil.rmtree(d, ignore_errors=True)
@@ -149,24 +160,32 @@ def main():
         for doc, role in DOCS.items():
             p = os.path.join(src, f"{doc}.tex")
             if not os.path.isfile(p):
-                skipped.append((tid, f"missing {doc}.tex"))
+                note(skipped, tid, f"missing {doc}.tex", "·")
                 break
             tex = open(p, encoding="utf-8").read()
             for name, fn in TRANSFORMS[doc]:
                 tex, n = fn(tex)
                 if n:
                     applied.append(f"{name}×{n}")
-            # the quick-answer bank is regenerated per build under the new stem
-            tex = re.sub(r"\\input\{qa_[^}]*\}", f"\\\\input{{qa_{stem}}}", tex)
+            # build.sh regenerates its companion files under the CURRENT stem —
+            # the quick-answer bank (qa_), the rendered figures (figs_) and the
+            # effort markers (meta_) — so a rebuild under a new stem leaves the
+            # document \input'ing names that no longer exist. Rewriting only
+            # qa_ was enough for every task without figures and broke the two
+            # with them: "File `figs_lawsines_curr426.tex' not found", a
+            # harness fault that reads exactly like a defect in the document.
+            for pre in ("qa", "figs", "meta"):
+                tex = re.sub(r"\\input\{" + pre + r"_[^}]*\}",
+                             f"\\\\input{{{pre}_{stem}}}", tex)
             open(f"{d}/{role}_{stem}.tex", "w", encoding="utf-8").write(tex)
         else:
             if not applied and not a.rebuild:
-                skipped.append((tid, "nothing to repair"))
+                note(skipped, tid, "nothing to repair", "·")
                 continue
             if not applied:
                 applied = ["rebuild (shared preamble changed)"]
             if a.dry_run:
-                ok.append((tid, ", ".join(applied) + " (dry run)"))
+                note(ok, tid, ", ".join(applied) + " (dry run)", "✅")
                 continue
             log = f"{d}/gate_log.txt"
             with open(log, "w") as fh:
@@ -177,7 +196,7 @@ def main():
             # build.sh exits 2 when a verification run flagged manual-review
             # items — that is a PASS with honest manual encoding, not a failure.
             if r.returncode not in (0, 2):
-                failed.append((tid, f"build exit {r.returncode} — see {log}"))
+                note(failed, tid, f"build exit {r.returncode} — see {log}", "❌")
                 continue
             # Carry the original delivery response into the BUILD dir first:
             # recording reads it from there and writes it back into the task
@@ -195,16 +214,14 @@ def main():
                 cmd += ["--response-file", staged]
             rec = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
             if rec.returncode != 0:
-                failed.append((tid, f"record failed: {rec.stderr.strip()[:120]}"))
+                note(failed, tid, f"record failed: {rec.stderr.strip()[:120]}", "❌")
             else:
-                ok.append((tid, ", ".join(applied)))
+                note(ok, tid, ", ".join(applied), "✅")
 
-    for tid, what in ok:
-        print(f"  ✅ {tid}: {what}")
-    for tid, why in skipped:
-        print(f"  ·  {tid}: {why}")
-    for tid, why in failed:
-        print(f"  ❌ {tid}: {why}")
+    if failed:
+        print("\nfailed:")
+        for tid, why in failed:
+            print(f"  ❌ {tid}: {why}")
     print(f"\nrepaired {len(ok)} · skipped {len(skipped)} · failed {len(failed)}")
     return 1 if failed else 0
 

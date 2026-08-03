@@ -18,7 +18,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from _tex_segments import segment_spans, blank_comments  # noqa: E402
-from check_answer_key import value_matches  # noqa: E402
+from check_answer_key import num_tokens, value_matches  # noqa: E402
 
 CHECKER = os.path.join(HERE, "check_answer_key.py")
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -119,6 +119,39 @@ check("4.51 rejects printed 4.52", not value_matches(4.51, 4.52, "4.52"))
 check("4.515 rounds half-up to printed 4.52", value_matches(4.515, 4.52, "4.52"))
 check("2/3 binds a value stored to 4 places",
       value_matches(0.6667, 2 / 3, "2/3"))
+
+print()
+print("A mixed number is ONE value, in every notation it is written in:")
+
+
+def vals(s):
+    return sorted(round(v, 6) for v, _ in num_tokens(s))
+
+
+# The LaTeX form, as a student reads it on the page.
+check(r"2\tfrac{3}{4} is 2.75, not 23/4", vals(r"$2\tfrac{3}{4}$") == [2.75])
+check("thin space between the parts does not split it",
+      vals(r"$\,2\,\tfrac{3}{4}$") == [2.75])
+check("the sign belongs to the whole mixed number",
+      vals(r"$-2\tfrac{3}{4}$") == [-2.75])
+# The JSON form, as sympy has to be told it: there is no mixed-number syntax,
+# so a verify file writes 2 3/4 as "2 + 3/4". Reading that as two answers is
+# what made a correct key fail once the printed side was fixed.
+check('"2 + 3/4" is the same 2.75', vals("2 + 3/4") == [2.75])
+check("a sum form is plain addition, so -2 + 3/4 is -1.25",
+      vals("-2 + 3/4") == [-1.25])
+check("both notations meet in the middle",
+      vals(r"$2\,\tfrac{3}{4}$") == vals("2 + 3/4"))
+# An ordering of mixed numbers — the shape that actually failed, three of them
+# in one box against a JSON list of three sum-form expecteds.
+check("an ordering of mixed numbers keeps three values",
+      vals(r"\ans{\,2\,\tfrac{1}{2} > 2\,\tfrac{3}{8} > \tfrac{9}{4}}")
+      == [2.25, 2.375, 2.5])
+# ...and the combination must not eat an exponent or a coefficient.
+check("x**2 + 1/2 is still 2 and 0.5, not 2.5",
+      vals("x**2 + 1/2") == [0.5, 2.0])
+check("a factored form is untouched",
+      vals("(x - 3)*(x - 4)") == [3.0, 4.0])
 
 print()
 if FAILS:

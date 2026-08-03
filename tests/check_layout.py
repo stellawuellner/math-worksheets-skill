@@ -13,9 +13,17 @@ None is visible to verify.py, which only sees the JSON.
    on the page it simply sits near several. If problem 6 has a triangle labelled
    a=6, b=8 and problems 7-8 have none, a student reading 7 sees a labelled
    triangle a few lines up and reasonably assumes it applies. The figure is
-   correct and the worksheet is still wrong. Rule: within one problem list,
-   value-bearing figures are all-or-nothing. Shared conventions belong in a
-   value-free reference figure outside the list.
+   correct and the worksheet is still wrong. Rule: within one problem list, no
+   problem may be left with NO figure while another's figure carries values.
+   Shared conventions belong in a value-free reference figure outside the list.
+
+   What matters is the figureless problem, not the value-free one. A problem
+   holding its own blank grid — "plot your counterexample here", "draw the line
+   through these points" — is not at risk: the picture inside its block is
+   visibly the one it means, and a grid's own axis numbers are scale, not
+   another problem's data. Counting valued-against-total instead failed a sheet
+   where all ten problems had a graph and three were empty axes to plot on, and
+   the only edit that would have satisfied it was deleting those three grids.
 
 2. WORK SPACE. SKILL.md specifies ~5cm per problem, 8cm multi-step. Nothing
    enforced it, so a generator can emit itemsep=14pt (about half a line) and
@@ -148,6 +156,35 @@ def problem_regions(tex):
         stripped = blank_spans(region, inner, base=start)
         out.append((opt_cm, stripped, stripped != region))
     return out
+
+
+# Unambiguous "there is a picture inside this problem" markers. Deliberately
+# narrower than has_valued_figure's macro branch: this predicate can only make
+# the scope rule MORE permissive, so it counts nothing it is not sure about.
+FIGURE_ANY = re.compile(
+    r"\\begin\{tikzpicture\}|\\begin\{axis\}|\\includegraphics\b|\\probfig\b")
+
+
+def scope_note(valued, items):
+    """The passing report, said accurately — including the mixed-but-clean case
+    where some problems graph data and the rest hold their own blank grid."""
+    if not valued:
+        return f"none of the {len(items)} problems carries a valued figure"
+    if len(valued) == len(items):
+        return f"all {len(items)} problems carry valued figures"
+    return (f"{len(valued)} of {len(items)} carry valued figures and every "
+            f"other problem carries its own")
+
+
+def has_own_figure(item):
+    """Does this problem carry a picture of its own, valued or not?
+
+    Anything has_valued_figure recognises counts, first and unconditionally —
+    otherwise a macro-built figure (\\rtfig, \\probfig) is valued and figureless
+    at the same time, and the scope rule reports every problem in the list as
+    both. FIGURE_ANY only has to catch the pictures that carry NO values.
+    """
+    return has_valued_figure(item) or bool(FIGURE_ANY.search(item))
 
 
 def has_valued_figure(item):
@@ -328,18 +365,19 @@ def main():
             its.append(blank_spans(tex[s:e], inner, base=s))
             had_nested.append(bool(inner))
         valued = [i for i, it in enumerate(its, 1) if has_valued_figure(it)]
+        bare = [i for i, it in enumerate(its, 1) if not has_own_figure(it)]
 
-        # 1. figure scope
-        if valued and len(valued) != len(its):
+        # 1. figure scope — see problem_regions below for what this counts
+        if valued and bare:
             faults.append(
                 f"list {n}: {len(valued)} of {len(its)} problems carry a figure with "
-                f"values (items {valued}). A student reading a neighbouring problem "
-                f"will apply the nearest figure to it. Give every problem in the list "
-                f"its own figure, or move the shared labelling into a value-free "
-                f"reference figure outside the list.")
+                f"values (items {valued}) while {len(bare)} carry no figure at all "
+                f"(items {bare}). A student reading one of those will apply the "
+                f"nearest figure to it. Give every problem in the list its own "
+                f"figure, or move the shared labelling into a value-free reference "
+                f"figure outside the list.")
         else:
-            print(f"  list {n}: figure scope ok "
-                  f"({'all' if valued else 'no'} {len(its)} problems carry valued figures)")
+            print(f"  list {n}: figure scope ok ({scope_note(valued, its)})")
 
         # 2. work space — items holding a nested part-list are skipped: their
         # workspace lives in the child's itemsep, which the child's own pass
@@ -376,16 +414,26 @@ def main():
     regions = problem_regions(tex)
     if regions:
         valued = [i for i, (_, r, _) in enumerate(regions, 1) if has_valued_figure(r)]
-        if valued and len(valued) != len(regions):
+        # What creates the ambiguity is a problem with NO figure sitting beside
+        # one whose figure carries data — that student has nothing of their own
+        # to look at, so they look at the neighbour's. A problem holding its own
+        # blank grid is not in that position: the picture inside its block is
+        # visibly the one it means. Counting valued-vs-total instead of
+        # valued-vs-figureless failed a sheet where all ten problems had a graph
+        # and three of them were empty axes for the student to plot on — and the
+        # only edit that would have satisfied it was deleting those three grids.
+        bare = [i for i, (_, r, _) in enumerate(regions, 1) if not has_own_figure(r)]
+        if valued and bare:
             faults.append(
                 f"problem blocks: {len(valued)} of {len(regions)} problems carry a "
-                f"figure with values (problems {valued}). A student reading a "
-                f"neighbouring problem will apply the nearest figure to it. Give "
-                f"every problem its own valued figure, or move shared labelling "
-                f"into a value-free reference figure.")
+                f"figure with values (problems {valued}) while {len(bare)} carry no "
+                f"figure at all (problems {bare}). A student reading one of those "
+                f"will apply the nearest figure to it. Give every problem its own "
+                f"figure, or move shared labelling into a value-free reference "
+                f"figure.")
         else:
             print(f"  problem blocks: figure scope ok "
-                  f"({'all' if valued else 'no'} {len(regions)} problems carry valued figures)")
+                  f"({scope_note(valued, regions)})")
 
         # regions whose workspace lives in a nested list (multi-part template)
         # are governed by the enumerate pass above — skip the floor here

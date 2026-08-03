@@ -116,7 +116,13 @@ def curriculum_block(by_id, n, level):
     out = ["\\medskip\\noindent{\\small\\textbf{Curriculum}}\\par\\nopagebreak",
            "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak"]
     if level:
-        out.append(f"\\noindent{{\\small\\textbf{{Level:}}~{_texsafe(level)}}}\\par")
+        # VERBATIM, not escaped. This string is lifted out of the key's own
+        # \aktitleblock, two inches higher on the same page, where LaTeX has
+        # already expanded it — so reprinting it here adds no capability that
+        # the document did not already have, and escaping it does real damage:
+        # a level of "High School Geometry \quad Definitions and Proof Logic"
+        # came out with a literal "\quad" sitting in the middle of it.
+        out.append(f"\\noindent{{\\small\\textbf{{Level:}}~{level}}}\\par")
     for code in sorted(codes):
         seen, nums = set(), []
         for i in codes[code]:

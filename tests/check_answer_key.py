@@ -62,6 +62,27 @@ _MIXED = re.compile(
     r"\{\s*(?:\\[,!;:>]\s*)*(\d+)\s*\}")
 
 
+# The SAME mixed number, written the way a verify JSON has to write it: sympy
+# has no mixed-number syntax, so "2 3/4" is spelled "2 + 3/4" and sympifies to
+# 11/4. This checker read it as two answers, 2 and 0.75, and got away with it
+# only while the printed side ALSO split "2\tfrac{3}{4}" into 2 and 3/4. Fixing
+# the printed side broke the pair: the key boxed 2.75 and the JSON demanded a
+# bare 2 and a bare 0.75 that no correct key would print. Both sides now agree
+# it is one number, which is what verify.py checked in the first place.
+#
+# Unlike the LaTeX form, this one means plain addition — "-2 + 3/4" is -1.25,
+# not -2.75 — because that is what sympy evaluates. The lookbehind keeps it off
+# exponents and operands: "x**2 + 1/2" must stay 2 and 0.5, not become 2.5.
+_MIXED_SUM = re.compile(r"(?<![\w.*^/}])(-?\d+)\s*\+\s*(\d+)/(\d+)(?!\d)")
+
+
+def _mixed_sum_value(m):
+    whole, num, den = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if den == 0:
+        return m.group(0)
+    return repr(whole + num / den)
+
+
 def _mixed_value(m):
     """2\tfrac{3}{4} -> 2.75, keeping the sign of the whole part."""
     whole, num, den = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -87,6 +108,10 @@ def normalize_latex_numbers(text):
     # its fraction rather than left stranded beside it.
     text = _MIXED.sub(_mixed_value, text)
     text = _FRAC.sub(r"\1/\2", text)
+    # After _FRAC, so "2 + \tfrac{3}{4}" has become "2 + 3/4" and a key that
+    # writes the mixed number as a sum binds to the same value as one that
+    # writes it as a mixed numeral.
+    text = _MIXED_SUM.sub(_mixed_sum_value, text)
     text = re.sub(r"(?<=\d),(?=\d{3})", "", text)
     text = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", text)
     text = re.sub(r"(?<=[A-Za-z0-9)\}])-", " ", text)

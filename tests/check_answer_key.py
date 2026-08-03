@@ -395,7 +395,14 @@ def main():
                              else f"the boxed relation is {sorted(printed)[0]!r}")
                     hard.append((i, r, f"is the verified comparison, but {where}"))
         expected = set().union(*(json_expected_nums(e) for e in entries))
-        expected = {v for v in expected if abs(v) > 1e-9}  # skip trivial 0
+        # 0 was filtered as "trivial", which meant a problem whose ANSWER is
+        # zero had no printed-answer binding at all: the key could box 42 and
+        # the gate still reported "every verified answer is boxed in its own
+        # problem". Zero is an answer like any other. It is dropped only when
+        # the entry has other expected values too — there it is an incidental
+        # coordinate or coefficient rather than the answer being claimed.
+        if len(expected) > 1:
+            expected = {v for v in expected if abs(v) > 1e-9}
         # A leading minus is a SIGN; a mid-expression minus is an OPERATOR. So
         # one answer changes token set with term order: JSON "-1/x**2+6*x" gives
         # -1, while the identical box "6x - 1/x^2" gives +1, and binding failed.

@@ -87,7 +87,15 @@ agent a rebuild.
   guide segment as N "problems" and the binding gate fails with a confusing
   count mismatch. Use `itemize`.
 - **`\ans{}` ends its paragraph.** A following `\\` is a fatal error. Put
-  `\ans{}` last in a problem block, or start a new paragraph after it.
+  `\ans{}` last in a problem block, or start a new paragraph after it. The
+  mirror case bites too: a standalone `$\ans{...}$` on the line after a
+  `\step{...}` joins that step's paragraph and overfulls — put a blank line
+  BEFORE it as well as after.
+- **`\frac12` unbraced tokenises as the number 12** in the prose checker.
+  Write `\frac{1}{2}`.
+- **`definite_integral` accepts string `from`/`to`** (`"-pi/6"`), and
+  `solve_interval` takes a float radian interval with exact-string `expected`.
+  Both save an ugly degree-mode workaround on polar problems.
 - **Put a `\par` before any `tabular` or `\ans` that follows prose**, or the
   table joins the text line and overfulls.
 - **Directions blocks use `itemize`, never `enumerate`** — the layout checker
@@ -134,9 +142,12 @@ agent a rebuild.
 - **The 57-char `\skillheading` budget includes the `"Skill N --- "` prefix**,
   which eats about 12. Do not echo the JSON slug in the heading — six agents
   overflowed it that way, and the coverage gate reads the tag, not the title.
-- **A trap `value` must be the verifier's own rounding of its `expr`**, compared
-  at about six significant figures. On a large-magnitude answer that means
-  sig-fig rounding, not two decimal places.
+- **A trap `value` is compared at the DECIMAL PLACES you write it with**
+  (`rounds_to`), not at a fixed significant-figure count — `1.667` and `1.66667`
+  both bind, and `37.70` binds at 1 dp. (An earlier version of this line said
+  six significant figures; an agent tested it and it is wrong.) Simpler still:
+  omit `value` when the wrong number does not need printing — the
+  distinguishability check runs either way.
 - **For `estimate` traps, check the two rounding places actually disagree**
   before declaring one. Rounding to the nearest hundred and the nearest thousand
   agree far more often than sin-for-cos does, and an indistinguishable trap is a

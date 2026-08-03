@@ -108,6 +108,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Complex numbers: arithmetic & the complex plane | HSN-CN.A.1–A.3, HSN-CN.B.4–B.6 |
 | Complex solutions of polynomials | HSN-CN.C.7–C.9 |
 | Vectors & vector operations | HSN-VM.A.1–A.3, HSN-VM.B.4–B.5 |
+| Parametric & polar representations | HSF-IF.C.7, HSN-CN.B.4–B.6 |
 | Matrices | HSN-VM.C.6–C.12 |
 | Statistics: data displays, spread, regression | HSS-ID.A–HSS-ID.C |
 | Inference & experimental design | HSS-IC.A–HSS-IC.B |

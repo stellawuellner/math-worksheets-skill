@@ -249,6 +249,14 @@ check("a genuine run of four problems still flags",
           [{"id": i, "facet": "a"} for i in range(1, 9)]
           + [{"id": i, "facet": "b"} for i in range(9, 13)], 12, None))
 
+# Zero was filtered from the expected set as "trivial", so a problem whose
+# ANSWER is zero had no printed-answer binding: the key could box 42 and the
+# gate still said every verified answer was boxed. Third trust-boundary bug
+# this eval run — all three were cases of claiming verification not performed.
+check("a lone zero answer stays in the expected set",
+      0.0 in json_expected_nums({"id": 1, "type": "eval", "expr": "x-5",
+                                 "at": {"x": 5}, "expected": 0}))
+
 # Claimed by two agents and FALSE both times: spacing around a binary minus is
 # said to change extraction. It does not, and the brief said so for a while.
 check("spacing around a minus does not change extraction",

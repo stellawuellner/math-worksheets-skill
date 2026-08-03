@@ -135,7 +135,7 @@ fi
 GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
        coverage-ss facet-coverage render-figures render-meta quick-answers \
        layout-ws answer-line-ws compile-ws compile-ak compile-ss \
-       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss)
+       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss overprint)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -504,6 +504,23 @@ else
   else
     fail prose-ss
   fi
+fi
+
+# ── overprinting ────────────────────────────────────────────────────────────
+# Every gate above reads the SOURCE or the engine's LOG, and both are blind to
+# two things drawn in the same place: TeX has not overrun a line and has not run
+# out of room, so it says nothing at all. Three such faults shipped in one eval
+# run with clean logs — a running head through the Name/Date blanks, and figure
+# captions overprinting after an xshift was scaled along with its tikzpicture.
+# This reads where the words actually landed in the finished PDF, so it runs
+# last: it needs the documents the earlier gates just produced.
+banner "overprinting in the compiled PDFs"
+if [[ ${#PDFS[@]} -eq 0 ]]; then
+  record overprint "SKIPPED(nothing compiled)"
+elif "$PYTHON3" "$TESTS_DIR/check_overprint.py" --quiet "${PDFS[@]}"; then
+  record overprint "PASS"
+else
+  fail overprint "Text is printed over other text. The engine reports none of this — open the named page, find the two things at that coordinate, and separate them."
 fi
 
 finish 0

@@ -1,12 +1,12 @@
 {
   "task_id": "curr-144",
-  "recorded": "2026-08-03T14:53:17Z",
+  "recorded": "2026-08-03T16:48:09Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
   "latency_seconds": null,
-  "notes": "artifact repair: answerline-in-problem×7",
+  "notes": "figure repair: a scaled xshift collided the two panel captions",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

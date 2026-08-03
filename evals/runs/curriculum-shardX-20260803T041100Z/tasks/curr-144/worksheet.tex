@@ -14,7 +14,9 @@
     {\footnotesize\textbf{Two lengths multiplied} $\rightarrow$ flat tiles\\
      \footnotesize\textbf{square units}};
   % solid filled by unit cubes
-  \begin{scope}[xshift=7cm]
+  \end{tikzpicture}\hspace{1.1cm}%
+\begin{tikzpicture}[scale=0.55]
+  \begin{scope}
     \foreach \i in {0,...,2} {\foreach \j in {0,...,1} {
        \draw[thick, fill=orange!18] (\i+0.45,\j+0.45) rectangle (\i+1.45,\j+1.45);}}
     \foreach \i in {0,...,2} {\foreach \j in {0,...,1} {

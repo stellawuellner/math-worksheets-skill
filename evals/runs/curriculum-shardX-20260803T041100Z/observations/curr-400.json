@@ -1,12 +1,12 @@
 {
   "task_id": "curr-400",
-  "recorded": "2026-08-03T05:42:22Z",
+  "recorded": "2026-08-03T15:00:49Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 1600.0,
-  "notes": "",
+  "latency_seconds": null,
+  "notes": "standards tags added after HSG-GPE.A row landed",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

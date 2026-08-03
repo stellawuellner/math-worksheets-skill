@@ -1,12 +1,12 @@
 {
   "task_id": "curr-102",
-  "recorded": "2026-08-03T15:03:48Z",
+  "recorded": "2026-08-03T17:16:16Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
   "latency_seconds": null,
-  "notes": "standards tags added after map rows landed",
+  "notes": "artifact repair: rebuild (shared preamble changed)",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

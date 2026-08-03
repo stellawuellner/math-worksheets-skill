@@ -78,7 +78,7 @@ Wrote /tmp/evalrepair2/curr-394/qa_r_curr394.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr394.tex
 Layout report: /tmp/evalrepair2/curr-394/ws_r_curr394.tex
-  problem blocks: figure scope ok (no 8 problems carry valued figures)
+  problem blocks: figure scope ok (none of the 8 problems carries a valued figure)
   problem blocks: work space ok (all 8 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
@@ -91,7 +91,7 @@ Page budget (ws, letter): 8 problems, 65.4cm of content
 
 ── step 14 · compile ws_r_curr394.tex → /tmp/evalrepair2/curr-394  (page budget: 5)
 Compiling: ws_r_curr394.tex → /tmp/evalrepair2/curr-394/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 5-page budget.
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 5-page budget.
 ✅ PDF ready: /tmp/evalrepair2/curr-394/ws_r_curr394.pdf
 /tmp/evalrepair2/curr-394/ws_r_curr394.pdf
 
@@ -151,6 +151,8 @@ Match rate: 25/31 (80.6%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
+── step 22 · overprinting in the compiled PDFs
+
 ── gate summary ──────────────────────────────
    discover         PASS
    template-ws      PASS
@@ -173,6 +175,7 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
    /tmp/evalrepair2/curr-394/ws_r_curr394.pdf
    /tmp/evalrepair2/curr-394/ak_r_curr394.pdf

@@ -1,12 +1,12 @@
 {
   "task_id": "curr-084",
-  "recorded": "2026-08-03T14:57:40Z",
+  "recorded": "2026-08-03T17:15:16Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
   "latency_seconds": null,
-  "notes": "artifact repair: overlong-skillheading×1",
+  "notes": "artifact repair: rebuild (shared preamble changed)",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

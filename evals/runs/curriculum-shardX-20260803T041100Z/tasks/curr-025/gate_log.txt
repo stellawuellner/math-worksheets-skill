@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'addstrategy_curr025' in /tmp/evalbuild/curr-025
-   ws: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.tex
-   ak: /tmp/evalbuild/curr-025/ak_addstrategy_curr025.tex
-   ss: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex  (verify: /tmp/evalbuild/curr-025/verify_ss_addstrategy_curr025.json)
+── step 1 · discover documents for stem 'r_curr025' in /tmp/evalrepair2/curr-025
+   ws: /tmp/evalrepair2/curr-025/ws_r_curr025.tex
+   ak: /tmp/evalrepair2/curr-025/ak_r_curr025.tex
+   ss: /tmp/evalrepair2/curr-025/ss_r_curr025.tex  (verify: /tmp/evalrepair2/curr-025/verify_ss_r_curr025.json)
 
-── step 2 · template shell on ws_addstrategy_curr025.tex
-Template-use report: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.tex
+── step 2 · template shell on ws_r_curr025.tex
+Template-use report: /tmp/evalrepair2/curr-025/ws_r_curr025.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_addstrategy_curr025.tex
-Template-use report: /tmp/evalbuild/curr-025/ak_addstrategy_curr025.tex
+── step 3 · template shell on ak_r_curr025.tex
+Template-use report: /tmp/evalrepair2/curr-025/ak_r_curr025.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_addstrategy_curr025.tex
-Template-use report: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex
+── step 4 · template shell on ss_r_curr025.tex
+Template-use report: /tmp/evalrepair2/curr-025/ss_r_curr025.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_addstrategy_curr025.json)
+── step 5 · verify worksheet JSON (verify_r_curr025.json)
 Verifying: choosing an efficient strategy for mixed addition facts within 10 (10 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a + b at {'a': 7, 'b': 2}) → 9 (expected 9)
@@ -43,7 +43,7 @@ difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 4, 5]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_addstrategy_curr025.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr025.json)
 Verifying: choosing an efficient strategy for mixed addition facts within 10 — study guide (6 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a + b at {'a': 5, 'b': 3}) → 8 (expected 8)
@@ -63,8 +63,8 @@ difficulty ramp: [1, 1, 2, 2, 2, 2]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_addstrategy_curr025.json → verify_ss_addstrategy_curr025.json
-Skill coverage: /tmp/evalbuild/curr-025/verify_addstrategy_curr025.json → /tmp/evalbuild/curr-025/verify_ss_addstrategy_curr025.json
+── step 7 · skill coverage: verify_r_curr025.json → verify_ss_r_curr025.json
+Skill coverage: /tmp/evalrepair2/curr-025/verify_r_curr025.json → /tmp/evalrepair2/curr-025/verify_ss_r_curr025.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -75,60 +75,60 @@ subtitle bound: 'Pick the fastest way: count on from the larger part, use a doub
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-025/meta_addstrategy_curr025.tex
+Wrote /tmp/evalrepair2/curr-025/meta_r_curr025.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-025/qa_addstrategy_curr025.tex
+Wrote /tmp/evalrepair2/curr-025/qa_r_curr025.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_addstrategy_curr025.tex
-Layout report: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.tex
-  problem blocks: figure scope ok (no 10 problems carry valued figures)
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr025.tex
+Layout report: /tmp/evalrepair2/curr-025/ws_r_curr025.tex
+  problem blocks: figure scope ok (none of the 10 problems carries a valued figure)
   problem blocks: work space ok (all 10 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_addstrategy_curr025.tex
-Answer-line binding: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.tex (10 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr025.tex
+Answer-line binding: /tmp/evalrepair2/curr-025/ws_r_curr025.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 63.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_addstrategy_curr025.tex → /tmp/evalbuild/curr-025  (page budget: 5)
-Compiling: ws_addstrategy_curr025.tex → /tmp/evalbuild/curr-025/
+── step 14 · compile ws_r_curr025.tex → /tmp/evalrepair2/curr-025  (page budget: 5)
+Compiling: ws_r_curr025.tex → /tmp/evalrepair2/curr-025/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.pdf
-/tmp/evalbuild/curr-025/ws_addstrategy_curr025.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-025/ws_r_curr025.pdf
+/tmp/evalrepair2/curr-025/ws_r_curr025.pdf
 
-── step 15 · compile ak_addstrategy_curr025.tex → /tmp/evalbuild/curr-025  (page budget: 5)
-Compiling: ak_addstrategy_curr025.tex → /tmp/evalbuild/curr-025/
+── step 15 · compile ak_r_curr025.tex → /tmp/evalrepair2/curr-025  (page budget: 5)
+Compiling: ak_r_curr025.tex → /tmp/evalrepair2/curr-025/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-025/ak_addstrategy_curr025.pdf
-/tmp/evalbuild/curr-025/ak_addstrategy_curr025.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-025/ak_r_curr025.pdf
+/tmp/evalrepair2/curr-025/ak_r_curr025.pdf
 
-── step 16 · compile ss_addstrategy_curr025.tex → /tmp/evalbuild/curr-025  (page budget: 2)
-Compiling: ss_addstrategy_curr025.tex → /tmp/evalbuild/curr-025/
+── step 16 · compile ss_r_curr025.tex → /tmp/evalrepair2/curr-025  (page budget: 2)
+Compiling: ss_r_curr025.tex → /tmp/evalrepair2/curr-025/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.pdf
-/tmp/evalbuild/curr-025/ss_addstrategy_curr025.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-025/ss_r_curr025.pdf
+/tmp/evalrepair2/curr-025/ss_r_curr025.pdf
 
-── step 17 · answer-key binding: ak_addstrategy_curr025.tex ↔ verify_addstrategy_curr025.json
-Answer-key binding: /tmp/evalbuild/curr-025/ak_addstrategy_curr025.tex
+── step 17 · answer-key binding: ak_r_curr025.tex ↔ verify_r_curr025.json
+Answer-key binding: /tmp/evalrepair2/curr-025/ak_r_curr025.tex
   10 boxed answers · 10 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_addstrategy_curr025.tex ↔ verify_ss_addstrategy_curr025.json
-Answer-key binding: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex
+── step 18 · answer-key binding: ss_r_curr025.tex ↔ verify_ss_r_curr025.json
+Answer-key binding: /tmp/evalrepair2/curr-025/ss_r_curr025.tex
   6 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_addstrategy_curr025.tex
-Study-guide structure: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr025.tex
+Study-guide structure: /tmp/evalrepair2/curr-025/ss_r_curr025.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_addstrategy_curr025.tex
-Prose-consistency report: /tmp/evalbuild/curr-025/ws_addstrategy_curr025.tex
+── step 20 · prose consistency on ws_r_curr025.tex
+Prose-consistency report: /tmp/evalrepair2/curr-025/ws_r_curr025.tex
   problem 1: 2 prose numbers  ok
   problem 2: 1 prose numbers  ok
   problem 3: 2 prose numbers  ok
@@ -144,8 +144,8 @@ Match rate: 20/20 (100.0%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_addstrategy_curr025.tex
-Prose-consistency report: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex
+── step 21 · prose consistency on ss_r_curr025.tex
+Prose-consistency report: /tmp/evalrepair2/curr-025/ss_r_curr025.tex
   problem 1: 5 prose numbers  ⚠ missing from JSON: [6.0, 7.0]
   problem 2: 3 prose numbers  ok
   problem 3: 5 prose numbers  ⚠ missing from JSON: [6.0]
@@ -156,6 +156,8 @@ Prose-consistency report: /tmp/evalbuild/curr-025/ss_addstrategy_curr025.tex
 Match rate: 19/22 (86.4%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── step 22 · overprinting in the compiled PDFs
 
 ── gate summary ──────────────────────────────
    discover         PASS
@@ -179,9 +181,10 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-025/ws_addstrategy_curr025.pdf
-   /tmp/evalbuild/curr-025/ak_addstrategy_curr025.pdf
-   /tmp/evalbuild/curr-025/ss_addstrategy_curr025.pdf
+   /tmp/evalrepair2/curr-025/ws_r_curr025.pdf
+   /tmp/evalrepair2/curr-025/ak_r_curr025.pdf
+   /tmp/evalrepair2/curr-025/ss_r_curr025.pdf
 
 ✅ BUILD PASSED — all gates green

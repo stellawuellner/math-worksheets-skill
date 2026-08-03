@@ -162,6 +162,8 @@ Match rate: 38/42 (90.5%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
+── step 22 · overprinting in the compiled PDFs
+
 ── gate summary ──────────────────────────────
    discover         PASS
    template-ws      PASS
@@ -184,6 +186,7 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
    /tmp/evalrepair2/curr-095/ws_r_curr095.pdf
    /tmp/evalrepair2/curr-095/ak_r_curr095.pdf

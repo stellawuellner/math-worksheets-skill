@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'polar_curves_curr432' in /tmp/evalbuild/curr-432
-   ws: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.tex
-   ak: /tmp/evalbuild/curr-432/ak_polar_curves_curr432.tex
-   ss: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex  (verify: /tmp/evalbuild/curr-432/verify_ss_polar_curves_curr432.json)
+── step 1 · discover documents for stem 'r_curr432' in /tmp/evalrepair2/curr-432
+   ws: /tmp/evalrepair2/curr-432/ws_r_curr432.tex
+   ak: /tmp/evalrepair2/curr-432/ak_r_curr432.tex
+   ss: /tmp/evalrepair2/curr-432/ss_r_curr432.tex  (verify: /tmp/evalrepair2/curr-432/verify_ss_r_curr432.json)
 
-── step 2 · template shell on ws_polar_curves_curr432.tex
-Template-use report: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.tex
+── step 2 · template shell on ws_r_curr432.tex
+Template-use report: /tmp/evalrepair2/curr-432/ws_r_curr432.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_polar_curves_curr432.tex
-Template-use report: /tmp/evalbuild/curr-432/ak_polar_curves_curr432.tex
+── step 3 · template shell on ak_r_curr432.tex
+Template-use report: /tmp/evalrepair2/curr-432/ak_r_curr432.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_polar_curves_curr432.tex
-Template-use report: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex
+── step 4 · template shell on ss_r_curr432.tex
+Template-use report: /tmp/evalrepair2/curr-432/ss_r_curr432.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_polar_curves_curr432.json)
+── step 5 · verify worksheet JSON (verify_r_curr432.json)
 Verifying: graphing basic polar curves from equations (12 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(6*cos(theta*pi/180) at {'theta': 60}) → 3 (expected 3)
@@ -44,7 +44,7 @@ difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
 
 👁  2 problem(s) need manual review (10 machine-verified) — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_polar_curves_curr432.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr432.json)
 Verifying: study guide: graphing basic polar curves (6 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(3*cos(theta*pi/180) at {'theta': 60}) → 3/2 (expected 3/2)
@@ -64,8 +64,8 @@ difficulty ramp: [1, 2, 3, 3, 3, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_polar_curves_curr432.json → verify_ss_polar_curves_curr432.json
-Skill coverage: /tmp/evalbuild/curr-432/verify_polar_curves_curr432.json → /tmp/evalbuild/curr-432/verify_ss_polar_curves_curr432.json
+── step 7 · skill coverage: verify_r_curr432.json → verify_ss_r_curr432.json
+Skill coverage: /tmp/evalrepair2/curr-432/verify_r_curr432.json → /tmp/evalrepair2/curr-432/verify_ss_r_curr432.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -76,60 +76,60 @@ subtitle bound: "Evaluating r at a given angle, finding the angles where r is ze
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-432/meta_polar_curves_curr432.tex
+Wrote /tmp/evalrepair2/curr-432/meta_r_curr432.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-432/qa_polar_curves_curr432.tex
+Wrote /tmp/evalrepair2/curr-432/qa_r_curr432.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_polar_curves_curr432.tex
-Layout report: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.tex
-  problem blocks: figure scope ok (no 12 problems carry valued figures)
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr432.tex
+Layout report: /tmp/evalrepair2/curr-432/ws_r_curr432.tex
+  problem blocks: figure scope ok (none of the 12 problems carries a valued figure)
   problem blocks: work space ok (all 12 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_polar_curves_curr432.tex
-Answer-line binding: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.tex (12 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr432.tex
+Answer-line binding: /tmp/evalrepair2/curr-432/ws_r_curr432.tex (12 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 12 problems, 103.6cm of content
   ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
 
-── step 14 · compile ws_polar_curves_curr432.tex → /tmp/evalbuild/curr-432  (page budget: 7)
-Compiling: ws_polar_curves_curr432.tex → /tmp/evalbuild/curr-432/
+── step 14 · compile ws_r_curr432.tex → /tmp/evalrepair2/curr-432  (page budget: 7)
+Compiling: ws_r_curr432.tex → /tmp/evalrepair2/curr-432/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 6 page(s), within the 7-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.pdf
-/tmp/evalbuild/curr-432/ws_polar_curves_curr432.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-432/ws_r_curr432.pdf
+/tmp/evalrepair2/curr-432/ws_r_curr432.pdf
 
-── step 15 · compile ak_polar_curves_curr432.tex → /tmp/evalbuild/curr-432  (page budget: 7)
-Compiling: ak_polar_curves_curr432.tex → /tmp/evalbuild/curr-432/
+── step 15 · compile ak_r_curr432.tex → /tmp/evalrepair2/curr-432  (page budget: 7)
+Compiling: ak_r_curr432.tex → /tmp/evalrepair2/curr-432/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 7-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-432/ak_polar_curves_curr432.pdf
-/tmp/evalbuild/curr-432/ak_polar_curves_curr432.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-432/ak_r_curr432.pdf
+/tmp/evalrepair2/curr-432/ak_r_curr432.pdf
 
-── step 16 · compile ss_polar_curves_curr432.tex → /tmp/evalbuild/curr-432  (page budget: 2)
-Compiling: ss_polar_curves_curr432.tex → /tmp/evalbuild/curr-432/
+── step 16 · compile ss_r_curr432.tex → /tmp/evalrepair2/curr-432  (page budget: 2)
+Compiling: ss_r_curr432.tex → /tmp/evalrepair2/curr-432/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.pdf
-/tmp/evalbuild/curr-432/ss_polar_curves_curr432.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-432/ss_r_curr432.pdf
+/tmp/evalrepair2/curr-432/ss_r_curr432.pdf
 
-── step 17 · answer-key binding: ak_polar_curves_curr432.tex ↔ verify_polar_curves_curr432.json
-Answer-key binding: /tmp/evalbuild/curr-432/ak_polar_curves_curr432.tex
+── step 17 · answer-key binding: ak_r_curr432.tex ↔ verify_r_curr432.json
+Answer-key binding: /tmp/evalrepair2/curr-432/ak_r_curr432.tex
   10 boxed answers · 12 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_polar_curves_curr432.tex ↔ verify_ss_polar_curves_curr432.json
-Answer-key binding: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex
+── step 18 · answer-key binding: ss_r_curr432.tex ↔ verify_ss_r_curr432.json
+Answer-key binding: /tmp/evalrepair2/curr-432/ss_r_curr432.tex
   6 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_polar_curves_curr432.tex
-Study-guide structure: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr432.tex
+Study-guide structure: /tmp/evalrepair2/curr-432/ss_r_curr432.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_polar_curves_curr432.tex
-Prose-consistency report: /tmp/evalbuild/curr-432/ws_polar_curves_curr432.tex
+── step 20 · prose consistency on ws_r_curr432.tex
+Prose-consistency report: /tmp/evalrepair2/curr-432/ws_r_curr432.tex
   problem 1: 2 prose numbers  ok
   problem 2: 2 prose numbers  ok
   problem 3: 2 prose numbers  ok
@@ -147,8 +147,8 @@ Match rate: 30/41 (73.2%) across 12 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_polar_curves_curr432.tex
-Prose-consistency report: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex
+── step 21 · prose consistency on ss_r_curr432.tex
+Prose-consistency report: /tmp/evalrepair2/curr-432/ss_r_curr432.tex
   problem 1: 4 prose numbers  ok
   problem 2: 3 prose numbers  ok
   problem 3: 8 prose numbers  ⚠ missing from JSON: [540.0]
@@ -159,6 +159,8 @@ Prose-consistency report: /tmp/evalbuild/curr-432/ss_polar_curves_curr432.tex
 Match rate: 23/25 (92.0%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── step 22 · overprinting in the compiled PDFs
 
 ── gate summary ──────────────────────────────
    discover         PASS
@@ -182,9 +184,10 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-432/ws_polar_curves_curr432.pdf
-   /tmp/evalbuild/curr-432/ak_polar_curves_curr432.pdf
-   /tmp/evalbuild/curr-432/ss_polar_curves_curr432.pdf
+   /tmp/evalrepair2/curr-432/ws_r_curr432.pdf
+   /tmp/evalrepair2/curr-432/ak_r_curr432.pdf
+   /tmp/evalrepair2/curr-432/ss_r_curr432.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

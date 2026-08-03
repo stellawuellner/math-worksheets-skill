@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'anchor_facts_curr076' in /tmp/evalbuild/curr-076
-   ws: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.tex
-   ak: /tmp/evalbuild/curr-076/ak_anchor_facts_curr076.tex
-   ss: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex  (verify: /tmp/evalbuild/curr-076/verify_ss_anchor_facts_curr076.json)
+── step 1 · discover documents for stem 'r_curr076' in /tmp/evalrepair2/curr-076
+   ws: /tmp/evalrepair2/curr-076/ws_r_curr076.tex
+   ak: /tmp/evalrepair2/curr-076/ak_r_curr076.tex
+   ss: /tmp/evalrepair2/curr-076/ss_r_curr076.tex  (verify: /tmp/evalrepair2/curr-076/verify_ss_r_curr076.json)
 
-── step 2 · template shell on ws_anchor_facts_curr076.tex
-Template-use report: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.tex
+── step 2 · template shell on ws_r_curr076.tex
+Template-use report: /tmp/evalrepair2/curr-076/ws_r_curr076.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_anchor_facts_curr076.tex
-Template-use report: /tmp/evalbuild/curr-076/ak_anchor_facts_curr076.tex
+── step 3 · template shell on ak_r_curr076.tex
+Template-use report: /tmp/evalrepair2/curr-076/ak_r_curr076.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_anchor_facts_curr076.tex
-Template-use report: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex
+── step 4 · template shell on ss_r_curr076.tex
+Template-use report: /tmp/evalrepair2/curr-076/ss_r_curr076.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_anchor_facts_curr076.json)
+── step 5 · verify worksheet JSON (verify_r_curr076.json)
 Verifying: using twos, fives, and tens as anchor facts (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a*b at {'a': 7, 'b': 2}) → 14 (expected 14)
@@ -42,7 +42,7 @@ difficulty ramp: [1, 2, 2, 2, 3, 3, 4, 5]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_anchor_facts_curr076.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr076.json)
 Verifying: study guide: using twos, fives, and tens as anchor facts (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(2*(a*b) at {'a': 9, 'b': 2}) → 36 (expected 36)
@@ -64,8 +64,8 @@ difficulty ramp: [2, 2, 2, 2, 3, 3, 3, 3]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_anchor_facts_curr076.json → verify_ss_anchor_facts_curr076.json
-Skill coverage: /tmp/evalbuild/curr-076/verify_anchor_facts_curr076.json → /tmp/evalbuild/curr-076/verify_ss_anchor_facts_curr076.json
+── step 7 · skill coverage: verify_r_curr076.json → verify_ss_r_curr076.json
+Skill coverage: /tmp/evalrepair2/curr-076/verify_r_curr076.json → /tmp/evalrepair2/curr-076/verify_ss_r_curr076.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -76,60 +76,60 @@ subtitle bound: 'Skip counting by twos, fives, and tens, doubling a two-fact, bu
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-076/meta_anchor_facts_curr076.tex
+Wrote /tmp/evalrepair2/curr-076/meta_r_curr076.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-076/qa_anchor_facts_curr076.tex
+Wrote /tmp/evalrepair2/curr-076/qa_r_curr076.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_anchor_facts_curr076.tex
-Layout report: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.tex
-  problem blocks: figure scope ok (no 8 problems carry valued figures)
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr076.tex
+Layout report: /tmp/evalrepair2/curr-076/ws_r_curr076.tex
+  problem blocks: figure scope ok (none of the 8 problems carries a valued figure)
   problem blocks: work space ok (all 8 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_anchor_facts_curr076.tex
-Answer-line binding: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.tex (8 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr076.tex
+Answer-line binding: /tmp/evalrepair2/curr-076/ws_r_curr076.tex (8 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 8 problems, 64.4cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076  (page budget: 5)
-Compiling: ws_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076/
+── step 14 · compile ws_r_curr076.tex → /tmp/evalrepair2/curr-076  (page budget: 5)
+Compiling: ws_r_curr076.tex → /tmp/evalrepair2/curr-076/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.pdf
-/tmp/evalbuild/curr-076/ws_anchor_facts_curr076.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-076/ws_r_curr076.pdf
+/tmp/evalrepair2/curr-076/ws_r_curr076.pdf
 
-── step 15 · compile ak_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076  (page budget: 5)
-Compiling: ak_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076/
+── step 15 · compile ak_r_curr076.tex → /tmp/evalrepair2/curr-076  (page budget: 5)
+Compiling: ak_r_curr076.tex → /tmp/evalrepair2/curr-076/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-076/ak_anchor_facts_curr076.pdf
-/tmp/evalbuild/curr-076/ak_anchor_facts_curr076.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-076/ak_r_curr076.pdf
+/tmp/evalrepair2/curr-076/ak_r_curr076.pdf
 
-── step 16 · compile ss_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076  (page budget: 2)
-Compiling: ss_anchor_facts_curr076.tex → /tmp/evalbuild/curr-076/
+── step 16 · compile ss_r_curr076.tex → /tmp/evalrepair2/curr-076  (page budget: 2)
+Compiling: ss_r_curr076.tex → /tmp/evalrepair2/curr-076/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.pdf
-/tmp/evalbuild/curr-076/ss_anchor_facts_curr076.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-076/ss_r_curr076.pdf
+/tmp/evalrepair2/curr-076/ss_r_curr076.pdf
 
-── step 17 · answer-key binding: ak_anchor_facts_curr076.tex ↔ verify_anchor_facts_curr076.json
-Answer-key binding: /tmp/evalbuild/curr-076/ak_anchor_facts_curr076.tex
+── step 17 · answer-key binding: ak_r_curr076.tex ↔ verify_r_curr076.json
+Answer-key binding: /tmp/evalrepair2/curr-076/ak_r_curr076.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_anchor_facts_curr076.tex ↔ verify_ss_anchor_facts_curr076.json
-Answer-key binding: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex
+── step 18 · answer-key binding: ss_r_curr076.tex ↔ verify_ss_r_curr076.json
+Answer-key binding: /tmp/evalrepair2/curr-076/ss_r_curr076.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_anchor_facts_curr076.tex
-Study-guide structure: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr076.tex
+Study-guide structure: /tmp/evalrepair2/curr-076/ss_r_curr076.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_anchor_facts_curr076.tex
-Prose-consistency report: /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.tex
+── step 20 · prose consistency on ws_r_curr076.tex
+Prose-consistency report: /tmp/evalrepair2/curr-076/ws_r_curr076.tex
   problem 1: 2 prose numbers  ok
   problem 2: 2 prose numbers  ok
   problem 3: 4 prose numbers  ⚠ missing from JSON: [6.0, 40.0]
@@ -143,8 +143,8 @@ Match rate: 19/26 (73.1%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_anchor_facts_curr076.tex
-Prose-consistency report: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex
+── step 21 · prose consistency on ss_r_curr076.tex
+Prose-consistency report: /tmp/evalrepair2/curr-076/ss_r_curr076.tex
   problem 1: 5 prose numbers  ⚠ missing from JSON: [4.0, 18.0]
   problem 2: 4 prose numbers  ⚠ missing from JSON: [4.0]
   problem 3: 5 prose numbers  ⚠ missing from JSON: [9.0, 60.0]
@@ -157,6 +157,8 @@ Prose-consistency report: /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.tex
 Match rate: 24/37 (64.9%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── step 22 · overprinting in the compiled PDFs
 
 ── gate summary ──────────────────────────────
    discover         PASS
@@ -180,9 +182,10 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-076/ws_anchor_facts_curr076.pdf
-   /tmp/evalbuild/curr-076/ak_anchor_facts_curr076.pdf
-   /tmp/evalbuild/curr-076/ss_anchor_facts_curr076.pdf
+   /tmp/evalrepair2/curr-076/ws_r_curr076.pdf
+   /tmp/evalrepair2/curr-076/ak_r_curr076.pdf
+   /tmp/evalrepair2/curr-076/ss_r_curr076.pdf
 
 ✅ BUILD PASSED — all gates green

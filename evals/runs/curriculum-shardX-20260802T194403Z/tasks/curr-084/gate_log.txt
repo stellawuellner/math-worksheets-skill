@@ -79,7 +79,7 @@ Wrote /tmp/evalrepair2/curr-084/qa_r_curr084.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr084.tex
 Layout report: /tmp/evalrepair2/curr-084/ws_r_curr084.tex
-  problem blocks: figure scope ok (no 8 problems carry valued figures)
+  problem blocks: figure scope ok (none of the 8 problems carries a valued figure)
   problem blocks: work space ok (all 8 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
@@ -98,7 +98,7 @@ Compiling: ws_r_curr084.tex → /tmp/evalrepair2/curr-084/
 
 ── step 15 · compile ak_r_curr084.tex → /tmp/evalrepair2/curr-084  (page budget: 5)
 Compiling: ak_r_curr084.tex → /tmp/evalrepair2/curr-084/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 5-page budget.
 ✅ PDF ready: /tmp/evalrepair2/curr-084/ak_r_curr084.pdf
 /tmp/evalrepair2/curr-084/ak_r_curr084.pdf
 
@@ -154,6 +154,8 @@ Match rate: 22/24 (91.7%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
+── step 22 · overprinting in the compiled PDFs
+
 ── gate summary ──────────────────────────────
    discover         PASS
    template-ws      PASS
@@ -176,6 +178,7 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
    /tmp/evalrepair2/curr-084/ws_r_curr084.pdf
    /tmp/evalrepair2/curr-084/ak_r_curr084.pdf

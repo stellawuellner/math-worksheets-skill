@@ -94,16 +94,16 @@ Wrote /tmp/evalrepair2/curr-223/qa_r_curr223.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr223.tex
 Layout report: /tmp/evalrepair2/curr-223/ws_r_curr223.tex
-  list 1: figure scope ok (no 3 problems carry valued figures)
+  list 1: figure scope ok (none of the 3 problems carries a valued figure)
   list 1: work space ok (all 3 problems ≥ 2.5cm)
   list 1: answer location ok (all 3 items carry an answer-location macro)
-  list 2: figure scope ok (no 3 problems carry valued figures)
+  list 2: figure scope ok (none of the 3 problems carries a valued figure)
   list 2: work space ok (all 3 problems ≥ 2.5cm)
   list 2: answer location ok (all 3 items carry an answer-location macro)
-  list 3: figure scope ok (no 2 problems carry valued figures)
+  list 3: figure scope ok (none of the 2 problems carries a valued figure)
   list 3: work space ok (all 2 problems ≥ 2.5cm)
   list 3: answer location ok (all 2 items carry an answer-location macro)
-  problem blocks: figure scope ok (no 10 problems carry valued figures)
+  problem blocks: figure scope ok (none of the 10 problems carries a valued figure)
   problem blocks: work space ok (all 10 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
@@ -122,7 +122,7 @@ Compiling: ws_r_curr223.tex → /tmp/evalrepair2/curr-223/
 
 ── step 15 · compile ak_r_curr223.tex → /tmp/evalrepair2/curr-223  (page budget: 5)
 Compiling: ak_r_curr223.tex → /tmp/evalrepair2/curr-223/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 5-page budget.
 ✅ PDF ready: /tmp/evalrepair2/curr-223/ak_r_curr223.pdf
 /tmp/evalrepair2/curr-223/ak_r_curr223.pdf
 
@@ -180,6 +180,8 @@ Match rate: 29/34 (85.3%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
+── step 22 · overprinting in the compiled PDFs
+
 ── gate summary ──────────────────────────────
    discover         PASS
    template-ws      PASS
@@ -202,6 +204,7 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
    /tmp/evalrepair2/curr-223/ws_r_curr223.pdf
    /tmp/evalrepair2/curr-223/ak_r_curr223.pdf

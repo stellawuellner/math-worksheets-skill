@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'placevalue_curr101' in /tmp/evalbuild/curr-101
-   ws: /tmp/evalbuild/curr-101/ws_placevalue_curr101.tex
-   ak: /tmp/evalbuild/curr-101/ak_placevalue_curr101.tex
-   ss: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex  (verify: /tmp/evalbuild/curr-101/verify_ss_placevalue_curr101.json)
+── step 1 · discover documents for stem 'r_curr101' in /tmp/evalrepair2/curr-101
+   ws: /tmp/evalrepair2/curr-101/ws_r_curr101.tex
+   ak: /tmp/evalrepair2/curr-101/ak_r_curr101.tex
+   ss: /tmp/evalrepair2/curr-101/ss_r_curr101.tex  (verify: /tmp/evalrepair2/curr-101/verify_ss_r_curr101.json)
 
-── step 2 · template shell on ws_placevalue_curr101.tex
-Template-use report: /tmp/evalbuild/curr-101/ws_placevalue_curr101.tex
+── step 2 · template shell on ws_r_curr101.tex
+Template-use report: /tmp/evalrepair2/curr-101/ws_r_curr101.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_placevalue_curr101.tex
-Template-use report: /tmp/evalbuild/curr-101/ak_placevalue_curr101.tex
+── step 3 · template shell on ak_r_curr101.tex
+Template-use report: /tmp/evalrepair2/curr-101/ak_r_curr101.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_placevalue_curr101.tex
-Template-use report: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex
+── step 4 · template shell on ss_r_curr101.tex
+Template-use report: /tmp/evalrepair2/curr-101/ss_r_curr101.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_placevalue_curr101.json)
+── step 5 · verify worksheet JSON (verify_r_curr101.json)
 Verifying: reading and comparing multi-digit whole numbers (12 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(4*10000 + n*1000 + 3*100 + 8*10 + 2 at {'n': 7}) → 47382 (expected 47382)
@@ -37,12 +37,12 @@ bloom mix: recall×2, apply×7, analyze×3
 standards: 2.NBT.A×9, 4.NBT.B.4×3
 skill mix: compare-order×3, expanded-and-word-form×2, place-value-meaning×4, round-estimate×3
 facets: place-value-meaning×4, expanded-and-word-form×2, compare-order×4, round-estimate×2
-facet mix: place-value-meaning×4, expanded-and-word-form×2, compare-order×4, round-estimate×2; max in-window run: 2
+facet mix: place-value-meaning×3, expanded-and-word-form×2, compare-order×3, round-estimate×2; max in-window run: 1
 difficulty ramp: [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_placevalue_curr101.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr101.json)
 Verifying: study guide — reading and comparing multi-digit whole numbers (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(n*1000 at {'n': 2}) → 2000 (expected 2000)
@@ -64,8 +64,8 @@ difficulty ramp: [1, 2, 2, 3, 2, 3, 2, 3]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_placevalue_curr101.json → verify_ss_placevalue_curr101.json
-Skill coverage: /tmp/evalbuild/curr-101/verify_placevalue_curr101.json → /tmp/evalbuild/curr-101/verify_ss_placevalue_curr101.json
+── step 7 · skill coverage: verify_r_curr101.json → verify_ss_r_curr101.json
+Skill coverage: /tmp/evalrepair2/curr-101/verify_r_curr101.json → /tmp/evalrepair2/curr-101/verify_ss_r_curr101.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -76,83 +76,83 @@ subtitle bound: 'Digit values, expanded and word form, comparing and ordering, r
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-101/meta_placevalue_curr101.tex
+Wrote /tmp/evalrepair2/curr-101/meta_r_curr101.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-101/qa_placevalue_curr101.tex
+Wrote /tmp/evalrepair2/curr-101/qa_r_curr101.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_placevalue_curr101.tex
-Layout report: /tmp/evalbuild/curr-101/ws_placevalue_curr101.tex
-  list 1: figure scope ok (no 2 problems carry valued figures)
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr101.tex
+Layout report: /tmp/evalrepair2/curr-101/ws_r_curr101.tex
+  list 1: figure scope ok (none of the 2 problems carries a valued figure)
   list 1: work space ok (all 2 problems ≥ 2.5cm)
   list 1: answer location ok (all 2 items carry an answer-location macro)
-  list 2: figure scope ok (no 2 problems carry valued figures)
+  list 2: figure scope ok (none of the 2 problems carries a valued figure)
   list 2: work space ok (all 2 problems ≥ 2.5cm)
   list 2: answer location ok (all 2 items carry an answer-location macro)
-  problem blocks: figure scope ok (no 10 problems carry valued figures)
+  problem blocks: figure scope ok (none of the 10 problems carries a valued figure)
   problem blocks: work space ok (all 10 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_placevalue_curr101.tex
-Answer-line binding: /tmp/evalbuild/curr-101/ws_placevalue_curr101.tex (10 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr101.tex
+Answer-line binding: /tmp/evalrepair2/curr-101/ws_r_curr101.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 53.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_placevalue_curr101.tex → /tmp/evalbuild/curr-101  (page budget: 5)
-Compiling: ws_placevalue_curr101.tex → /tmp/evalbuild/curr-101/
+── step 14 · compile ws_r_curr101.tex → /tmp/evalrepair2/curr-101  (page budget: 5)
+Compiling: ws_r_curr101.tex → /tmp/evalrepair2/curr-101/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-101/ws_placevalue_curr101.pdf
-/tmp/evalbuild/curr-101/ws_placevalue_curr101.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-101/ws_r_curr101.pdf
+/tmp/evalrepair2/curr-101/ws_r_curr101.pdf
 
-── step 15 · compile ak_placevalue_curr101.tex → /tmp/evalbuild/curr-101  (page budget: 5)
-Compiling: ak_placevalue_curr101.tex → /tmp/evalbuild/curr-101/
+── step 15 · compile ak_r_curr101.tex → /tmp/evalrepair2/curr-101  (page budget: 5)
+Compiling: ak_r_curr101.tex → /tmp/evalrepair2/curr-101/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-101/ak_placevalue_curr101.pdf
-/tmp/evalbuild/curr-101/ak_placevalue_curr101.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-101/ak_r_curr101.pdf
+/tmp/evalrepair2/curr-101/ak_r_curr101.pdf
 
-── step 16 · compile ss_placevalue_curr101.tex → /tmp/evalbuild/curr-101  (page budget: 2)
-Compiling: ss_placevalue_curr101.tex → /tmp/evalbuild/curr-101/
+── step 16 · compile ss_r_curr101.tex → /tmp/evalrepair2/curr-101  (page budget: 2)
+Compiling: ss_r_curr101.tex → /tmp/evalrepair2/curr-101/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-101/ss_placevalue_curr101.pdf
-/tmp/evalbuild/curr-101/ss_placevalue_curr101.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-101/ss_r_curr101.pdf
+/tmp/evalrepair2/curr-101/ss_r_curr101.pdf
 
-── step 17 · answer-key binding: ak_placevalue_curr101.tex ↔ verify_placevalue_curr101.json
-Answer-key binding: /tmp/evalbuild/curr-101/ak_placevalue_curr101.tex
+── step 17 · answer-key binding: ak_r_curr101.tex ↔ verify_r_curr101.json
+Answer-key binding: /tmp/evalrepair2/curr-101/ak_r_curr101.tex
   12 boxed answers · 10 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_placevalue_curr101.tex ↔ verify_ss_placevalue_curr101.json
-Answer-key binding: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex
+── step 18 · answer-key binding: ss_r_curr101.tex ↔ verify_ss_r_curr101.json
+Answer-key binding: /tmp/evalrepair2/curr-101/ss_r_curr101.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_placevalue_curr101.tex
-Study-guide structure: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr101.tex
+Study-guide structure: /tmp/evalrepair2/curr-101/ss_r_curr101.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_placevalue_curr101.tex
-Prose-consistency report: /tmp/evalbuild/curr-101/ws_placevalue_curr101.tex
-  problem 1: 9 prose numbers  ⚠ missing from JSON: [0.2, 0.9, 1.2, 2.6]
+── step 20 · prose consistency on ws_r_curr101.tex
+Prose-consistency report: /tmp/evalrepair2/curr-101/ws_r_curr101.tex
+  problem 1: 7 prose numbers  ⚠ missing from JSON: [1.2, 2.6]
   problem 2: 4 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 44.0]
-  problem 3: 7 prose numbers  ⚠ missing from JSON: [0.0, 0.8, 8.0, 30.0, 500.0]
-  problem 4: 10 prose numbers  ⚠ missing from JSON: [0.7, 1.0, 1.5, 3.0, 4.0, 5.0, 6.0, 46.0, 315.0, 351.0]
-  problem 5: 1 prose numbers  ⚠ missing from JSON: [0.8]
-  problem 6: 5 prose numbers  ⚠ missing from JSON: [0.8, 8.0, 80.0, 912.0, 921.0]
-  problem 7: 6 prose numbers  ⚠ missing from JSON: [0.0, 0.7, 47.0, 48.0, 382.0, 500.0]
+  problem 3: 6 prose numbers  ⚠ missing from JSON: [0.0, 8.0, 30.0, 500.0]
+  problem 4: 8 prose numbers  ⚠ missing from JSON: [1.0, 3.0, 4.0, 5.0, 6.0, 46.0, 315.0, 351.0]
+  problem 5: 0 prose numbers  ok
+  problem 6: 4 prose numbers  ⚠ missing from JSON: [8.0, 80.0, 912.0, 921.0]
+  problem 7: 5 prose numbers  ⚠ missing from JSON: [0.0, 47.0, 48.0, 382.0, 500.0]
   problem 8: 5 prose numbers  ⚠ missing from JSON: [0.0, 350.0, 842.0]
   problem 9: 4 prose numbers  ⚠ missing from JSON: [18.0, 21.0, 472.0, 650.0]
-  problem 10: 6 prose numbers  ⚠ missing from JSON: [0.2, 1.2, 2.7, 34.0, 509.0, 650.0]
+  problem 10: 5 prose numbers  ⚠ missing from JSON: [1.2, 2.7, 34.0, 509.0, 650.0]
 
-Match rate: 10/57 (17.5%) across 10 problem block(s)
+Match rate: 10/48 (20.8%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_placevalue_curr101.tex
-Prose-consistency report: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex
+── step 21 · prose consistency on ss_r_curr101.tex
+Prose-consistency report: /tmp/evalrepair2/curr-101/ss_r_curr101.tex
   problem 1: 7 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 7.0, 82.0, 417.0]
   problem 2: 4 prose numbers  ⚠ missing from JSON: [0.0, 59.0, 304.0]
   problem 3: 9 prose numbers  ⚠ missing from JSON: [0.0, 3.0, 4.0, 40.0, 43.0, 206.0]
@@ -165,6 +165,8 @@ Prose-consistency report: /tmp/evalbuild/curr-101/ss_placevalue_curr101.tex
 Match rate: 10/48 (20.8%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
+
+── step 22 · overprinting in the compiled PDFs
 
 ── gate summary ──────────────────────────────
    discover         PASS
@@ -188,9 +190,10 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-101/ws_placevalue_curr101.pdf
-   /tmp/evalbuild/curr-101/ak_placevalue_curr101.pdf
-   /tmp/evalbuild/curr-101/ss_placevalue_curr101.pdf
+   /tmp/evalrepair2/curr-101/ws_r_curr101.pdf
+   /tmp/evalrepair2/curr-101/ak_r_curr101.pdf
+   /tmp/evalrepair2/curr-101/ss_r_curr101.pdf
 
 ✅ BUILD PASSED — all gates green

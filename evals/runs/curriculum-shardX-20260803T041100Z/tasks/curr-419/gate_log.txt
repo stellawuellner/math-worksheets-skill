@@ -82,7 +82,7 @@ Wrote /tmp/evalrepair2/curr-419/qa_r_curr419.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr419.tex
 Layout report: /tmp/evalrepair2/curr-419/ws_r_curr419.tex
-  problem blocks: figure scope ok (no 8 problems carry valued figures)
+  problem blocks: figure scope ok (none of the 8 problems carries a valued figure)
   problem blocks: work space ok (all 8 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
@@ -155,6 +155,8 @@ Match rate: 26/30 (86.7%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
+── step 22 · overprinting in the compiled PDFs
+
 ── gate summary ──────────────────────────────
    discover         PASS
    template-ws      PASS
@@ -177,6 +179,7 @@ Figure labels: all consistent with JSON givens.
    ss-structure     PASS
    prose-ws         PASS
    prose-ss         PASS
+   overprint        PASS
 ── PDFs ──────────────────────────────────────
    /tmp/evalrepair2/curr-419/ws_r_curr419.pdf
    /tmp/evalrepair2/curr-419/ak_r_curr419.pdf

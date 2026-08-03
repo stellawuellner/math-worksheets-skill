@@ -119,6 +119,9 @@ agent a rebuild.
   normalizer was matching a prefix and rewriting `\tfrac{11\pi}{6}` to `1/1`.
   Fixed. A fraction whose parts are not plain numbers is now left alone rather
   than mangled.)
+- **`\rule{\linewidth}` after prose needs a blank line**, not just a `\vspace`
+  — `\vspace` does not end a paragraph, so the rule is typeset into the last
+  prose line and overfulls by ~200pt. Same class as the `tabular`/`\ans` rule.
 - **Prefer `\underline{\hspace{1.2cm}}` and `\\[0.9cm]`** over bare `\rule{}{}`
   in stems — raw dimensions leak into the prose checker as phantom numbers.
 - **The 57-char `\skillheading` budget includes the `"Skill N --- "` prefix**,

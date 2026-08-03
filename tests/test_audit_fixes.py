@@ -240,6 +240,15 @@ check("a negative mixed number keeps its sign",
 check("a bare fraction is untouched by the mixed-number rule",
       _toks(r"\dfrac{3}{4}") == [0.75])
 
+# An exponent followed by a division is not a fraction. "pi*h**2/9" read as
+# 2/9 = 0.2222 and demanded that value in the printed box — a guaranteed false
+# failure on every cone volume and every x**2/4.
+check("an exponent before a division is not a fraction",
+      _toks(r"pi*h**2/9") == [2.0, 9.0])
+check("the caret spelling behaves the same", _toks(r"x^2/9") == [2.0, 9.0])
+check("a genuine fraction still collapses", _toks(r"3/4") == [0.75])
+check("a leading coefficient is untouched", _toks(r"6*pi*r**2") == [2.0, 6.0])
+
 # A read_data table's KEYS are printed givens — the x-column the student reads.
 check("read_data table keys count as JSON givens",
       {0.0, 1.0} <= json_numbers({"id": 1, "type": "read_data",

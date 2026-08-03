@@ -118,7 +118,22 @@ def num_tokens(text):
     set-of-round(x, 4) discarded exactly that information.
     """
     out = []
-    for tok in NUM.findall(normalize_latex_numbers(text)):
+    src = normalize_latex_numbers(text)
+    for m in NUM.finditer(src):
+        tok = m.group(0)
+        # An exponent followed by a division is not a fraction. "pi*h**2/9" read
+        # as 2/9 = 0.2222 and demanded that value in the printed box, which no
+        # correct answer key would ever contain — a guaranteed false failure on
+        # every cone volume, every x**2/4. Split it back into its two numbers.
+        if "/" in tok and src[max(0, m.start() - 2):m.start()] in ("**", "^ ") \
+                or ("/" in tok and src[max(0, m.start() - 1):m.start()] == "^"):
+            a, b = tok.split("/")
+            for part in (a, b):
+                try:
+                    out.append((float(part), part))
+                except ValueError:
+                    pass
+            continue
         try:
             if "/" in tok:
                 a, b = tok.split("/")

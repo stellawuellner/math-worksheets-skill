@@ -84,6 +84,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Systems (linear/quadratic) | HSA-REI.C.6, HSA-REI.C.7 |
 | Polynomial arithmetic/factoring | HSA-APR.A.1, HSA-SSE.B.3 |
 | Polynomial zeros & graphs | HSA-APR.B.3 |
+| Rational expressions & functions | HSA-APR.D.6–D.7 |
 | Exponentials & logs | HSF-LE.A.4, HSF-BF.B.5 |
 | Function composition/inverse | HSF-BF.A.1c, HSF-BF.B.4 |
 | Trig functions & unit circle | HSF-TF.A.2, HSF-TF.B.5 |

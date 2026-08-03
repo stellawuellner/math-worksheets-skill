@@ -27,6 +27,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Multi-digit multiplication & division | 4.NBT.B.5 / 4.NBT.B.6 |
 | Fractions: understand & equivalence | 3.NF.A / 4.NF.A |
 | Fractions: add/subtract like denominators | 4.NF.B.3 |
+| Measurement, length comparison, time (K–1) | K.MD / 1.MD |
 | Measurement & data (length, mass, time) | 2.MD / 3.MD |
 | Measurement conversion, volume, angles (gr 4–5) | 4.MD / 5.MD |
 | Area & perimeter | 3.MD.C.7 / 3.MD.D.8 |
@@ -93,6 +94,8 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Right-triangle trig (solve sides/angles, elevation/depression) | HSG-SRT.C.8 |
 | Circles (arcs, sectors) | HSG-C.B.5 |
 | Coordinate geometry proofs | HSG-GPE.B.4–B.7 |
+| Volume, solids, area/volume of similar figures | HSG-GMD.A.1–A.3 |
+| Modelling with geometry (density, design) | HSG-MG.A.1–A.3 |
 | Sequences & series (explicit/recursive) | HSF-BF.A.2, HSF-LE.A.2 |
 | Congruence: transformations, triangle congruence, proofs | HSG-CO.A–HSG-CO.D |
 | Similarity: dilations, AA/SSS/SAS similarity | HSG-SRT.A.1–A.3, HSG-SRT.B.4–B.5 |

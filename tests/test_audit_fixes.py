@@ -316,6 +316,98 @@ check("read_data table keys count as JSON givens",
                                   "data": {"0": 60, "1": 48},
                                   "query": "total", "expected": 108}))
 
+# ── Absolute value: solvable, and honest about which domain ─────────────────
+# SymPy will not solve Abs(...) against a symbol carrying no real assumption,
+# and the unrestricted symbol is exactly what audit 1a installed to stop complex
+# roots being silently dropped. So the whole solve/zeros type was unusable for
+# absolute-value equations — a standard Algebra 1 topic — and an eval author
+# worked around it by verifying an equivalent SQUARED form: the page taught the
+# two-case method while the checker checked something else.
+#
+# The unrestricted solve is still tried first. Only a refusal falls back to a
+# real-assumed symbol, and that fallback narrows the guarantee, so it is stated
+# in the report and refused outright when the caller asked about ℂ.
+def _solve(**kw):
+    return verify.check_problem(dict({"id": 1, "var": "x"}, **kw), kw["type"])
+
+
+st, msg = _solve(type="solve", expr="Abs(x-3)+2-6", expected=[-1, 7])
+check("an absolute-value equation verifies at all", st == "PASS")
+check("and says the solve was restricted to the reals", "solved over" in msg)
+check("a wrong absolute-value answer still fails",
+      _solve(type="solve", expr="Abs(x-3)+2-6", expected=[7])[0] == "FAIL")
+check("a nested absolute value verifies",
+      _solve(type="solve", expr="Abs(2*x+1)-7", domain="real",
+             expected=[-4, 3])[0] == "PASS")
+st, msg = _solve(type="solve", expr="Abs(x-3)+2-6", domain="complex",
+                 expected=[-1, 7])
+check("asking about ℂ on a real-only expression is MANUAL, never PASS",
+      st == "MANUAL")
+check("and says plainly that non-real roots were never enumerated",
+      "never enumerated" in msg)
+# The guarantee the fallback must not weaken.
+check("audit 1a still holds: undeclared complex roots fail",
+      _solve(type="solve", expr="x**4-1", expected=[1, -1])[0] == "FAIL")
+check("declared complex roots still pass",
+      _solve(type="solve", expr="x**4-1", domain="complex",
+             expected=[1, -1, "I", "-I"])[0] == "PASS")
+check("an ordinary quadratic is untouched by the fallback",
+      _solve(type="zeros", expr="x**2-5*x+6", expected=[2, 3])[0] == "PASS")
+
+# ── A system has THREE answers, and two of them were reported as one ────────
+# SymPy returns [] for an inconsistent system and a dict with free symbols for
+# a dependent one. The completeness test was `sols and all(...)`, so the empty
+# list failed on falsiness and fell into the infinite-family branch: a pair of
+# parallel lines came back as "the system has a parametric/infinite family".
+# On the one type where "no solution" and "infinitely many" are the two answers
+# being taught apart, the checker stated the opposite of the truth. Found by an
+# eval author who wrote parallel lines on purpose.
+PARALLEL = ["y - (2*x + 1)", "y - (2*x - 3)"]      # inconsistent: none
+DEPENDENT = ["y - (2*x + 1)", "2*y - (4*x + 2)"]   # dependent: infinitely many
+CROSSING = ["y - (2*x + 1)", "y - (x + 3)"]        # one solution
+
+
+def _system(eqs, expected):
+    return verify.check_problem(
+        {"id": 1, "type": "system", "equations": eqs, "vars": ["x", "y"],
+         "expected": expected}, "system")
+
+
+st, msg = _system(PARALLEL, [])
+check("parallel lines with an empty key PASS", st == "PASS")
+check("and are called inconsistent, not an infinite family",
+      "inconsistent" in msg and "infinite" not in msg)
+check("a dependent system is still the infinite-family MANUAL",
+      _system(DEPENDENT, [{"x": 0, "y": 1}])[0] == "MANUAL")
+check("a crossing pair still verifies", _system(CROSSING, [{"x": 2, "y": 5}])[0] == "PASS")
+# The other half of the same hole: an empty key was vacuously satisfied, so a
+# key claiming "no solution" for a system that HAS one only got MANUAL.
+check("claiming no solution when one exists is a FAIL",
+      _system(CROSSING, [])[0] == "FAIL")
+check("claiming no solution for a dependent system is a FAIL",
+      _system(DEPENDENT, [])[0] == "FAIL")
+
+# ── The rejection that would not say 'lowercase' ────────────────────────────
+# difflib compares case-sensitively and scores 'M' against 'm' at zero, so the
+# close-match hint never fired on the one near-miss authors actually make: M/m
+# for a maximum and minimum, L for a length. The message printed an
+# all-lowercase allowlist without ever saying lowercase was the rule.
+def _rejection(name):
+    try:
+        verify._reject_name(name)
+    except verify.VerifyInputError as exc:
+        return str(exc)
+    return ""
+
+
+check("an uppercase variable is told the rule and the fix",
+      "lowercase" in _rejection("M") and "'m'" in _rejection("M"))
+check("so is an uppercase length", "'l'" in _rejection("L"))
+check("a genuinely unknown name still gets close matches",
+      "did you mean" in _rejection("floo"))
+check("a known idiom still gets its idiom hint",
+      "65*pi/180" in _rejection("rad"))
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

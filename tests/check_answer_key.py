@@ -439,18 +439,41 @@ def main():
                        and re.search(r"[A-Za-z]", e["expected"]) for e in entries)
         if symbolic:
             expected = {abs(v) for v in expected}
+
+        def unsigned(val, tok):
+            """Magnitude AND the text that prints it, moved together.
+
+            Mapping the value to abs() while leaving the token as '-0.33' was a
+            half-conversion, and value_matches reads the TEXT for a decimal (to
+            honour its written precision): it compared Decimal('0.33') against
+            Decimal('-0.33') and failed. Only negative DECIMALS in symbolic
+            problems were affected — integers take a branch that compares parsed
+            values — so a correct key boxing a negative decimal beside a
+            symbolic answer was rejected. The author's fix was to change the
+            problem's initial condition so the answer came out positive: the
+            checker rewrote the mathematics.
+
+            Worth being plain about what this widens: a sign-only error on a
+            decimal, in a problem that also carries a symbolic answer, now
+            passes — as integers in the same position always have. It is not a
+            check that was working and has been loosened; in that position the
+            correct answer could not pass either. Strict sign still holds for
+            purely numeric problems, which is where a sign error IS the wrong
+            answer.
+            """
+            return abs(val), tok.lstrip("-") if "-" in tok[:1] else tok
         if not expected:
             continue
         seg = segments[i - 1] if i - 1 < len(segments) else ""
         for v in expected:
             box_toks = seg_boxes[i - 1] if i - 1 < len(seg_boxes) else []
             if symbolic:
-                box_toks = [(abs(val), tok) for val, tok in box_toks]
+                box_toks = [unsigned(val, tok) for val, tok in box_toks]
                 for val, tok in list(box_toks):
                     if "/" in tok:
                         for part in tok.split("/"):
                             try:
-                                box_toks.append((abs(float(part)), part))
+                                box_toks.append(unsigned(float(part), part))
                             except ValueError:
                                 pass
             if strict:

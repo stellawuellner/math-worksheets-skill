@@ -163,6 +163,20 @@ def _reject_name(name):
     """Raise the allowlist rejection WITH the fix: a known-idiom hint or a
     close-match suggestion, plus the full allowed vocabulary in one line."""
     detail = _HINTS.get(name)
+    # Case is checked BEFORE close-matching, because difflib compares
+    # case-sensitively and scores 'M' against 'm' at zero — so the one hint an
+    # author most needs was the one hint that never fired. M/m for a maximum and
+    # minimum, and L for a length, are the natural first choice on exactly the
+    # problems where they appear, and the rejection printed an all-lowercase
+    # allowlist without ever saying that lowercase was the rule. Two authors
+    # spent a round trip on it. The JSON's variable names are internal — the
+    # printed sheet shows whatever LaTeX the author writes — so renaming costs
+    # nothing on the page once you know that is what is being asked.
+    if detail is None and name.lower() != name and name.lower() in _ALLOWED_NAMES:
+        detail = (f"variable names are lowercase — use {name.lower()!r}. (If the "
+                  f"expression already uses {name.lower()!r} for something else, "
+                  f"rename one of them: this list has no uppercase letters, so a "
+                  f"sheet cannot verify M and m as two different quantities.)")
     if detail is None:
         close = difflib.get_close_matches(name, sorted(_ALLOWED_NAMES),
                                           n=3, cutoff=0.6)
@@ -1316,14 +1330,39 @@ def check_problem(p, ptype):
         # COMPLETENESS: compare against SymPy's full solution set when it is a
         # finite list; parametric/infinite families can't be counted → MANUAL.
         sols = sympy.solve(eqs, syms, dict=True)
-        finite = sols and all(
+        # SymPy answers this question in three shapes and two of them used to be
+        # read as one. [] means INCONSISTENT — no solution. A dict whose values
+        # still carry free symbols means a DEPENDENT system — infinitely many.
+        # The old test was `sols and all(...)`, so the empty list fell out of the
+        # finite branch on falsiness and landed in the infinite one, and a pair
+        # of parallel lines was reported as "a parametric/infinite family".
+        # That is not a missed check; it is the checker stating the opposite of
+        # the truth about the author's mathematics, on the one type where "no
+        # solution" and "infinitely many" are the two answers being taught apart.
+        # Found by an eval author writing parallel lines on purpose.
+        if not sols:
+            if want_list:
+                return ("FAIL",
+                        f"system{eqs_raw}: the system is inconsistent — no "
+                        f"solution exists — but the key lists {exp_raw}")
+            return ("PASS",
+                    f"system{eqs_raw} → inconsistent: no solution, as the key states")
+        finite = all(
             all(not v.free_symbols for v in sol.values()) for sol in sols)
         if finite:
+            if not want_list:
+                return ("FAIL",
+                        f"system{eqs_raw}: the key states no solution, but "
+                        f"{len(sols)} exist(s): {sols}")
             if len(sols) != len(want_list):
                 return ("MANUAL",
                         f"system{eqs_raw}: {len(sols)} solution(s) exist but key "
                         f"lists {len(want_list)} — verify completeness by hand")
             return ("PASS", f"system{eqs_raw} → all {len(sols)} solution(s) verified")
+        if not want_list:
+            return ("FAIL",
+                    f"system{eqs_raw}: the key states no solution, but the system "
+                    f"is dependent — it has infinitely many")
         return ("MANUAL",
                 f"system{eqs_raw}: listed solution(s) valid but the system has a "
                 "parametric/infinite family — verify completeness by hand")
@@ -1589,12 +1628,45 @@ def check_problem(p, ptype):
         # Solve over ℂ with an unrestricted symbol so non-real roots are not
         # silently dropped (audit 1a: x**4-1 keyed [1,-1] must not pass).
         z = sympy.Dummy("z")
-        all_roots = sympy.solve(expr.subs(var, z), z)
+        # Some perfectly ordinary school expressions are only DEFINED on the
+        # reals, and SymPy refuses to solve them against a symbol carrying no
+        # real assumption: |x-3|+2=6 raises "solving Abs(_z - 3) when the
+        # argument is not real or imaginary". Absolute-value equations are a
+        # standard Algebra 1 topic, and the whole type was unusable for them —
+        # one author verified an equivalent squared form instead, which teaches
+        # the two-case method on the page and checks something else underneath.
+        #
+        # The unrestricted symbol is not dropped, because it is what stops
+        # complex roots being silently lost (audit 1a). It is TRIED first, and
+        # only a solver refusal falls back to a real-assumed symbol — and that
+        # fallback narrows the guarantee, so it is recorded rather than hidden:
+        # over ℝ the answer is exact, over ℂ nothing was enumerated and the
+        # check refuses to pretend otherwise.
+        real_only = False
+        try:
+            all_roots = sympy.solve(expr.subs(var, z), z)
+        except (NotImplementedError, ValueError, TypeError, AttributeError):
+            z = sympy.Dummy("z", real=True)
+            try:
+                all_roots = sympy.solve(expr.subs(var, z), z)
+            except (NotImplementedError, ValueError, TypeError, AttributeError) as exc:
+                return ("MANUAL",
+                        f"{ptype}({p['expr']}) — SymPy cannot solve this "
+                        f"symbolically ({exc}); check it by hand or restate the "
+                        f"problem in a form the solver handles")
+            real_only = True
         real_roots = [r for r in all_roots if r.is_real]
         nonreal = [r for r in all_roots if r.is_real is False]
         domain = p.get("domain", "real")
         if domain not in ("real", "complex"):
             raise VerifyInputError("'domain' must be 'real' or 'complex'")
+        if real_only and domain == "complex":
+            return ("MANUAL",
+                    f"{ptype}({p['expr']}) is solvable only over the reals here "
+                    f"(SymPy will not solve it against an unrestricted symbol), "
+                    f'so "domain":"complex" cannot be answered: the real '
+                    f"solutions are {real_roots}, and whether any non-real ones "
+                    f"exist was never enumerated")
         # When non-real roots exist the intent is ambiguous — force an explicit
         # decision instead of quietly comparing against reals only.
         if nonreal and "domain" not in p:
@@ -1608,8 +1680,12 @@ def check_problem(p, ptype):
             roots = dedupe(roots)
             expected = dedupe(expected)
         ok = multiset_equal(roots, expected)
+        # Say when the solve was restricted, so a reader of the report can see
+        # which guarantee they actually have. Over ℝ this is exact; it simply
+        # is not the ℂ-complete enumeration the unrestricted path gives.
+        how = "domain=real, solved over ℝ" if real_only else f"domain={domain}"
         return ("PASS" if ok else "FAIL",
-                f"{ptype}({p['expr']}, domain={domain}) → {roots} "
+                f"{ptype}({p['expr']}, {how}) → {roots} "
                 f"(expected {expected})")
 
     if ptype in ("factor", "expand", "equiv"):

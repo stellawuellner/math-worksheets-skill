@@ -345,6 +345,20 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ test_figure_scope.py (valued figure vs blank workspace)"
 
+# ── Large-print page budget (tests/test_page_budget_type_size.py) ────────────
+# The budget is calibrated at 12pt and SKILL.md offers 14pt/17pt accessible
+# output, claiming it adapted automatically. It did not: a correct 17pt sheet
+# failed compile-ws by a page, and the only fixes were cutting problems or
+# shortening stems. The scale factors are measured, and this is the measurement.
+echo
+output=$("$PYTHON" "$SCRIPT_DIR/test_page_budget_type_size.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_page_budget_type_size.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_page_budget_type_size.py (large print costs what it costs)"
+
 # ── Facet plans, misconception traps, interleaving ───────────────────────────
 # The unit suite pins the gate messages and the window/run math; the blocks
 # below pin what only the CLI surfaces: report lines, the cross-file

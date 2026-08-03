@@ -90,6 +90,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Linear vs exponential change | HSF-LE.A.1, HSF-LE.A.3 |
 | Exponentials & logs | HSF-LE.A.4, HSF-BF.B.5 |
 | Function composition/inverse | HSF-BF.A.1c, HSF-BF.B.4 |
+| Graph transformations (shift, stretch, reflect) | HSF-BF.B.3 |
 | Trig functions & unit circle | HSF-TF.A.2, HSF-TF.B.5 |
 | Trig identities | HSF-TF.C.8 |
 | Law of sines/cosines | HSG-SRT.D.10, HSG-SRT.D.11 |
@@ -126,6 +127,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Derivative rules & chain rule | FUN-3.A–FUN-3.C |
 | Implicit/inverse differentiation | FUN-3.D–FUN-3.E |
 | Related rates | CHA-3.D |
+| Analytical applications (increasing/decreasing, concavity, inflection) | FUN-4.A |
 | Optimization | FUN-4.B–FUN-4.C |
 | Riemann sums & FTC | LIM-5, FUN-6 |
 | u-substitution / parts (BC) | FUN-6.D–FUN-6.E |

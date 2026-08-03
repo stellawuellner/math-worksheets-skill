@@ -135,6 +135,46 @@ try:
 finally:
     os.unlink(too_many)
 
+# ── A picture in the stem the JSON cannot see ───────────────────────────────
+# The stem charge is a flat 0.6cm, right for a sentence and badly wrong for a
+# stem holding a coordinate grid or a ten-frame. Three authors in one run hit
+# it the same way: every pre-compile gate green, then compile-ws failing by a
+# page, fixed by declaring workspace_cm. Now that --from-tex exists the budget
+# can say so BEFORE three compiles run. Deliberately a note, not a charge — a
+# tikzpicture's height is whatever its author drew.
+print()
+print("pictures the JSON cannot see")
+_ws_tex = tempfile.NamedTemporaryFile("w", suffix=".tex", delete=False)
+_ws_tex.write(r"""\documentclass[12pt]{article}
+\begin{document}
+\problem[3cm]{Plot the points.
+\begin{tikzpicture}\begin{axis}[height=6.4cm]\end{axis}\end{tikzpicture}}
+\problem[3cm]{Fill in the table.
+\begin{tabular}{|c|c|}\hline a & b \\ \hline\end{tabular}}
+\problem[3cm]{This one declares its own workspace.
+\begin{tikzpicture}\begin{axis}[height=9cm]\addplot {x};\end{axis}\end{tikzpicture}}
+\end{document}
+""")
+_ws_tex.close()
+_probe = json_file({"problem_count": 3, "problems": [
+    {"id": 1, "type": "eval"}, {"id": 2, "type": "eval"},
+    {"id": 3, "type": "eval", "workspace_cm": 9.0}]})
+try:
+    rc, out, _ = run_main([_probe, "--from-tex", _ws_tex.name])
+    check("a gridded stem with no workspace_cm is named", "problem 1's stem" in out)
+    check("and its own declared height is quoted", "height=6.4cm" in out)
+    check("a table counts too", "problem 2's stem" in out and "tabular" in out)
+    # Declaring workspace_cm IS how an author takes responsibility for the
+    # block; repeating the warning afterwards trains people to ignore it.
+    check("a problem that declared workspace_cm is not nagged",
+          "problem 3's stem" not in out)
+    rc2, out2, _ = run_main([_probe])
+    check("without --from-tex there is nothing to see and nothing is claimed",
+          "stem holds" not in out2 and rc2 == 0)
+finally:
+    os.unlink(_probe)
+    os.unlink(_ws_tex.name)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} page-budget test(s) failed:")

@@ -11,9 +11,11 @@ asserted too: error messages teach the fix, so they are contract.
 
 Run: python3 tests/test_answer_key_binding.py
 """
+import json
 import os
 import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -152,6 +154,45 @@ check("x**2 + 1/2 is still 2 and 0.5, not 2.5",
       vals("x**2 + 1/2") == [0.5, 2.0])
 check("a factored form is untouched",
       vals("(x - 3)*(x - 4)") == [3.0, 4.0])
+
+print()
+print("A negative decimal beside a symbolic answer:")
+# A symbolic answer carries its sign in the printed expression, so those match
+# on magnitude — that is deliberate and predates this. What was broken is that
+# the magnitude mapping moved the VALUE and left the token text signed, and
+# value_matches reads the text for a decimal to honour its written precision:
+# Decimal('0.33') was compared against Decimal('-0.33'). Only negative decimals
+# in symbolic problems were hit, and an eval author's fix was to change the
+# problem's initial condition so the answer came out positive. The checker
+# rewrote the mathematics.
+_HEAD = (r"\documentclass[12pt]{article}" "\n" r"\input{worksheet-preamble}" "\n"
+         r"\akheader{P}" "\n" r"\begin{document}" "\n"
+         r"\aktitleblock{P}{Test}{}" "\n")
+_SYMBOLIC = [{"id": 1, "type": "equiv", "expr": "2*x-1", "expected": "2*x - 1"},
+             {"id": 1, "type": "approx", "expr": "-0.33", "expected": -0.33}]
+_NUMERIC = [{"id": 1, "type": "approx", "expr": "-0.33", "expected": -0.33}]
+
+
+def binds(problems, body):
+    d = tempfile.mkdtemp()
+    json.dump({"topic": "p", "problem_count": 1, "problems": problems},
+              open(os.path.join(d, "v.json"), "w"))
+    open(os.path.join(d, "ak.tex"), "w").write(
+        _HEAD + body + "\n" + r"\end{document}" + "\n")
+    return subprocess.run(
+        [sys.executable, CHECKER, os.path.join(d, "ak.tex"),
+         os.path.join(d, "v.json")], capture_output=True).returncode == 0
+
+
+check("a correct negative decimal binds beside a symbolic answer",
+      binds(_SYMBOLIC, r"\problem{$\ans{2x-1}$, value $\ans{-0.33}$}"))
+check("a wrong magnitude still fails there",
+      not binds(_SYMBOLIC, r"\problem{$\ans{2x-1}$, value $\ans{-0.91}$}"))
+# Strict sign is kept exactly where a sign error IS the wrong answer.
+check("a purely numeric problem still rejects a flipped sign",
+      not binds(_NUMERIC, r"\problem{value $\ans{0.33}$}"))
+check("and still accepts the correct negative",
+      binds(_NUMERIC, r"\problem{value $\ans{-0.33}$}"))
 
 print()
 if FAILS:

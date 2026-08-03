@@ -419,10 +419,15 @@ fi
 # gated per problem by check_layout.py's work-space floor, which is the better
 # place for it: it is a property of the problem, not of the aggregate.
 # ss keeps a fixed 2 pages: it is a reference card, and SKILL.md caps it there.
-WS_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --max-pages 2>/dev/null || echo 8)
-AK_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --doc ak --max-pages 2>/dev/null || echo 6)
+# The budget is calibrated at 12pt, so it must be told when the document is not.
+# SKILL.md offers 14pt/17pt large-print and dyslexia-friendly output and said the
+# budget adapted automatically; it did not, and a correct 17pt sheet failed this
+# gate by a page. --from-tex reads the point size and \accessiblemode off the
+# worksheet itself, so nothing depends on an author remembering a flag.
+WS_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" --max-pages 2>/dev/null || echo 8)
+AK_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --doc ak --from-tex "$AK_TEX" --max-pages 2>/dev/null || echo 6)
 SS_MAX_PAGES=2
-"$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" 2>/dev/null || true
+"$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" 2>/dev/null || true
 compile_gate() { # gate-name tex-file max-pages
   local gate="$1" tex="$2" cap="$3"
   banner "compile $(basename "$tex") → $OUT_DIR  (page budget: $cap)"

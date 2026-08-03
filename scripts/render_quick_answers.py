@@ -86,7 +86,55 @@ def column_count(entries_text):
     return 2
 
 
-def render(data):
+AKTITLE_RE = re.compile(r"\\aktitleblock\{[^{}]*\}\{([^{}]*)\}")
+
+
+def curriculum_block(by_id, n, level):
+    """A "Curriculum" section for the ANSWER KEY: level, codes, difficulty.
+
+    The grade level is deliberately absent from the worksheet and the study
+    guide — a child working a grade below or above reads the label before the
+    mathematics, and it tells the student nothing they need. It is the adult's
+    information, so it belongs on the adult's document, next to the standards
+    codes that answer the question a parent or teacher actually has: what does
+    this sheet cover, and where does it sit in the curriculum.
+
+    Built from the verify JSON and the key's own \aktitleblock, never typed, so
+    it cannot disagree with the tags the verifier reported.
+    """
+    codes, diffs = {}, []
+    for i in range(1, n + 1):
+        for e in by_id.get(i, []):
+            std = e.get("standard")
+            if std:
+                codes.setdefault(str(std), []).append(i)
+            d = e.get("difficulty")
+            if isinstance(d, int):
+                diffs.append(d)
+    if not level and not codes:
+        return []
+    out = ["\\medskip\\noindent{\\small\\textbf{Curriculum}}\\par\\nopagebreak",
+           "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak"]
+    if level:
+        out.append(f"\\noindent{{\\small\\textbf{{Level:}}~{_texsafe(level)}}}\\par")
+    for code in sorted(codes):
+        seen, nums = set(), []
+        for i in codes[code]:
+            if i not in seen:
+                seen.add(i)
+                nums.append(str(i))
+        out.append(f"\\noindent{{\\small {_texsafe(code)} "
+                   f"\\textit{{-- problem{'s' if len(nums) > 1 else ''} "
+                   f"{', '.join(nums)}}}}}\\par")
+    if diffs:
+        out.append(f"\\noindent{{\\small\\textit{{Difficulty {min(diffs)}--"
+                   f"{max(diffs)} of 5 across {len(diffs)} tagged "
+                   f"check{'s' if len(diffs) > 1 else ''}.}}}}\\par")
+    out += ["\\noindent\\rule{\\linewidth}{0.4pt}\\medskip", ""]
+    return out
+
+
+def render(data, level=""):
     by_id = {}
     for p in data.get("problems", []):
         if isinstance(p, dict) and isinstance(p.get("id"), int):
@@ -129,6 +177,7 @@ def render(data):
         "\\noindent\\rule{\\linewidth}{0.4pt}\\medskip",
         "",
     ]
+    lines += curriculum_block(by_id, n, level)
     lines += common_errors(by_id, n)
     return "\n".join(lines)
 
@@ -228,13 +277,15 @@ def main(argv):
     except (OSError, json.JSONDecodeError) as e:
         print(f"Error reading input: {e}", file=sys.stderr)
         return 1
+    m = AKTITLE_RE.search(ak_tex)
+    level = m.group(1).strip() if m else ""
     faults = preflight(ak_tex, os.path.basename(out_path))
     if faults:
         for f in faults:
             print(f"render_quick_answers.py: {f}", file=sys.stderr)
         return 1
     try:
-        text = render(data)
+        text = render(data, level)
     except ValueError as e:
         print(f"render_quick_answers.py: {e}", file=sys.stderr)
         return 1

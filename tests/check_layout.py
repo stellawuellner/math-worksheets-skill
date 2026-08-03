@@ -178,12 +178,32 @@ def has_valued_figure(item):
     # anyway. An axis therefore counts as valued unless BOTH tick sets are
     # explicitly emptied — the same "assume valued" stance as \includegraphics,
     # because the false direction here is a silent PASS.
-    for ax in re.finditer(r"\\begin\{axis\}(?:\[(.*?)\])?", item, re.S):
-        opts = ax.group(1) or ""
-        blank = (re.search(r"xtick\s*=\s*\\empty", opts)
-                 and re.search(r"ytick\s*=\s*\\empty", opts))
-        if not blank:
-            return True
+    #
+    # An axis that DRAWS NOTHING is exempt, and that exemption is not a
+    # softening of the rule — it is the rule read correctly. The scope rule
+    # exists because a valued figure sitting between two problems gets applied
+    # to the wrong one. An empty numbered grid is a place to write, like the
+    # \problem workspace above it; its numbers are the grid's own scale, and a
+    # student cannot misread scale as another problem's data. Found on a
+    # "plot a counterexample" problem, which is exactly the shape that needs a
+    # blank plane and exactly the shape a value-carrying graph never has.
+    seen = 0
+    for ax in re.finditer(r"\\begin\{axis\}(?:\[(.*?)\])?(.*?)\\end\{axis\}",
+                          item, re.S):
+        seen += 1
+        opts, body = ax.group(1) or "", ax.group(2) or ""
+        if (re.search(r"xtick\s*=\s*\\empty", opts)
+                and re.search(r"ytick\s*=\s*\\empty", opts)):
+            continue
+        # \addplot, \draw, \node, \fill — anything at all that puts marks
+        # inside the axis makes it a figure again.
+        if not re.search(r"\\[a-zA-Z]", re.sub(r"(?<!\\)%.*", "", body)):
+            continue
+        return True
+    # An axis whose environment we could not read whole gets the assume-valued
+    # treatment: the exemption above is only ever granted on evidence.
+    if seen < len(re.findall(r"\\begin\{axis\}", item)):
+        return True
     # \includegraphics is an opaque image: no checker can read the values it
     # almost certainly shows (a figure worth including carries labels), so it
     # must be ASSUMED valued and the all-or-nothing scope rule applies

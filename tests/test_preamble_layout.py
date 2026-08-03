@@ -22,7 +22,16 @@ PDF, because the faults they cover are only visible on the page.
 3. DATE ON PAGE 1 ONLY. Continuation pages carry "(continued)", not a second
    set of Name/Date blanks.
 
-4. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
+4. THE LEVEL PRINTS ON THE KEY, NOT ON THE SHEET. \wstitleblock still accepts
+   its course/level argument and no longer prints it: a grade label on the page
+   a student holds tells them nothing they need, and tells a child working a
+   grade off something unhelpful before they reach the mathematics.
+   \aktitleblock keeps printing it, because that is the adult's document. The
+   argument surviving in the signature is what makes a regression here silent
+   in the source — every document still compiles either way — so it is pinned
+   on the rendered page, from both directions.
+
+5. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
    close one, so the closing full-width \rule of the generated "Common wrong
    answers" block joined the last entry's text line and overflowed it by ~200pt.
    Every answer key declaring a trap failed compile-ak, while the feature's own
@@ -78,6 +87,18 @@ COMMON_ERROR_DOC = r"""
 \commonerror{2}{12.9}{added the legs instead of using the hypotenuse}
 \noindent\rule{\linewidth}{0.4pt}\medskip
 \problem{$9\tan 35^\circ = \ans{6.30}$}
+\end{document}
+"""
+
+
+LEVEL_KEY_DOC = r"""
+\documentclass[12pt]{article}
+\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
+\input{worksheet-preamble}
+\akheader{Slope and Slope-Intercept Form}
+\begin{document}
+\aktitleblock{Slope and Slope-Intercept Form}{Algebra 1}{}
+\problem{$m = \ans{3}$}
 \end{document}
 """
 
@@ -144,7 +165,28 @@ def main():
         check("page 2 has no second Date blank", "Date:" not in p2)
         check("page 2 carries the continuation marker", "(continued)" in p2)
 
-        print("4. common-error block fits the line")
+        print("4. the level is on the key, not on the student's sheet")
+        # \wstitleblock still TAKES the course/level argument, so a regression
+        # is silent in the source: every document keeps compiling and the level
+        # simply reappears in front of the child. Only the page shows it.
+        check("the worksheet title block prints no grade level",
+              "Algebra 1" not in p1, "the level printed on the student's sheet")
+        lv = os.path.join(d, "lv.tex")
+        with open(lv, "w") as fh:
+            fh.write(LEVEL_KEY_DOC)
+        lvcmd = ([engine, "-interaction=nonstopmode", "lv.tex"]
+                 if engine.endswith("pdflatex") else [engine, "lv.tex"])
+        subprocess.run(lvcmd, cwd=d, capture_output=True)
+        lvpdf = os.path.join(d, "lv.pdf")
+        if os.path.isfile(lvpdf):
+            key = subprocess.run(["pdftotext", lvpdf, "-"],
+                                 capture_output=True, text=True).stdout
+            check("the answer key title block still prints it",
+                  "Algebra 1" in key, "the adult lost the level entirely")
+        else:
+            check("the level-key probe compiles", False, "no PDF produced")
+
+        print("5. common-error block fits the line")
         ce = os.path.join(d, "ce.tex")
         with open(ce, "w") as fh:
             fh.write(COMMON_ERROR_DOC)

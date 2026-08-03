@@ -330,6 +330,21 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ test_figure_convention.py (right-angle convention agreement)"
 
+# ── Figure scope, both directions (tests/test_figure_scope.py) ───────────────
+# has_valued_figure has been wrong in both directions eight minutes apart: it
+# missed pgfplots tick labels (silent PASS, a graphed worksheet shipped), then
+# flagged an EMPTY plotting grid a "plot a counterexample" problem needs
+# (loud FAIL, and the only way to satisfy it is to delete the grid). Both are
+# pinned, because fixing either one is what broke the other.
+echo
+output=$("$PYTHON" "$SCRIPT_DIR/test_figure_scope.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_figure_scope.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_figure_scope.py (valued figure vs blank workspace)"
+
 # ── Facet plans, misconception traps, interleaving ───────────────────────────
 # The unit suite pins the gate messages and the window/run math; the blocks
 # below pin what only the CLI surfaces: report lines, the cross-file

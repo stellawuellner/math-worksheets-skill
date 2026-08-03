@@ -675,7 +675,20 @@ On the student worksheet, print the same table with empty rows (use `\rule{0pt}{
 
 This is the **third document** generated alongside every worksheet. It's a one-to-two page reference card the student can use while working or studying.
 
-### Page budget (measured, not guessed)
+### Grade level: answer key only
+
+`\wstitleblock{Title}{Course}{Date}` accepts the course/level and does **not**
+print it. Nothing a student holds carries a grade label — a child working a grade
+below or above reads it before the mathematics. The answer key keeps it, in
+`\aktitleblock` and in the generated **Curriculum** section, which
+`render_quick_answers.py` builds from the verify JSON and the key's own title
+block: level, each standards code with the problems it covers, and the difficulty
+range. Built, never typed, so it cannot disagree with the verified tags.
+
+Keep passing the course argument to `\wstitleblock`. It is the single place the
+level is declared, and the curriculum section reads it from there.
+
+## Page budget (measured, not guessed)
 
 **The worksheet budget cannot see the stem.** It charges a flat 0.6 cm per
 problem, so a stem carrying a table, a counter drawing, or a displayed equation

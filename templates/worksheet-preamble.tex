@@ -298,10 +298,19 @@
 
 % \wstitleblock{Title}{Course}{Date} — Date is optional; pass an empty third
 % argument for an undated, reusable worksheet.
+%
+% THE COURSE ARGUMENT IS ACCEPTED AND NOT PRINTED. A grade level on the sheet a
+% student holds tells the student nothing they need and can tell them something
+% unhelpful: a child working a grade below, or above, reads the label before the
+% mathematics. The level belongs to the adult choosing the sheet, so it prints on
+% the answer key — with the curriculum codes, where it is actually useful — and
+% nowhere the student sees. The argument stays in the signature so existing
+% documents keep compiling and so the level remains declared in one obvious
+% place for the answer key's curriculum section to pick up.
 \newcommand{\wstitleblock}[3]{%
   \begin{center}
     \fittedtitle{#1}\\[0.3cm]
-    \mwssubtitle{#2}{#3}
+    \mwssubtitle{}{#3}
   \end{center}
   \noindent\rule{\linewidth}{0.4pt}\vspace{0.2cm}}
 

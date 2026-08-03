@@ -120,6 +120,10 @@ def main():
     ap.add_argument("--run", required=True)
     ap.add_argument("tasks", nargs="+")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="rebuild and re-record even when no transform applies "
+                         "— use after a change to the shared preamble, which "
+                         "alters every document without touching any .tex")
     a = ap.parse_args()
     run_dir = os.path.join(RUNS, a.run)
     if not os.path.isfile(os.path.join(run_dir, "run.json")):
@@ -156,9 +160,11 @@ def main():
             tex = re.sub(r"\\input\{qa_[^}]*\}", f"\\\\input{{qa_{stem}}}", tex)
             open(f"{d}/{role}_{stem}.tex", "w", encoding="utf-8").write(tex)
         else:
-            if not applied:
+            if not applied and not a.rebuild:
                 skipped.append((tid, "nothing to repair"))
                 continue
+            if not applied:
+                applied = ["rebuild (shared preamble changed)"]
             if a.dry_run:
                 ok.append((tid, ", ".join(applied) + " (dry run)"))
                 continue

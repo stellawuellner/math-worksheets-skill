@@ -86,6 +86,10 @@ agent a rebuild.
   enumerate lists over boxes, so a numbered list inside a `formulabox` makes the
   guide segment as N "problems" and the binding gate fails with a confusing
   count mismatch. Use `itemize`.
+- **The grade level prints on the answer key only.** Keep passing it as
+  `\wstitleblock`'s second argument — the macro accepts it and does not typeset
+  it, and the answer key's generated Curriculum section reads the level from
+  there. Do not put a level in a worksheet or study-guide title either.
 - **`\ans{}` ends its paragraph.** A following `\\` is a fatal error. Put
   `\ans{}` last in a problem block, or start a new paragraph after it. The
   mirror case bites too: a standalone `$\ans{...}$` on the line after a

@@ -6,7 +6,9 @@ Construction is the guarantee for the quick-answer bank, so the CONSTRUCTOR
 is what gets tested: every rendering rule (numeric-verbatim via Decimal,
 sympify->latex with the "---" no-injection fallback, lists, dicts,
 manual-only, multi-entry ids), the adaptive column thresholds, byte-for-byte
-determinism, and the two preflight teaching failures. The strict-binding
+determinism, the two preflight teaching failures, and the curriculum block —
+the level and standards codes that appear on the ANSWER KEY only, derived from
+the verify JSON and the key's own title block rather than typed. The strict-binding
 invariant (an \input'd bank never degrades check_answer_key.py) is locked by
 the ak_qa_good.tex fixture in run_tests.sh.
 """
@@ -139,6 +141,50 @@ _var = {"problem_count": 4, "problems": [
     {"id": i, "type": "equiv", "expr": "f", "expected": f"{i}*x+1"} for i in range(1, 5)]}
 check("an all-identical bank warns", "WARNING" in _stderr_of(_deg))
 check("a varied bank stays silent", "WARNING" not in _stderr_of(_var))
+
+print()
+print("curriculum block (answer key only)")
+
+# The level and the standards codes are the ADULT's information: what does this
+# sheet cover, and where does it sit? They are built from the verify JSON and
+# the key's own \aktitleblock rather than typed, so the section cannot disagree
+# with the tags the verifier actually checked.
+_curr = {"problem_count": 3, "problems": [
+    {"id": 1, "type": "equiv", "expr": "x", "expected": "x",
+     "standard": "5.NF.B.4", "difficulty": 2},
+    {"id": 2, "type": "equiv", "expr": "x", "expected": "2*x",
+     "standard": "5.NF.B.4", "difficulty": 3},
+    {"id": 3, "type": "equiv", "expr": "x", "expected": "3*x",
+     "standard": "4.MD.A.3", "difficulty": 5}]}
+_out = rqa.render(_curr, "Grade 4--5")
+check("the level prints on the key", r"\textbf{Level:}~Grade 4--5" in _out)
+check("a code lists every problem carrying it",
+      r"5.NF.B.4 \textit{-- problems 1, 2}" in _out)
+check("a single-problem code says 'problem', not 'problems'",
+      r"4.MD.A.3 \textit{-- problem 3}" in _out)
+check("the difficulty range spans the tagged checks",
+      "Difficulty 2--5 of 5 across 3 tagged checks" in _out)
+check("the section is headed Curriculum", r"\textbf{Curriculum}" in _out)
+
+# Nothing to say and nothing printed: an untagged bank must not emit a bare
+# heading with two rules and no content between them.
+_bare = {"problem_count": 2, "problems": [
+    {"id": i, "type": "equiv", "expr": "x", "expected": f"{i}*x"} for i in (1, 2)]}
+check("an untagged, unlevelled key prints no empty section",
+      r"\textbf{Curriculum}" not in rqa.render(_bare, ""))
+check("codes alone still print without a level",
+      r"\textbf{Curriculum}" in rqa.render(_curr, "")
+      and "Level:" not in rqa.render(_curr, ""))
+
+# The level is read out of the key's own title block, so the two can never
+# disagree — there is no second place to type it.
+check("the level is parsed from \\aktitleblock's second argument",
+      rqa.AKTITLE_RE.search(r"\aktitleblock{Volume}{Grade 4--5}{}").group(1)
+      == "Grade 4--5")
+check("a level-less key parses to no level",
+      rqa.AKTITLE_RE.search(r"\aktitleblock{Volume}{}{}").group(1) == "")
+check("TeX specials in a level are escaped, not injected",
+      r"\&" in rqa.render(_curr, "Grade 4 & 5"))
 
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")

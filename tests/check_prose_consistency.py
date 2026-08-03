@@ -255,13 +255,28 @@ def includegraphics_problems(blocks):
             if re.search(r"\\includegraphics\b", blank_comments(b))]
 
 
-# Fields that say where a problem SITS rather than what it says. None of these
-# is ever printed on the sheet, so none may count as a printed given.
+# Fields that say where a problem SITS rather than what it says. None is ever
+# printed on the sheet, so none may count as a printed given.
+#
+# THE RULE, because the first version of this list was written by analogy and
+# got it wrong: a name that any verify TYPE declares carries mathematics and
+# must NOT be here. "points" was excluded on the strength of its name — it
+# sounds like an effort-marker score — and it is in fact the coordinate list for
+# distance/midpoint/slope/polygon_area, the exact numbers those stems print. It
+# made every coordinate-geometry problem flag its own coordinates. There is no
+# "points" metadata field at all; \probpts is computed from difficulty.
+#
+# The only type-declared names kept here are tol and tol_reason, which are
+# machinery for the comparison rather than anything a student reads.
+# tests/test_pipeline_fixes.py asserts this list against verify.SCHEMAS, so a
+# new type that declares a name on it fails the suite instead of quietly
+# blinding the checker.
+_TOLERANCE_MACHINERY = frozenset({"tol", "tol_reason"})
 _BOOKKEEPING = frozenset({
-    "id", "difficulty", "workspace_cm", "points", "order", "bloom", "skill",
-    "facet", "standard", "review_mode", "answer_unit", "tol", "tol_reason",
-    "domain", "unit", "var", "vars", "subtitle", "type",
-})
+    "id", "type", "difficulty", "workspace_cm", "word_problem", "bloom",
+    "skill", "facet", "standard", "review_mode", "answer_unit", "subtitle",
+    "note", "role",
+}) | _TOLERANCE_MACHINERY
 
 
 def json_numbers(entry):

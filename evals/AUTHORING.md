@@ -90,6 +90,17 @@ now degrades the artifact.
 - **`\skillheading` is gated at 57 characters** before compile. Name the skill
   in plain words; leave the slug to the JSON, which is what the coverage gate
   actually reads.
+- **A RANGE row is a range, not a tag.** `HSG-CO.A–HSG-CO.D` and
+  `HSF-IF.A–HSF-IF.C` name a span of clusters; copying the whole string into a
+  problem's `standard` tags it with something meaningless. Tag the specific
+  cluster inside the range that the problem exercises (`HSG-CO.B`), which is
+  usually what the task's own `standard_refs` already names. Slash rows
+  (`3.OA.A.3 / 4.OA.A.2`) split the same way — pick the on-grade one, and never
+  print a grade-2 code on a kindergarten key.
+- **Nothing machine-compares your `standard` against the task's
+  `standard_refs`.** Curriculum alignment is judged by reading, so a code from
+  the map that differs textually from the task's phrasing is fine. Checked
+  directly in `evals/score_eval.py` and the rubric — neither mentions the field.
 - **`standards-map.md` gained 26 rows** (grades 6–8 geometry/ratio/statistics,
   grade-8 number system, HS congruence, similarity, complex numbers, vectors,
   matrices, statistics, sequences, binomial theorem, radicals). Check it again
@@ -287,6 +298,13 @@ These are real gate failures from earlier tasks in this suite, not hypotheticals
   is the correct outcome, not a failure to fix.
 - **Difficulty must ramp**: start at 1–2, majority 2–3, finish with one or two
   4–5. `verify.py` reports the ramp and flags drops.
+
+- **A bulleted overview box before section 1 costs about as much as a whole
+  skill section.** With four sections it is the first thing to cut, ahead of the
+  watch-out box that SKILL.md's drop order names first — two authors landed on a
+  3-page guide this way and both fixed it by deleting the intro box. The section
+  cost table in `references/latex-templates.md` also understates a `formulabox`
+  carrying a 4-5 item `itemize`.
 
 ## Quality bar
 

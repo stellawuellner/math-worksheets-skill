@@ -159,13 +159,29 @@ import check_prose_consistency as prose  # noqa: E402
 # and a 7 to every problem carrying it.
 _ENTRY = {"id": 1, "type": "eval", "expr": "a*b", "at": {"a": 7, "b": 2},
           "expected": 14, "difficulty": 3, "workspace_cm": 5.0,
-          "standard": "3.OA.C.7", "points": 4}
+          "standard": "3.OA.C.7", "word_problem": True}
 _givens = prose.json_numbers(_ENTRY)
 check("the mathematics still donates its givens", {7.0, 2.0, 14.0} <= _givens)
 check("a difficulty tag does not", 3.0 not in _givens)
 check("nor a workspace declaration", 5.0 not in _givens)
-check("nor a points value", 4.0 not in _givens)
 check("nor the digits of a standards code", 7.0 in _givens and 3.0 not in _givens)
+
+# THE RULE, asserted rather than trusted. The first version of this list was
+# written by analogy and excluded "points" — which sounds like an effort-marker
+# score and is in fact the coordinate list for distance/midpoint/slope/
+# polygon_area. Every coordinate-geometry problem flagged its own coordinates.
+# A name any verify TYPE declares carries mathematics and cannot be bookkeeping;
+# the only exceptions are tol/tol_reason, machinery for the comparison rather
+# than anything a student reads.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+_declared = {f for req, opt in verify.SCHEMAS.values() for f in set(req) | set(opt)}
+_leaked = sorted((prose._BOOKKEEPING - prose._TOLERANCE_MACHINERY) & _declared)
+check(f"no type-declared field is treated as bookkeeping{'' if not _leaked else ' — ' + str(_leaked)}",
+      not _leaked)
+check("a slope problem's coordinates are still givens",
+      {-2.0, 1.0, 2.0, 3.0} <= prose.json_numbers(
+          {"id": 1, "type": "slope", "points": [[-2, 1], [2, 3]],
+           "expected": "1/2", "difficulty": 3}))
 
 print()
 print("Inverse notation is a name, not a number:")

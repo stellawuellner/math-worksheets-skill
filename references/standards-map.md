@@ -21,6 +21,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Place value (tens/ones, to 1000) | 1.NBT / 2.NBT.A |
 | Multi-digit add/subtract | 2.NBT.B.5 / 3.NBT.A.2 / 4.NBT.B.4 |
 | Place value & powers of ten (gr 4–5) | 4.NBT.A.1–A.3 / 5.NBT.A.1–A.2 |
+| Meaning of multiplication (equal groups, arrays) | 3.OA.A.1 |
 | Times tables / multiply & divide facts | 3.OA.C.7 |
 | Multiplication/division word problems | 3.OA.A.3 / 4.OA.A.2 |
 | Factors, multiples, primes, number patterns | 4.OA.B.4 / 4.OA.C.5 |

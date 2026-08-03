@@ -48,12 +48,27 @@ python3 evals/run_eval.py record $TASK --run "$RUN" --from $D \
 run is designed so acceptance can later be broken down by the model that drove
 the skill; a wrong or missing label silently pools two models into one number.
 
-## Fixed since the first 50 — do NOT work around these any more
+## Fixed since the earlier waves — do NOT work around these any more
 
-The first wave of 50 hit ten real faults. All are fixed. If you find yourself
+The first 150 tasks hit forty real faults. All are fixed. If you find yourself
 reaching for one of these workarounds, stop: the bug is gone, and the workaround
 now degrades the artifact.
 
+- **Do not print a grade level on the worksheet or the study guide.** Pass it to
+  `\wstitleblock` as usual — the macro accepts it and deliberately does not
+  print it. It appears on the answer key, in a Curriculum section generated from
+  your verify JSON's `standard` and `difficulty` tags. Do not hand-write that
+  section, and do not put "Grade 5" in a title, subtitle or running head where a
+  student sees it.
+- **Blank grids are fine beside graphed problems.** A `\begin{axis}` with
+  nothing plotted in it is a plotting workspace, not a valued figure. A sheet of
+  graphing problems where some show data and others are empty grids to draw on
+  passes the scope gate. Do not delete a grid a problem needs in order to make
+  a figure rule go quiet.
+- **A mixed number is one value on both sides.** Write it in the JSON as
+  `"2 + 3/4"` (sympy has no mixed-number syntax) and print it as
+  `\ans{2\,\tfrac{3}{4}}`; the binding gate reads both as 2.75. You do not
+  need to box the whole part and the fraction separately.
 - **Traps work.** `\commonerror` used to overflow the answer key, so agents
   deleted their declared traps or wrapped the bank in `\raggedright` /
   `\emergencystretch`. Do neither. Declare traps freely — a misconception task

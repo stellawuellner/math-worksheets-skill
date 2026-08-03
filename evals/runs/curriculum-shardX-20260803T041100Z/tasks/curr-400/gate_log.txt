@@ -102,18 +102,19 @@ Layout report: /tmp/evalrepair2/curr-400/ws_r_curr400.tex
 ── step 13 · answer-line binding (answer_unit) on ws_r_curr400.tex
 Answer-line binding: /tmp/evalrepair2/curr-400/ws_r_curr400.tex (12 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 12 problems, 118.6cm of content
-  ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
+Page budget (ws, letter): 12 problems, 129.4cm of content
+  ideal 6 page(s) · accepted range 4-8 · 3 sheet(s) of paper double-sided
+  NOTE: 1 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
-── step 14 · compile ws_r_curr400.tex → /tmp/evalrepair2/curr-400  (page budget: 7)
+── step 14 · compile ws_r_curr400.tex → /tmp/evalrepair2/curr-400  (page budget: 8)
 Compiling: ws_r_curr400.tex → /tmp/evalrepair2/curr-400/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 6 page(s), within the 7-page budget.
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 6 page(s), within the 8-page budget.
 ✅ PDF ready: /tmp/evalrepair2/curr-400/ws_r_curr400.pdf
 /tmp/evalrepair2/curr-400/ws_r_curr400.pdf
 
-── step 15 · compile ak_r_curr400.tex → /tmp/evalrepair2/curr-400  (page budget: 7)
+── step 15 · compile ak_r_curr400.tex → /tmp/evalrepair2/curr-400  (page budget: 8)
 Compiling: ak_r_curr400.tex → /tmp/evalrepair2/curr-400/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 7-page budget.
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 8-page budget.
 ✅ PDF ready: /tmp/evalrepair2/curr-400/ak_r_curr400.pdf
 /tmp/evalrepair2/curr-400/ak_r_curr400.pdf
 

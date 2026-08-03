@@ -86,6 +86,11 @@ Answer-line binding: /tmp/evalrepair2/curr-026/ws_r_curr026.tex (8 problem segme
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 8 problems, 50.4cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 2's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 3's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 4's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 8's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr026.tex → /tmp/evalrepair2/curr-026  (page budget: 5)
 Compiling: ws_r_curr026.tex → /tmp/evalrepair2/curr-026/
@@ -138,14 +143,14 @@ Figure labels: all consistent with JSON givens.
 
 ── step 21 · prose consistency on ss_r_curr026.tex
 Prose-consistency report: /tmp/evalrepair2/curr-026/ss_r_curr026.tex
-  problem 1: 6 prose numbers  ⚠ missing from JSON: [4.0]
+  problem 1: 6 prose numbers  ⚠ missing from JSON: [1.0, 2.0, 4.0]
   problem 2: 3 prose numbers  ok
   problem 3: 3 prose numbers  ok
   problem 4: 3 prose numbers  ok
   problem 5: 5 prose numbers  ⚠ missing from JSON: [6.0, 7.0]
   problem 6: 3 prose numbers  ok
 
-Match rate: 20/23 (87.0%) across 6 problem block(s)
+Match rate: 18/23 (78.3%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

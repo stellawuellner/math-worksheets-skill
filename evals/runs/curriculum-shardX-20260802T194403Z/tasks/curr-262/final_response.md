@@ -24,12 +24,16 @@ substitution**, built as a procedural-fluency ramp.
   the special cases, and building a system from a story (count equation + value
   equation).
 
-**Verification.** 10 of the 12 worksheet systems are fully machine-checked with
-SymPy — each listed solution satisfies both equations *and* matches SymPy's
-complete solution set. The two special cases are correctly **not** claimed as
-verified: problem 9 (no solution) is declared `manual`, and problem 10 returns
-MANUAL from the verifier because an infinite solution family cannot be counted —
-its printed representative $(2, 2)$ was checked against both equations. In the
-study guide, 6 of 8 results are machine-verified; the two special-case boxes
-(example and its paired try-it) are `manual` by the same rule. The build passed
-with exit 2, which is the correct outcome when genuine manual-review items exist.
+**Verification.** 11 of the 12 worksheet systems are fully machine-checked with
+SymPy. Ten of them match SymPy's complete solution set exactly; problem 9, the
+no-solution case, is checked as an **inconsistent system** — SymPy is asked for
+the full solution set of $y = 2x + 3$ with $4x - 2y = 1$, finds it empty, and
+confirms the key's "no solution" claim rather than leaving it to a reader. The
+same check covers the study guide's worked special-case example. Only the
+*dependent* systems are left for review, and only for the half a machine cannot
+settle: worksheet problem 10 and its study-guide try-it return MANUAL because an
+infinite solution family cannot be counted, while the representative pair each
+one prints, $(2, 2)$, **is** machine-checked against both equations. So the build
+exits 2 with exactly two flagged items — the honest count — and every other
+answer on all three documents, 11 on the worksheet and 7 in the study guide, is
+verified.

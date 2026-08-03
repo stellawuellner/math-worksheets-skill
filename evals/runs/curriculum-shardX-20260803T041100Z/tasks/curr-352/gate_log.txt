@@ -156,12 +156,12 @@ Prose-consistency report: /tmp/evalrepair2/curr-352/ss_r_curr352.tex
   problem 2: 5 prose numbers  ok
   problem 3: 7 prose numbers  ⚠ missing from JSON: [6.0, 8.0]
   problem 4: 6 prose numbers  ok
-  problem 5: 4 prose numbers  ⚠ missing from JSON: [4.0, 6.0]
+  problem 5: 4 prose numbers  ⚠ missing from JSON: [3.0, 4.0, 6.0]
   problem 6: 2 prose numbers  ok
   problem 7: 6 prose numbers  ⚠ missing from JSON: [0.0, 16.0, 20.0]
   problem 8: 5 prose numbers  ⚠ missing from JSON: [0.0]
 
-Match rate: 32/40 (80.0%) across 8 problem block(s)
+Match rate: 31/40 (77.5%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

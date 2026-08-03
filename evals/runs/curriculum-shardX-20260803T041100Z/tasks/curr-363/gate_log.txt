@@ -92,8 +92,9 @@ Layout report: /tmp/evalrepair2/curr-363/ws_r_curr363.tex
 ── step 13 · answer-line binding (answer_unit) on ws_r_curr363.tex
 Answer-line binding: /tmp/evalrepair2/curr-363/ws_r_curr363.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 10 problems, 80.0cm of content
+Page budget (ws, letter): 10 problems, 91.8cm of content
   ideal 4 page(s) · accepted range 2-6 · 2 sheet(s) of paper double-sided
+  NOTE: 1 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
 ── step 14 · compile ws_r_curr363.tex → /tmp/evalrepair2/curr-363  (page budget: 6)
 Compiling: ws_r_curr363.tex → /tmp/evalrepair2/curr-363/

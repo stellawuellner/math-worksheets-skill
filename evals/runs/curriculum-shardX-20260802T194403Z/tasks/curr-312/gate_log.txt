@@ -89,6 +89,14 @@ Answer-line binding: /tmp/evalrepair2/curr-312/ws_r_curr312.tex (10 problem segm
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 87.0cm of content
   ideal 4 page(s) · accepted range 2-6 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 2's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 3's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 5's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 6's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 7's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 9's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 10's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr312.tex → /tmp/evalrepair2/curr-312  (page budget: 6)
 Compiling: ws_r_curr312.tex → /tmp/evalrepair2/curr-312/
@@ -126,31 +134,31 @@ Study-guide structure: /tmp/evalrepair2/curr-312/ss_r_curr312.tex
 
 ── step 20 · prose consistency on ws_r_curr312.tex
 Prose-consistency report: /tmp/evalrepair2/curr-312/ws_r_curr312.tex
-  problem 1: 7 prose numbers  ⚠ missing from JSON: [0.44, 1.15, 2.0, 3.0, 4.0, 5.0]
-  problem 2: 6 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 3.0, 4.0]
-  problem 3: 7 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 3.0, 4.0, 5.0]
+  problem 1: 6 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0, 5.0]
+  problem 2: 5 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0]
+  problem 3: 6 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0, 5.0]
   problem 4: 4 prose numbers  ok
-  problem 5: 7 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 2.0, 4.0, 5.0]
-  problem 6: 6 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 2.0, 4.0]
-  problem 7: 6 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 2.0, 4.0]
+  problem 5: 6 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0, 5.0]
+  problem 6: 5 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0]
+  problem 7: 5 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0]
   problem 8: 4 prose numbers  ok
-  problem 9: 6 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 2.0, 3.0]
-  problem 10: 7 prose numbers  ⚠ missing from JSON: [0.44, 1.0, 1.15, 2.0, 3.0, 4.0]
+  problem 9: 5 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0]
+  problem 10: 6 prose numbers  ⚠ missing from JSON: [1.0, 1.15, 2.0, 3.0, 4.0, 5.0]
 
-Match rate: 16/60 (26.7%) across 10 problem block(s)
+Match rate: 8/52 (15.4%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_r_curr312.tex
 Prose-consistency report: /tmp/evalrepair2/curr-312/ss_r_curr312.tex
-  problem 1: 6 prose numbers  ⚠ missing from JSON: [0.42, 0.44, 1.0, 3.0, 4.0]
+  problem 1: 4 prose numbers  ⚠ missing from JSON: [1.0, 2.0, 3.0, 4.0]
   problem 2: 0 prose numbers  ok
-  problem 3: 6 prose numbers  ⚠ missing from JSON: [0.42, 0.44, 1.0, 2.0, 4.0]
-  problem 4: 1 prose numbers  ok
+  problem 3: 4 prose numbers  ⚠ missing from JSON: [1.0, 2.0, 3.0, 4.0]
+  problem 4: 1 prose numbers  ⚠ missing from JSON: [3.0]
   problem 5: 7 prose numbers  ⚠ missing from JSON: [10.0, 21.0]
   problem 6: 4 prose numbers  ok
 
-Match rate: 12/24 (50.0%) across 6 problem block(s)
+Match rate: 9/20 (45.0%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

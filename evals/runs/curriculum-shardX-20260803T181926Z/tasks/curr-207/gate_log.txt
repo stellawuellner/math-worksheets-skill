@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'negexp_curr207' in /tmp/evalbuild/curr-207
-   ws: /tmp/evalbuild/curr-207/ws_negexp_curr207.tex
-   ak: /tmp/evalbuild/curr-207/ak_negexp_curr207.tex
-   ss: /tmp/evalbuild/curr-207/ss_negexp_curr207.tex  (verify: /tmp/evalbuild/curr-207/verify_ss_negexp_curr207.json)
+── step 1 · discover documents for stem 'r_curr207' in /tmp/evalrepair2/curr-207
+   ws: /tmp/evalrepair2/curr-207/ws_r_curr207.tex
+   ak: /tmp/evalrepair2/curr-207/ak_r_curr207.tex
+   ss: /tmp/evalrepair2/curr-207/ss_r_curr207.tex  (verify: /tmp/evalrepair2/curr-207/verify_ss_r_curr207.json)
 
-── step 2 · template shell on ws_negexp_curr207.tex
-Template-use report: /tmp/evalbuild/curr-207/ws_negexp_curr207.tex
+── step 2 · template shell on ws_r_curr207.tex
+Template-use report: /tmp/evalrepair2/curr-207/ws_r_curr207.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_negexp_curr207.tex
-Template-use report: /tmp/evalbuild/curr-207/ak_negexp_curr207.tex
+── step 3 · template shell on ak_r_curr207.tex
+Template-use report: /tmp/evalrepair2/curr-207/ak_r_curr207.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_negexp_curr207.tex
-Template-use report: /tmp/evalbuild/curr-207/ss_negexp_curr207.tex
+── step 4 · template shell on ss_r_curr207.tex
+Template-use report: /tmp/evalrepair2/curr-207/ss_r_curr207.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_negexp_curr207.json)
+── step 5 · verify worksheet JSON (verify_r_curr207.json)
 Verifying: zero and negative exponents (12 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a**0 at {'a': 7}) → 1 (expected 1)
@@ -46,7 +46,7 @@ difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_negexp_curr207.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr207.json)
 Verifying: study guide: zero and negative exponents (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a**(-2) at {'a': 3}) → 1/9 (expected 1/9)
@@ -68,8 +68,8 @@ difficulty ramp: [1, 2, 2, 3, 3, 3, 3, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_negexp_curr207.json → verify_ss_negexp_curr207.json
-Skill coverage: /tmp/evalbuild/curr-207/verify_negexp_curr207.json → /tmp/evalbuild/curr-207/verify_ss_negexp_curr207.json
+── step 7 · skill coverage: verify_r_curr207.json → verify_ss_r_curr207.json
+Skill coverage: /tmp/evalrepair2/curr-207/verify_r_curr207.json → /tmp/evalrepair2/curr-207/verify_ss_r_curr207.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -80,60 +80,60 @@ subtitle bound: 'Evaluating zero and negative powers, rewriting expressions with
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-207/meta_negexp_curr207.tex
+Wrote /tmp/evalrepair2/curr-207/meta_r_curr207.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-207/qa_negexp_curr207.tex
+Wrote /tmp/evalrepair2/curr-207/qa_r_curr207.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_negexp_curr207.tex
-Layout report: /tmp/evalbuild/curr-207/ws_negexp_curr207.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr207.tex
+Layout report: /tmp/evalrepair2/curr-207/ws_r_curr207.tex
   problem blocks: figure scope ok (none of the 12 problems carries a valued figure)
   problem blocks: work space ok (all 12 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_negexp_curr207.tex
-Answer-line binding: /tmp/evalbuild/curr-207/ws_negexp_curr207.tex (12 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr207.tex
+Answer-line binding: /tmp/evalrepair2/curr-207/ws_r_curr207.tex (12 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 12 problems, 81.6cm of content
   ideal 4 page(s) · accepted range 2-6 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_negexp_curr207.tex → /tmp/evalbuild/curr-207  (page budget: 6)
-Compiling: ws_negexp_curr207.tex → /tmp/evalbuild/curr-207/
+── step 14 · compile ws_r_curr207.tex → /tmp/evalrepair2/curr-207  (page budget: 6)
+Compiling: ws_r_curr207.tex → /tmp/evalrepair2/curr-207/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 6-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-207/ws_negexp_curr207.pdf
-/tmp/evalbuild/curr-207/ws_negexp_curr207.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-207/ws_r_curr207.pdf
+/tmp/evalrepair2/curr-207/ws_r_curr207.pdf
 
-── step 15 · compile ak_negexp_curr207.tex → /tmp/evalbuild/curr-207  (page budget: 6)
-Compiling: ak_negexp_curr207.tex → /tmp/evalbuild/curr-207/
+── step 15 · compile ak_r_curr207.tex → /tmp/evalrepair2/curr-207  (page budget: 6)
+Compiling: ak_r_curr207.tex → /tmp/evalrepair2/curr-207/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 6-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-207/ak_negexp_curr207.pdf
-/tmp/evalbuild/curr-207/ak_negexp_curr207.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-207/ak_r_curr207.pdf
+/tmp/evalrepair2/curr-207/ak_r_curr207.pdf
 
-── step 16 · compile ss_negexp_curr207.tex → /tmp/evalbuild/curr-207  (page budget: 2)
-Compiling: ss_negexp_curr207.tex → /tmp/evalbuild/curr-207/
+── step 16 · compile ss_r_curr207.tex → /tmp/evalrepair2/curr-207  (page budget: 2)
+Compiling: ss_r_curr207.tex → /tmp/evalrepair2/curr-207/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-207/ss_negexp_curr207.pdf
-/tmp/evalbuild/curr-207/ss_negexp_curr207.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-207/ss_r_curr207.pdf
+/tmp/evalrepair2/curr-207/ss_r_curr207.pdf
 
-── step 17 · answer-key binding: ak_negexp_curr207.tex ↔ verify_negexp_curr207.json
-Answer-key binding: /tmp/evalbuild/curr-207/ak_negexp_curr207.tex
+── step 17 · answer-key binding: ak_r_curr207.tex ↔ verify_r_curr207.json
+Answer-key binding: /tmp/evalrepair2/curr-207/ak_r_curr207.tex
   12 boxed answers · 12 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_negexp_curr207.tex ↔ verify_ss_negexp_curr207.json
-Answer-key binding: /tmp/evalbuild/curr-207/ss_negexp_curr207.tex
+── step 18 · answer-key binding: ss_r_curr207.tex ↔ verify_ss_r_curr207.json
+Answer-key binding: /tmp/evalrepair2/curr-207/ss_r_curr207.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_negexp_curr207.tex
-Study-guide structure: /tmp/evalbuild/curr-207/ss_negexp_curr207.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr207.tex
+Study-guide structure: /tmp/evalrepair2/curr-207/ss_r_curr207.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_negexp_curr207.tex
-Prose-consistency report: /tmp/evalbuild/curr-207/ws_negexp_curr207.tex
+── step 20 · prose consistency on ws_r_curr207.tex
+Prose-consistency report: /tmp/evalrepair2/curr-207/ws_r_curr207.tex
   problem 1: 2 prose numbers  ok
   problem 2: 2 prose numbers  ok
   problem 3: 2 prose numbers  ok
@@ -151,8 +151,8 @@ Match rate: 30/30 (100.0%) across 12 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_negexp_curr207.tex
-Prose-consistency report: /tmp/evalbuild/curr-207/ss_negexp_curr207.tex
+── step 21 · prose consistency on ss_r_curr207.tex
+Prose-consistency report: /tmp/evalrepair2/curr-207/ss_r_curr207.tex
   problem 1: 4 prose numbers  ok
   problem 2: 4 prose numbers  ok
   problem 3: 2 prose numbers  ok
@@ -192,8 +192,8 @@ Figure labels: all consistent with JSON givens.
    prose-ss         PASS
    overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-207/ws_negexp_curr207.pdf
-   /tmp/evalbuild/curr-207/ak_negexp_curr207.pdf
-   /tmp/evalbuild/curr-207/ss_negexp_curr207.pdf
+   /tmp/evalrepair2/curr-207/ws_r_curr207.pdf
+   /tmp/evalrepair2/curr-207/ak_r_curr207.pdf
+   /tmp/evalrepair2/curr-207/ss_r_curr207.pdf
 
 ✅ BUILD PASSED — all gates green

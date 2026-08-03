@@ -132,18 +132,18 @@ Study-guide structure: /tmp/evalrepair2/curr-156/ss_r_curr156.tex
 
 ── step 20 · prose consistency on ws_r_curr156.tex
 Prose-consistency report: /tmp/evalrepair2/curr-156/ws_r_curr156.tex
-  problem 1: 3 prose numbers  ok
-  problem 2: 3 prose numbers  ok
+  problem 1: 3 prose numbers  ⚠ missing from JSON: [1.0]
+  problem 2: 3 prose numbers  ⚠ missing from JSON: [1.0]
   problem 3: 4 prose numbers  ⚠ missing from JSON: [1.0, 8.0]
-  problem 4: 4 prose numbers  ⚠ missing from JSON: [1.0]
-  problem 5: 4 prose numbers  ⚠ missing from JSON: [5.0]
+  problem 4: 4 prose numbers  ⚠ missing from JSON: [1.0, 2.0]
+  problem 5: 4 prose numbers  ⚠ missing from JSON: [5.0, 20.0]
   problem 6: 4 prose numbers  ⚠ missing from JSON: [1.0]
   problem 7: 4 prose numbers  ok
   problem 8: 4 prose numbers  ⚠ missing from JSON: [1.0, 4.0]
   problem 9: 4 prose numbers  ⚠ missing from JSON: [1.0]
   problem 10: 4 prose numbers  ⚠ missing from JSON: [3.0]
 
-Match rate: 29/38 (76.3%) across 10 problem block(s)
+Match rate: 25/38 (65.8%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

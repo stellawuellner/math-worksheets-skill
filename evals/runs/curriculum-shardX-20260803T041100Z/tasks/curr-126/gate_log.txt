@@ -93,6 +93,14 @@ Answer-line binding: /tmp/evalrepair2/curr-126/ws_r_curr126.tex (10 problem segm
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 63.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 2's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 3's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 4's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 5's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 6's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 8's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 10's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr126.tex → /tmp/evalrepair2/curr-126  (page budget: 5)
 Compiling: ws_r_curr126.tex → /tmp/evalrepair2/curr-126/
@@ -149,12 +157,12 @@ Figure labels: all consistent with JSON givens.
 Prose-consistency report: /tmp/evalrepair2/curr-126/ss_r_curr126.tex
   problem 1: 4 prose numbers  ok
   problem 2: 4 prose numbers  ok
-  problem 3: 6 prose numbers  ok
+  problem 3: 6 prose numbers  ⚠ missing from JSON: [4.0]
   problem 4: 4 prose numbers  ok
   problem 5: 4 prose numbers  ok
   problem 6: 4 prose numbers  ok
 
-Match rate: 26/26 (100.0%) across 6 problem block(s)
+Match rate: 25/26 (96.2%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

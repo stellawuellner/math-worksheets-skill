@@ -98,8 +98,9 @@ Layout report: /tmp/evalrepair2/curr-475/ws_r_curr475.tex
 ── step 13 · answer-line binding (answer_unit) on ws_r_curr475.tex
 Answer-line binding: /tmp/evalrepair2/curr-475/ws_r_curr475.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 10 problems, 102.0cm of content
+Page budget (ws, letter): 10 problems, 112.8cm of content
   ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
+  NOTE: 1 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
 ── step 14 · compile ws_r_curr475.tex → /tmp/evalrepair2/curr-475  (page budget: 7)
 Compiling: ws_r_curr475.tex → /tmp/evalrepair2/curr-475/
@@ -138,17 +139,17 @@ Study-guide structure: /tmp/evalrepair2/curr-475/ss_r_curr475.tex
 ── step 20 · prose consistency on ws_r_curr475.tex
 Prose-consistency report: /tmp/evalrepair2/curr-475/ws_r_curr475.tex
   problem 1: 3 prose numbers  ok
-  problem 2: 10 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 8.0]
+  problem 2: 10 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 6.0, 8.0]
   problem 3: 3 prose numbers  ok
   problem 4: 4 prose numbers  ok
-  problem 5: 10 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 8.0]
+  problem 5: 10 prose numbers  ⚠ missing from JSON: [0.0, 4.0, 6.0, 8.0]
   problem 6: 1 prose numbers  ok
   problem 7: 4 prose numbers  ok
   problem 8: 5 prose numbers  ok
-  problem 9: 9 prose numbers  ⚠ missing from JSON: [0.0, 3.0, 14.0]
+  problem 9: 9 prose numbers  ⚠ missing from JSON: [0.0, 3.0, 4.0, 14.0]
   problem 10: 5 prose numbers  ok
 
-Match rate: 45/54 (83.3%) across 10 problem block(s)
+Match rate: 42/54 (77.8%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

@@ -115,6 +115,7 @@ Answer-line binding: /tmp/evalrepair2/curr-413/ws_r_curr413.tex (10 problem segm
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 63.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 6's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr413.tex → /tmp/evalrepair2/curr-413  (page budget: 5)
 Compiling: ws_r_curr413.tex → /tmp/evalrepair2/curr-413/
@@ -159,11 +160,11 @@ Prose-consistency report: /tmp/evalrepair2/curr-413/ws_r_curr413.tex
   problem 5: 3 prose numbers  ok
   problem 6: 5 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 4.0]
   problem 7: 2 prose numbers  ⚠ missing from JSON: [320.0]
-  problem 8: 3 prose numbers  ok
-  problem 9: 8 prose numbers  ⚠ missing from JSON: [0.0, 1.0]
+  problem 8: 3 prose numbers  ⚠ missing from JSON: [4.0]
+  problem 9: 8 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 4.0]
   problem 10: 6 prose numbers  ⚠ missing from JSON: [0.0, 4.5]
 
-Match rate: 28/38 (73.7%) across 10 problem block(s)
+Match rate: 26/38 (68.4%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

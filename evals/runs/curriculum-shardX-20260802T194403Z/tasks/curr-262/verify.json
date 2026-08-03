@@ -44,8 +44,8 @@
      "facet": "isolate-then-substitute", "skill": "isolate-then-substitute",
      "standard": "HSA-REI.C.6", "difficulty": 3, "bloom": "apply"},
 
-    {"id": 9, "type": "manual",
-     "desc": "System y = 2x + 3 with 4x - 2y = 1. Substitution collapses to -6 = 1, a false statement, so the system has NO solution (parallel lines). A no-solution answer set cannot be expressed as a verified value assignment - check the collapsed statement by hand.",
+    {"id": 9, "type": "system", "equations": ["y - (2*x + 3)", "4*x - 2*y - 1"],
+     "vars": ["x", "y"], "expected": [],
      "facet": "special-case", "skill": "special-case",
      "standard": "HSA-REI.C.6", "difficulty": 4, "bloom": "analyze"},
 

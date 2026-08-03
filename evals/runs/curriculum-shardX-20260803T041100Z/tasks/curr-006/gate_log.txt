@@ -84,6 +84,14 @@ Answer-line binding: /tmp/evalrepair2/curr-006/ws_r_curr006.tex (8 problem segme
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 8 problems, 46.4cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 2's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 3's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 4's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 5's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 6's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 7's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 8's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr006.tex → /tmp/evalrepair2/curr-006  (page budget: 5)
 Compiling: ws_r_curr006.tex → /tmp/evalrepair2/curr-006/

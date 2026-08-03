@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'lawcos_curr427' in /tmp/evalbuild/curr-427
-   ws: /tmp/evalbuild/curr-427/ws_lawcos_curr427.tex
-   ak: /tmp/evalbuild/curr-427/ak_lawcos_curr427.tex
-   ss: /tmp/evalbuild/curr-427/ss_lawcos_curr427.tex  (verify: /tmp/evalbuild/curr-427/verify_ss_lawcos_curr427.json)
+── step 1 · discover documents for stem 'r_curr427' in /tmp/evalrepair2/curr-427
+   ws: /tmp/evalrepair2/curr-427/ws_r_curr427.tex
+   ak: /tmp/evalrepair2/curr-427/ak_r_curr427.tex
+   ss: /tmp/evalrepair2/curr-427/ss_r_curr427.tex  (verify: /tmp/evalrepair2/curr-427/verify_ss_r_curr427.json)
 
-── step 2 · template shell on ws_lawcos_curr427.tex
-Template-use report: /tmp/evalbuild/curr-427/ws_lawcos_curr427.tex
+── step 2 · template shell on ws_r_curr427.tex
+Template-use report: /tmp/evalrepair2/curr-427/ws_r_curr427.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_lawcos_curr427.tex
-Template-use report: /tmp/evalbuild/curr-427/ak_lawcos_curr427.tex
+── step 3 · template shell on ak_r_curr427.tex
+Template-use report: /tmp/evalrepair2/curr-427/ak_r_curr427.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_lawcos_curr427.tex
-Template-use report: /tmp/evalbuild/curr-427/ss_lawcos_curr427.tex
+── step 4 · template shell on ss_r_curr427.tex
+Template-use report: /tmp/evalrepair2/curr-427/ss_r_curr427.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_lawcos_curr427.json)
+── step 5 · verify worksheet JSON (verify_r_curr427.json)
 Verifying: solving SAS and SSS triangles with the law of cosines (16 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: triangle {'a': 7, 'b': 9, 'C': 52} → c ∈ [7.2406] (expected 7.24, tol 0.01)
@@ -50,7 +50,7 @@ difficulty ramp: [1, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5]
 
 👁  1 problem(s) need manual review (15 machine-verified) — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_lawcos_curr427.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr427.json)
 Verifying: law of cosines — study guide (6 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: triangle {'a': 6, 'b': 10, 'C': 60} → c ∈ [8.7178] (expected 8.72, tol 0.01)
@@ -70,8 +70,8 @@ difficulty ramp: [2, 3, 3, 3, 4, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_lawcos_curr427.json → verify_ss_lawcos_curr427.json
-Skill coverage: /tmp/evalbuild/curr-427/verify_lawcos_curr427.json → /tmp/evalbuild/curr-427/verify_ss_lawcos_curr427.json
+── step 7 · skill coverage: verify_r_curr427.json → verify_ss_r_curr427.json
+Skill coverage: /tmp/evalrepair2/curr-427/verify_r_curr427.json → /tmp/evalrepair2/curr-427/verify_ss_r_curr427.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -79,63 +79,64 @@ facet coverage: worksheet facets ['bearing-application', 'sas-side', 'sss-angle'
 subtitle bound: 'Finding the third side of an SAS triangle, finding angles in an SSS triangle, and solving navigation problems with the law of cosines' found in the title block
 
 ── step 9 · render figures
-✅ 12 figure(s) → /tmp/evalbuild/curr-427/figs_lawcos_curr427.tex (problems: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+✅ 12 figure(s) → /tmp/evalrepair2/curr-427/figs_r_curr427.tex (problems: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-427/meta_lawcos_curr427.tex
+Wrote /tmp/evalrepair2/curr-427/meta_r_curr427.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-427/qa_lawcos_curr427.tex
+Wrote /tmp/evalrepair2/curr-427/qa_r_curr427.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_lawcos_curr427.tex
-Layout report: /tmp/evalbuild/curr-427/ws_lawcos_curr427.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr427.tex
+Layout report: /tmp/evalrepair2/curr-427/ws_r_curr427.tex
   problem blocks: figure scope ok (all 12 problems carry valued figures)
   problem blocks: work space ok (all 12 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_lawcos_curr427.tex
-Answer-line binding: /tmp/evalbuild/curr-427/ws_lawcos_curr427.tex (12 problem segments, 3 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr427.tex
+Answer-line binding: /tmp/evalrepair2/curr-427/ws_r_curr427.tex (12 problem segments, 3 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 12 problems, 146.6cm of content
-  ideal 7 page(s) · accepted range 4-9 · 4 sheet(s) of paper double-sided
+Page budget (ws, letter): 12 problems, 190.9cm of content
+  ideal 8 page(s) · accepted range 5-10 · 4 sheet(s) of paper double-sided
+  NOTE: 4 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
-── step 14 · compile ws_lawcos_curr427.tex → /tmp/evalbuild/curr-427  (page budget: 9)
-Compiling: ws_lawcos_curr427.tex → /tmp/evalbuild/curr-427/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 8 page(s), within the 9-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-427/ws_lawcos_curr427.pdf
-/tmp/evalbuild/curr-427/ws_lawcos_curr427.pdf
+── step 14 · compile ws_r_curr427.tex → /tmp/evalrepair2/curr-427  (page budget: 10)
+Compiling: ws_r_curr427.tex → /tmp/evalrepair2/curr-427/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 8 page(s), within the 10-page budget.
+✅ PDF ready: /tmp/evalrepair2/curr-427/ws_r_curr427.pdf
+/tmp/evalrepair2/curr-427/ws_r_curr427.pdf
 
-── step 15 · compile ak_lawcos_curr427.tex → /tmp/evalbuild/curr-427  (page budget: 9)
-Compiling: ak_lawcos_curr427.tex → /tmp/evalbuild/curr-427/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 9-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-427/ak_lawcos_curr427.pdf
-/tmp/evalbuild/curr-427/ak_lawcos_curr427.pdf
+── step 15 · compile ak_r_curr427.tex → /tmp/evalrepair2/curr-427  (page budget: 10)
+Compiling: ak_r_curr427.tex → /tmp/evalrepair2/curr-427/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 10-page budget.
+✅ PDF ready: /tmp/evalrepair2/curr-427/ak_r_curr427.pdf
+/tmp/evalrepair2/curr-427/ak_r_curr427.pdf
 
-── step 16 · compile ss_lawcos_curr427.tex → /tmp/evalbuild/curr-427  (page budget: 2)
-Compiling: ss_lawcos_curr427.tex → /tmp/evalbuild/curr-427/
+── step 16 · compile ss_r_curr427.tex → /tmp/evalrepair2/curr-427  (page budget: 2)
+Compiling: ss_r_curr427.tex → /tmp/evalrepair2/curr-427/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-427/ss_lawcos_curr427.pdf
-/tmp/evalbuild/curr-427/ss_lawcos_curr427.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-427/ss_r_curr427.pdf
+/tmp/evalrepair2/curr-427/ss_r_curr427.pdf
 
-── step 17 · answer-key binding: ak_lawcos_curr427.tex ↔ verify_lawcos_curr427.json
-Answer-key binding: /tmp/evalbuild/curr-427/ak_lawcos_curr427.tex
+── step 17 · answer-key binding: ak_r_curr427.tex ↔ verify_r_curr427.json
+Answer-key binding: /tmp/evalrepair2/curr-427/ak_r_curr427.tex
   15 boxed answers · 12 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_lawcos_curr427.tex ↔ verify_ss_lawcos_curr427.json
-Answer-key binding: /tmp/evalbuild/curr-427/ss_lawcos_curr427.tex
+── step 18 · answer-key binding: ss_r_curr427.tex ↔ verify_ss_r_curr427.json
+Answer-key binding: /tmp/evalrepair2/curr-427/ss_r_curr427.tex
   6 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_lawcos_curr427.tex
-Study-guide structure: /tmp/evalbuild/curr-427/ss_lawcos_curr427.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr427.tex
+Study-guide structure: /tmp/evalrepair2/curr-427/ss_r_curr427.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_lawcos_curr427.tex
-Prose-consistency report: /tmp/evalbuild/curr-427/ws_lawcos_curr427.tex
+── step 20 · prose consistency on ws_r_curr427.tex
+Prose-consistency report: /tmp/evalrepair2/curr-427/ws_r_curr427.tex
   problem 1: 3 prose numbers  ok
   problem 2: 3 prose numbers  ok
   problem 3: 3 prose numbers  ok
@@ -153,8 +154,8 @@ Match rate: 36/38 (94.7%) across 12 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_lawcos_curr427.tex
-Prose-consistency report: /tmp/evalbuild/curr-427/ss_lawcos_curr427.tex
+── step 21 · prose consistency on ss_r_curr427.tex
+Prose-consistency report: /tmp/evalrepair2/curr-427/ss_r_curr427.tex
   problem 1: 11 prose numbers  ⚠ missing from JSON: [0.5, 2.0, 36.0, 76.0, 100.0, 120.0, 136.0]
   problem 2: 4 prose numbers  ok
   problem 3: 11 prose numbers  ⚠ missing from JSON: [0.25, 2.0, 12.0, 16.0, 36.0, 48.0, 64.0]
@@ -192,8 +193,8 @@ Figure labels: all consistent with JSON givens.
    prose-ss         PASS
    overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-427/ws_lawcos_curr427.pdf
-   /tmp/evalbuild/curr-427/ak_lawcos_curr427.pdf
-   /tmp/evalbuild/curr-427/ss_lawcos_curr427.pdf
+   /tmp/evalrepair2/curr-427/ws_r_curr427.pdf
+   /tmp/evalrepair2/curr-427/ak_r_curr427.pdf
+   /tmp/evalrepair2/curr-427/ss_r_curr427.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

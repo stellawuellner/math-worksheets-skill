@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'scatter_curr246' in /tmp/evalbuild/curr-246
-   ws: /tmp/evalbuild/curr-246/ws_scatter_curr246.tex
-   ak: /tmp/evalbuild/curr-246/ak_scatter_curr246.tex
-   ss: /tmp/evalbuild/curr-246/ss_scatter_curr246.tex  (verify: /tmp/evalbuild/curr-246/verify_ss_scatter_curr246.json)
+── step 1 · discover documents for stem 'r_curr246' in /tmp/evalrepair2/curr-246
+   ws: /tmp/evalrepair2/curr-246/ws_r_curr246.tex
+   ak: /tmp/evalrepair2/curr-246/ak_r_curr246.tex
+   ss: /tmp/evalrepair2/curr-246/ss_r_curr246.tex  (verify: /tmp/evalrepair2/curr-246/verify_ss_r_curr246.json)
 
-── step 2 · template shell on ws_scatter_curr246.tex
-Template-use report: /tmp/evalbuild/curr-246/ws_scatter_curr246.tex
+── step 2 · template shell on ws_r_curr246.tex
+Template-use report: /tmp/evalrepair2/curr-246/ws_r_curr246.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_scatter_curr246.tex
-Template-use report: /tmp/evalbuild/curr-246/ak_scatter_curr246.tex
+── step 3 · template shell on ak_r_curr246.tex
+Template-use report: /tmp/evalrepair2/curr-246/ak_r_curr246.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_scatter_curr246.tex
-Template-use report: /tmp/evalbuild/curr-246/ss_scatter_curr246.tex
+── step 4 · template shell on ss_r_curr246.tex
+Template-use report: /tmp/evalrepair2/curr-246/ss_r_curr246.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_scatter_curr246.json)
+── step 5 · verify worksheet JSON (verify_r_curr246.json)
 Verifying: describing direction, form, and strength in scatter plots (14 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: compare(52 vs 88) → < (expected <)
@@ -46,7 +46,7 @@ difficulty ramp: [1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5]
 
 👁  1 problem(s) need manual review (13 machine-verified) — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_scatter_curr246.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr246.json)
 Verifying: describing direction, form, and strength in scatter plots (study guide) (6 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: compare(12 vs 30) → < (expected <)
@@ -66,8 +66,8 @@ difficulty ramp: [1, 1, 2, 2, 2, 2]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_scatter_curr246.json → verify_ss_scatter_curr246.json
-Skill coverage: /tmp/evalbuild/curr-246/verify_scatter_curr246.json → /tmp/evalbuild/curr-246/verify_ss_scatter_curr246.json
+── step 7 · skill coverage: verify_r_curr246.json → verify_ss_r_curr246.json
+Skill coverage: /tmp/evalrepair2/curr-246/verify_r_curr246.json → /tmp/evalrepair2/curr-246/verify_ss_r_curr246.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -78,60 +78,61 @@ subtitle bound: 'Describing a scatter plot in three words: which way it goes, wh
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-246/meta_scatter_curr246.tex
+Wrote /tmp/evalrepair2/curr-246/meta_r_curr246.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-246/qa_scatter_curr246.tex
+Wrote /tmp/evalrepair2/curr-246/qa_r_curr246.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_scatter_curr246.tex
-Layout report: /tmp/evalbuild/curr-246/ws_scatter_curr246.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr246.tex
+Layout report: /tmp/evalrepair2/curr-246/ws_r_curr246.tex
   problem blocks: figure scope ok (none of the 10 problems carries a valued figure)
   problem blocks: work space ok (all 10 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_scatter_curr246.tex
-Answer-line binding: /tmp/evalbuild/curr-246/ws_scatter_curr246.tex (10 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr246.tex
+Answer-line binding: /tmp/evalrepair2/curr-246/ws_r_curr246.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 10 problems, 137.5cm of content
-  ideal 6 page(s) · accepted range 4-8 · 3 sheet(s) of paper double-sided
+Page budget (ws, letter): 10 problems, 216.0cm of content
+  ideal 10 page(s) · accepted range 7-12 · 5 sheet(s) of paper double-sided
+  NOTE: 8 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
-── step 14 · compile ws_scatter_curr246.tex → /tmp/evalbuild/curr-246  (page budget: 8)
-Compiling: ws_scatter_curr246.tex → /tmp/evalbuild/curr-246/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 8 page(s), within the 8-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-246/ws_scatter_curr246.pdf
-/tmp/evalbuild/curr-246/ws_scatter_curr246.pdf
+── step 14 · compile ws_r_curr246.tex → /tmp/evalrepair2/curr-246  (page budget: 12)
+Compiling: ws_r_curr246.tex → /tmp/evalrepair2/curr-246/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 8 page(s), within the 12-page budget.
+✅ PDF ready: /tmp/evalrepair2/curr-246/ws_r_curr246.pdf
+/tmp/evalrepair2/curr-246/ws_r_curr246.pdf
 
-── step 15 · compile ak_scatter_curr246.tex → /tmp/evalbuild/curr-246  (page budget: 8)
-Compiling: ak_scatter_curr246.tex → /tmp/evalbuild/curr-246/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 8-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-246/ak_scatter_curr246.pdf
-/tmp/evalbuild/curr-246/ak_scatter_curr246.pdf
+── step 15 · compile ak_r_curr246.tex → /tmp/evalrepair2/curr-246  (page budget: 11)
+Compiling: ak_r_curr246.tex → /tmp/evalrepair2/curr-246/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 11-page budget.
+✅ PDF ready: /tmp/evalrepair2/curr-246/ak_r_curr246.pdf
+/tmp/evalrepair2/curr-246/ak_r_curr246.pdf
 
-── step 16 · compile ss_scatter_curr246.tex → /tmp/evalbuild/curr-246  (page budget: 2)
-Compiling: ss_scatter_curr246.tex → /tmp/evalbuild/curr-246/
+── step 16 · compile ss_r_curr246.tex → /tmp/evalrepair2/curr-246  (page budget: 2)
+Compiling: ss_r_curr246.tex → /tmp/evalrepair2/curr-246/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-246/ss_scatter_curr246.pdf
-/tmp/evalbuild/curr-246/ss_scatter_curr246.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-246/ss_r_curr246.pdf
+/tmp/evalrepair2/curr-246/ss_r_curr246.pdf
 
-── step 17 · answer-key binding: ak_scatter_curr246.tex ↔ verify_scatter_curr246.json
-Answer-key binding: /tmp/evalbuild/curr-246/ak_scatter_curr246.tex
+── step 17 · answer-key binding: ak_r_curr246.tex ↔ verify_r_curr246.json
+Answer-key binding: /tmp/evalrepair2/curr-246/ak_r_curr246.tex
   14 boxed answers · 10 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_scatter_curr246.tex ↔ verify_ss_scatter_curr246.json
-Answer-key binding: /tmp/evalbuild/curr-246/ss_scatter_curr246.tex
+── step 18 · answer-key binding: ss_r_curr246.tex ↔ verify_ss_r_curr246.json
+Answer-key binding: /tmp/evalrepair2/curr-246/ss_r_curr246.tex
   6 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_scatter_curr246.tex
-Study-guide structure: /tmp/evalbuild/curr-246/ss_scatter_curr246.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr246.tex
+Study-guide structure: /tmp/evalrepair2/curr-246/ss_r_curr246.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_scatter_curr246.tex
-Prose-consistency report: /tmp/evalbuild/curr-246/ws_scatter_curr246.tex
+── step 20 · prose consistency on ws_r_curr246.tex
+Prose-consistency report: /tmp/evalrepair2/curr-246/ws_r_curr246.tex
   problem 1: 0 prose numbers  ok
   problem 2: 0 prose numbers  ok
   problem 3: 0 prose numbers  ok
@@ -147,16 +148,16 @@ Match rate: 19/20 (95.0%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_scatter_curr246.tex
-Prose-consistency report: /tmp/evalbuild/curr-246/ss_scatter_curr246.tex
-  problem 1: 4 prose numbers  ⚠ missing from JSON: [9.0]
+── step 21 · prose consistency on ss_r_curr246.tex
+Prose-consistency report: /tmp/evalrepair2/curr-246/ss_r_curr246.tex
+  problem 1: 4 prose numbers  ⚠ missing from JSON: [1.0, 9.0]
   problem 2: 4 prose numbers  ⚠ missing from JSON: [2.0, 20.0]
   problem 3: 10 prose numbers  ok
   problem 4: 10 prose numbers  ok
   problem 5: 3 prose numbers  ok
   problem 6: 4 prose numbers  ok
 
-Match rate: 32/35 (91.4%) across 6 problem block(s)
+Match rate: 31/35 (88.6%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
@@ -186,8 +187,8 @@ Figure labels: all consistent with JSON givens.
    prose-ss         PASS
    overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-246/ws_scatter_curr246.pdf
-   /tmp/evalbuild/curr-246/ak_scatter_curr246.pdf
-   /tmp/evalbuild/curr-246/ss_scatter_curr246.pdf
+   /tmp/evalrepair2/curr-246/ws_r_curr246.pdf
+   /tmp/evalrepair2/curr-246/ak_r_curr246.pdf
+   /tmp/evalrepair2/curr-246/ss_r_curr246.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

@@ -139,25 +139,25 @@ Prose-consistency report: /tmp/evalrepair2/curr-444/ws_r_curr444.tex
   problem 2: 2 prose numbers  ok
   problem 3: 4 prose numbers  ⚠ missing from JSON: [7.0]
   problem 4: 4 prose numbers  ok
-  problem 5: 5 prose numbers  ⚠ missing from JSON: [1.0]
+  problem 5: 5 prose numbers  ⚠ missing from JSON: [1.0, 8.0]
   problem 6: 2 prose numbers  ok
   problem 7: 2 prose numbers  ok
   problem 8: 4 prose numbers  ⚠ missing from JSON: [4.0, 12.0]
 
-Match rate: 22/26 (84.6%) across 8 problem block(s)
+Match rate: 21/26 (80.8%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_r_curr444.tex
 Prose-consistency report: /tmp/evalrepair2/curr-444/ss_r_curr444.tex
   problem 1: 8 prose numbers  ⚠ missing from JSON: [5.0]
-  problem 2: 5 prose numbers  ⚠ missing from JSON: [7.0]
+  problem 2: 5 prose numbers  ⚠ missing from JSON: [2.0, 7.0]
   problem 3: 6 prose numbers  ⚠ missing from JSON: [2.0]
   problem 4: 5 prose numbers  ok
   problem 5: 5 prose numbers  ⚠ missing from JSON: [0.0]
   problem 6: 4 prose numbers  ok
 
-Match rate: 29/33 (87.9%) across 6 problem block(s)
+Match rate: 28/33 (84.8%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'transform_curr404' in /tmp/evalbuild/curr-404
-   ws: /tmp/evalbuild/curr-404/ws_transform_curr404.tex
-   ak: /tmp/evalbuild/curr-404/ak_transform_curr404.tex
-   ss: /tmp/evalbuild/curr-404/ss_transform_curr404.tex  (verify: /tmp/evalbuild/curr-404/verify_ss_transform_curr404.json)
+── step 1 · discover documents for stem 'r_curr404' in /tmp/evalrepair2/curr-404
+   ws: /tmp/evalrepair2/curr-404/ws_r_curr404.tex
+   ak: /tmp/evalrepair2/curr-404/ak_r_curr404.tex
+   ss: /tmp/evalrepair2/curr-404/ss_r_curr404.tex  (verify: /tmp/evalrepair2/curr-404/verify_ss_r_curr404.json)
 
-── step 2 · template shell on ws_transform_curr404.tex
-Template-use report: /tmp/evalbuild/curr-404/ws_transform_curr404.tex
+── step 2 · template shell on ws_r_curr404.tex
+Template-use report: /tmp/evalrepair2/curr-404/ws_r_curr404.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_transform_curr404.tex
-Template-use report: /tmp/evalbuild/curr-404/ak_transform_curr404.tex
+── step 3 · template shell on ak_r_curr404.tex
+Template-use report: /tmp/evalrepair2/curr-404/ak_r_curr404.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_transform_curr404.tex
-Template-use report: /tmp/evalbuild/curr-404/ss_transform_curr404.tex
+── step 4 · template shell on ss_r_curr404.tex
+Template-use report: /tmp/evalrepair2/curr-404/ss_r_curr404.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_transform_curr404.json)
+── step 5 · verify worksheet JSON (verify_r_curr404.json)
 Verifying: Advanced function transformations and composition - diagnosing transformation-order and inverse-domain errors (16 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: equiv((x - 3)**2 + 2) ≟ x**2 - 6*x + 11
@@ -48,7 +48,7 @@ difficulty ramp: [1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4]
 
 👁  1 problem(s) need manual review (15 machine-verified) — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_transform_curr404.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr404.json)
 Verifying: Study guide - transformation order, composition order, and inverse domains (6 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: equiv(3*x - 12) ≟ 3*(x - 4)
@@ -68,8 +68,8 @@ difficulty ramp: [2, 2, 3, 3, 3, 3]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_transform_curr404.json → verify_ss_transform_curr404.json
-Skill coverage: /tmp/evalbuild/curr-404/verify_transform_curr404.json → /tmp/evalbuild/curr-404/verify_ss_transform_curr404.json
+── step 7 · skill coverage: verify_r_curr404.json → verify_ss_r_curr404.json
+Skill coverage: /tmp/evalrepair2/curr-404/verify_r_curr404.json → /tmp/evalrepair2/curr-404/verify_ss_r_curr404.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -79,75 +79,75 @@ no facet plan — nothing to check
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-404/meta_transform_curr404.tex
+Wrote /tmp/evalrepair2/curr-404/meta_r_curr404.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-404/qa_transform_curr404.tex
+Wrote /tmp/evalrepair2/curr-404/qa_r_curr404.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_transform_curr404.tex
-Layout report: /tmp/evalbuild/curr-404/ws_transform_curr404.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr404.tex
+Layout report: /tmp/evalrepair2/curr-404/ws_r_curr404.tex
   problem blocks: figure scope ok (none of the 8 problems carries a valued figure)
   problem blocks: work space ok (all 8 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_transform_curr404.tex
-Answer-line binding: /tmp/evalbuild/curr-404/ws_transform_curr404.tex (8 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr404.tex
+Answer-line binding: /tmp/evalrepair2/curr-404/ws_r_curr404.tex (8 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 8 problems, 53.4cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_transform_curr404.tex → /tmp/evalbuild/curr-404  (page budget: 5)
-Compiling: ws_transform_curr404.tex → /tmp/evalbuild/curr-404/
+── step 14 · compile ws_r_curr404.tex → /tmp/evalrepair2/curr-404  (page budget: 5)
+Compiling: ws_r_curr404.tex → /tmp/evalrepair2/curr-404/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-404/ws_transform_curr404.pdf
-/tmp/evalbuild/curr-404/ws_transform_curr404.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-404/ws_r_curr404.pdf
+/tmp/evalrepair2/curr-404/ws_r_curr404.pdf
 
-── step 15 · compile ak_transform_curr404.tex → /tmp/evalbuild/curr-404  (page budget: 5)
-Compiling: ak_transform_curr404.tex → /tmp/evalbuild/curr-404/
+── step 15 · compile ak_r_curr404.tex → /tmp/evalrepair2/curr-404  (page budget: 5)
+Compiling: ak_r_curr404.tex → /tmp/evalrepair2/curr-404/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-404/ak_transform_curr404.pdf
-/tmp/evalbuild/curr-404/ak_transform_curr404.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-404/ak_r_curr404.pdf
+/tmp/evalrepair2/curr-404/ak_r_curr404.pdf
 
-── step 16 · compile ss_transform_curr404.tex → /tmp/evalbuild/curr-404  (page budget: 2)
-Compiling: ss_transform_curr404.tex → /tmp/evalbuild/curr-404/
+── step 16 · compile ss_r_curr404.tex → /tmp/evalrepair2/curr-404  (page budget: 2)
+Compiling: ss_r_curr404.tex → /tmp/evalrepair2/curr-404/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-404/ss_transform_curr404.pdf
-/tmp/evalbuild/curr-404/ss_transform_curr404.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-404/ss_r_curr404.pdf
+/tmp/evalrepair2/curr-404/ss_r_curr404.pdf
 
-── step 17 · answer-key binding: ak_transform_curr404.tex ↔ verify_transform_curr404.json
-Answer-key binding: /tmp/evalbuild/curr-404/ak_transform_curr404.tex
+── step 17 · answer-key binding: ak_r_curr404.tex ↔ verify_r_curr404.json
+Answer-key binding: /tmp/evalrepair2/curr-404/ak_r_curr404.tex
   12 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_transform_curr404.tex ↔ verify_ss_transform_curr404.json
-Answer-key binding: /tmp/evalbuild/curr-404/ss_transform_curr404.tex
+── step 18 · answer-key binding: ss_r_curr404.tex ↔ verify_ss_r_curr404.json
+Answer-key binding: /tmp/evalrepair2/curr-404/ss_r_curr404.tex
   6 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_transform_curr404.tex
-Study-guide structure: /tmp/evalbuild/curr-404/ss_transform_curr404.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr404.tex
+Study-guide structure: /tmp/evalrepair2/curr-404/ss_r_curr404.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_transform_curr404.tex
-Prose-consistency report: /tmp/evalbuild/curr-404/ws_transform_curr404.tex
+── step 20 · prose consistency on ws_r_curr404.tex
+Prose-consistency report: /tmp/evalrepair2/curr-404/ws_r_curr404.tex
   problem 1: 2 prose numbers  ok
   problem 2: 3 prose numbers  ok
   problem 3: 3 prose numbers  ok
   problem 4: 4 prose numbers  ok
   problem 5: 4 prose numbers  ⚠ missing from JSON: [1.0]
   problem 6: 3 prose numbers  ok
-  problem 7: 6 prose numbers  ⚠ missing from JSON: [1.0]
-  problem 8: 3 prose numbers  ⚠ missing from JSON: [1.0, 3.0, 12.0]
+  problem 7: 5 prose numbers  ok
+  problem 8: 2 prose numbers  ⚠ missing from JSON: [3.0, 12.0]
 
-Match rate: 23/28 (82.1%) across 8 problem block(s)
+Match rate: 23/26 (88.5%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_transform_curr404.tex
-Prose-consistency report: /tmp/evalbuild/curr-404/ss_transform_curr404.tex
+── step 21 · prose consistency on ss_r_curr404.tex
+Prose-consistency report: /tmp/evalrepair2/curr-404/ss_r_curr404.tex
   problem 1: 4 prose numbers  ⚠ missing from JSON: [1.0]
   problem 2: 3 prose numbers  ok
   problem 3: 4 prose numbers  ok
@@ -185,8 +185,8 @@ Figure labels: all consistent with JSON givens.
    prose-ss         PASS
    overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-404/ws_transform_curr404.pdf
-   /tmp/evalbuild/curr-404/ak_transform_curr404.pdf
-   /tmp/evalbuild/curr-404/ss_transform_curr404.pdf
+   /tmp/evalrepair2/curr-404/ws_r_curr404.pdf
+   /tmp/evalrepair2/curr-404/ak_r_curr404.pdf
+   /tmp/evalrepair2/curr-404/ss_r_curr404.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

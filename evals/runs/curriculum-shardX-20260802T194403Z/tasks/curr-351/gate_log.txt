@@ -91,6 +91,10 @@ Answer-line binding: /tmp/evalrepair2/curr-351/ws_r_curr351.tex (10 problem segm
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 63.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 3's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 4's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 5's stem holds a tikzpicture and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr351.tex → /tmp/evalrepair2/curr-351  (page budget: 5)
 Compiling: ws_r_curr351.tex → /tmp/evalrepair2/curr-351/
@@ -128,10 +132,10 @@ Study-guide structure: /tmp/evalrepair2/curr-351/ss_r_curr351.tex
 
 ── step 20 · prose consistency on ws_r_curr351.tex
 Prose-consistency report: /tmp/evalrepair2/curr-351/ws_r_curr351.tex
-  problem 1: 5 prose numbers  ⚠ missing from JSON: [2.0, 3.0, 4.0]
+  problem 1: 5 prose numbers  ⚠ missing from JSON: [1.0, 2.0, 3.0, 4.0]
   problem 2: 1 prose numbers  ok
   problem 3: 4 prose numbers  ok
-  problem 4: 4 prose numbers  ⚠ missing from JSON: [1.0]
+  problem 4: 4 prose numbers  ⚠ missing from JSON: [1.0, 2.0]
   problem 5: 2 prose numbers  ok
   problem 6: 3 prose numbers  ⚠ missing from JSON: [0.0]
   problem 7: 4 prose numbers  ok
@@ -139,7 +143,7 @@ Prose-consistency report: /tmp/evalrepair2/curr-351/ws_r_curr351.tex
   problem 9: 2 prose numbers  ok
   problem 10: 4 prose numbers  ⚠ missing from JSON: [0.0]
 
-Match rate: 26/32 (81.2%) across 10 problem block(s)
+Match rate: 24/32 (75.0%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

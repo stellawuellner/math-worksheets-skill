@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'fraclineplots_curr147' in /tmp/evalbuild/curr-147
-   ws: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex
-   ak: /tmp/evalbuild/curr-147/ak_fraclineplots_curr147.tex
-   ss: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex  (verify: /tmp/evalbuild/curr-147/verify_ss_fraclineplots_curr147.json)
+── step 1 · discover documents for stem 'r_curr147' in /tmp/evalrepair2/curr-147
+   ws: /tmp/evalrepair2/curr-147/ws_r_curr147.tex
+   ak: /tmp/evalrepair2/curr-147/ak_r_curr147.tex
+   ss: /tmp/evalrepair2/curr-147/ss_r_curr147.tex  (verify: /tmp/evalrepair2/curr-147/verify_ss_r_curr147.json)
 
-── step 2 · template shell on ws_fraclineplots_curr147.tex
-Template-use report: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex
+── step 2 · template shell on ws_r_curr147.tex
+Template-use report: /tmp/evalrepair2/curr-147/ws_r_curr147.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_fraclineplots_curr147.tex
-Template-use report: /tmp/evalbuild/curr-147/ak_fraclineplots_curr147.tex
+── step 3 · template shell on ak_r_curr147.tex
+Template-use report: /tmp/evalrepair2/curr-147/ak_r_curr147.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_fraclineplots_curr147.tex
-Template-use report: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex
+── step 4 · template shell on ss_r_curr147.tex
+Template-use report: /tmp/evalrepair2/curr-147/ss_r_curr147.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_fraclineplots_curr147.json)
+── step 5 · verify worksheet JSON (verify_r_curr147.json)
 Verifying: interpreting fractional line-plot data (13 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: value({'1/8': 1, '1/4': 1, '3/8': 4, '1/2': 1, '5/8': 1}) → 1 (expected 1)
@@ -49,7 +49,7 @@ difficulty ramp: [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5, 5]
 
 👁  1 problem(s) need manual review (12 machine-verified) — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_fraclineplots_curr147.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr147.json)
 Verifying: study guide: interpreting fractional line-plot data (7 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: value({'1/4': 1, '1/2': 4, '3/4': 1}) → 4 (expected 4)
@@ -70,8 +70,8 @@ difficulty ramp: [1, 1, 2, 2, 3, 3, 3]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_fraclineplots_curr147.json → verify_ss_fraclineplots_curr147.json
-Skill coverage: /tmp/evalbuild/curr-147/verify_fraclineplots_curr147.json → /tmp/evalbuild/curr-147/verify_ss_fraclineplots_curr147.json
+── step 7 · skill coverage: verify_r_curr147.json → verify_ss_r_curr147.json
+Skill coverage: /tmp/evalrepair2/curr-147/verify_r_curr147.json → /tmp/evalrepair2/curr-147/verify_ss_r_curr147.json
   ✅ 3 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -82,60 +82,60 @@ subtitle bound: "Reading stacks of X's off a line plot marked in eighths and qua
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-147/meta_fraclineplots_curr147.tex
+Wrote /tmp/evalrepair2/curr-147/meta_r_curr147.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-147/qa_fraclineplots_curr147.tex
+Wrote /tmp/evalrepair2/curr-147/qa_r_curr147.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_fraclineplots_curr147.tex
-Layout report: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr147.tex
+Layout report: /tmp/evalrepair2/curr-147/ws_r_curr147.tex
   problem blocks: figure scope ok (all 12 problems carry valued figures)
   problem blocks: work space ok (all 12 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_fraclineplots_curr147.tex
-Answer-line binding: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex (12 problem segments, 3 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr147.tex
+Answer-line binding: /tmp/evalrepair2/curr-147/ws_r_curr147.tex (12 problem segments, 3 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 12 problems, 96.2cm of content
   ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
 
-── step 14 · compile ws_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147  (page budget: 7)
-Compiling: ws_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147/
+── step 14 · compile ws_r_curr147.tex → /tmp/evalrepair2/curr-147  (page budget: 7)
+Compiling: ws_r_curr147.tex → /tmp/evalrepair2/curr-147/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 7-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.pdf
-/tmp/evalbuild/curr-147/ws_fraclineplots_curr147.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-147/ws_r_curr147.pdf
+/tmp/evalrepair2/curr-147/ws_r_curr147.pdf
 
-── step 15 · compile ak_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147  (page budget: 7)
-Compiling: ak_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147/
+── step 15 · compile ak_r_curr147.tex → /tmp/evalrepair2/curr-147  (page budget: 7)
+Compiling: ak_r_curr147.tex → /tmp/evalrepair2/curr-147/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 7-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-147/ak_fraclineplots_curr147.pdf
-/tmp/evalbuild/curr-147/ak_fraclineplots_curr147.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-147/ak_r_curr147.pdf
+/tmp/evalrepair2/curr-147/ak_r_curr147.pdf
 
-── step 16 · compile ss_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147  (page budget: 2)
-Compiling: ss_fraclineplots_curr147.tex → /tmp/evalbuild/curr-147/
+── step 16 · compile ss_r_curr147.tex → /tmp/evalrepair2/curr-147  (page budget: 2)
+Compiling: ss_r_curr147.tex → /tmp/evalrepair2/curr-147/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.pdf
-/tmp/evalbuild/curr-147/ss_fraclineplots_curr147.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-147/ss_r_curr147.pdf
+/tmp/evalrepair2/curr-147/ss_r_curr147.pdf
 
-── step 17 · answer-key binding: ak_fraclineplots_curr147.tex ↔ verify_fraclineplots_curr147.json
-Answer-key binding: /tmp/evalbuild/curr-147/ak_fraclineplots_curr147.tex
+── step 17 · answer-key binding: ak_r_curr147.tex ↔ verify_r_curr147.json
+Answer-key binding: /tmp/evalrepair2/curr-147/ak_r_curr147.tex
   13 boxed answers · 12 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_fraclineplots_curr147.tex ↔ verify_ss_fraclineplots_curr147.json
-Answer-key binding: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex
+── step 18 · answer-key binding: ss_r_curr147.tex ↔ verify_ss_r_curr147.json
+Answer-key binding: /tmp/evalrepair2/curr-147/ss_r_curr147.tex
   7 boxed answers · 6 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_fraclineplots_curr147.tex
-Study-guide structure: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr147.tex
+Study-guide structure: /tmp/evalrepair2/curr-147/ss_r_curr147.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_fraclineplots_curr147.tex
-Prose-consistency report: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex
+── step 20 · prose consistency on ws_r_curr147.tex
+Prose-consistency report: /tmp/evalrepair2/curr-147/ws_r_curr147.tex
   problem 1: 2 prose numbers  ok
   problem 2: 0 prose numbers  ok
   problem 3: 4 prose numbers  ok
@@ -151,22 +151,16 @@ Prose-consistency report: /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.tex
 
 Match rate: 14/14 (100.0%) across 12 problem block(s)
 Figure-label numbers not found in JSON givens (audit 3d):
-  ⚠ problem 1: figure shows [0.125, 0.25, 0.375, 0.5, 0.625, 3.0, 5.0, 8.0]
-  ⚠ problem 2: figure shows [0.125, 0.25, 0.375, 0.5, 0.625, 2.0, 5.0]
-  ⚠ problem 3: figure shows [0.125, 0.25, 0.375, 0.5, 0.625, 2.0, 5.0]
-  ⚠ problem 4: figure shows [0.125, 0.25, 0.375, 0.5, 0.625]
-  ⚠ problem 5: figure shows [0.125, 0.25, 0.375, 0.5, 0.625]
-  ⚠ problem 6: figure shows [0.125, 0.25, 0.375, 0.5, 0.625]
-  ⚠ problem 7: figure shows [0.25, 0.5, 0.75, 1.25]
-  ⚠ problem 8: figure shows [0.25, 0.5, 0.75, 1.25]
+  ⚠ problem 1: figure shows [0.125, 0.25, 0.375, 0.625, 3.0, 5.0, 8.0]
+  ⚠ problem 2: figure shows [0.125, 0.25, 0.5, 0.625, 2.0, 5.0]
+  ⚠ problem 3: figure shows [0.125, 0.5, 0.625, 2.0, 5.0]
+  ⚠ problem 7: figure shows [0.25, 0.5, 1.25]
   ⚠ problem 9: figure shows [0.25, 0.5, 0.75, 1.25, 4.0]
-  ⚠ problem 10: figure shows [0.25, 0.5, 0.75, 1.25]
-  ⚠ problem 11: figure shows [0.25, 0.5, 0.75, 1.25]
-  ⚠ problem 12: figure shows [0.25, 0.5, 0.75, 1.25, 3.0]
+  ⚠ problem 12: figure shows [0.25, 0.75, 1.25, 3.0]
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_fraclineplots_curr147.tex
-Prose-consistency report: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex
+── step 21 · prose consistency on ss_r_curr147.tex
+Prose-consistency report: /tmp/evalrepair2/curr-147/ss_r_curr147.tex
   problem 1: 3 prose numbers  ok
   problem 2: 3 prose numbers  ok
   problem 3: 4 prose numbers  ok
@@ -176,7 +170,7 @@ Prose-consistency report: /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.tex
 
 Match rate: 22/24 (91.7%) across 6 problem block(s)
 Figure-label numbers not found in JSON givens (audit 3d):
-  ⚠ problem 1: figure shows [0.25, 0.5, 0.75, 3.0]
+  ⚠ problem 1: figure shows [0.25, 0.75, 3.0]
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 22 · overprinting in the compiled PDFs
@@ -205,8 +199,8 @@ Figure-label numbers not found in JSON givens (audit 3d):
    prose-ss         PASS
    overprint        PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-147/ws_fraclineplots_curr147.pdf
-   /tmp/evalbuild/curr-147/ak_fraclineplots_curr147.pdf
-   /tmp/evalbuild/curr-147/ss_fraclineplots_curr147.pdf
+   /tmp/evalrepair2/curr-147/ws_r_curr147.pdf
+   /tmp/evalrepair2/curr-147/ak_r_curr147.pdf
+   /tmp/evalrepair2/curr-147/ss_r_curr147.pdf
 
 ✅ BUILD PASSED — 1 verification run(s) flagged manual-review items (exit 2)

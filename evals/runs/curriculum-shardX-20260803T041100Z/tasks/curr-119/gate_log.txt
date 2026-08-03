@@ -127,28 +127,28 @@ Study-guide structure: /tmp/evalrepair2/curr-119/ss_r_curr119.tex
 ── step 20 · prose consistency on ws_r_curr119.tex
 Prose-consistency report: /tmp/evalrepair2/curr-119/ws_r_curr119.tex
   problem 1: 5 prose numbers  ⚠ missing from JSON: [9.0, 12.0]
-  problem 2: 7 prose numbers  ⚠ missing from JSON: [9.0, 16.0]
+  problem 2: 7 prose numbers  ⚠ missing from JSON: [2.0, 4.0, 9.0, 16.0]
   problem 3: 5 prose numbers  ⚠ missing from JSON: [16.0, 24.0]
   problem 4: 5 prose numbers  ⚠ missing from JSON: [15.0, 20.0]
   problem 5: 2 prose numbers  ok
-  problem 6: 4 prose numbers  ⚠ missing from JSON: [1.0, 7.0]
-  problem 7: 7 prose numbers  ⚠ missing from JSON: [3.0, 11.0]
-  problem 8: 4 prose numbers  ⚠ missing from JSON: [0.0, 20.0, 60.0]
+  problem 6: 4 prose numbers  ⚠ missing from JSON: [1.0, 5.0, 7.0]
+  problem 7: 7 prose numbers  ⚠ missing from JSON: [3.0, 4.0, 11.0]
+  problem 8: 4 prose numbers  ⚠ missing from JSON: [0.0, 20.0, 40.0, 60.0]
 
-Match rate: 24/39 (61.5%) across 8 problem block(s)
+Match rate: 19/39 (48.7%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_r_curr119.tex
 Prose-consistency report: /tmp/evalrepair2/curr-119/ss_r_curr119.tex
-  problem 1: 6 prose numbers  ⚠ missing from JSON: [6.0]
+  problem 1: 6 prose numbers  ⚠ missing from JSON: [4.0, 6.0]
   problem 2: 6 prose numbers  ⚠ missing from JSON: [14.0, 21.0, 28.0]
   problem 3: 5 prose numbers  ⚠ missing from JSON: [3.0]
   problem 4: 3 prose numbers  ok
   problem 5: 6 prose numbers  ⚠ missing from JSON: [12.0, 18.0, 24.0]
   problem 6: 5 prose numbers  ⚠ missing from JSON: [18.0, 27.0]
 
-Match rate: 21/31 (67.7%) across 6 problem block(s)
+Match rate: 20/31 (64.5%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

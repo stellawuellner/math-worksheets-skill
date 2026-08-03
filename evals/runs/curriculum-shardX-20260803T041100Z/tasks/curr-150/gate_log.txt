@@ -94,8 +94,9 @@ Layout report: /tmp/evalrepair2/curr-150/ws_r_curr150.tex
 ── step 13 · answer-line binding (answer_unit) on ws_r_curr150.tex
 Answer-line binding: /tmp/evalrepair2/curr-150/ws_r_curr150.tex (12 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 12 problems, 99.6cm of content
+Page budget (ws, letter): 12 problems, 110.4cm of content
   ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
+  NOTE: 1 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
 ── step 14 · compile ws_r_curr150.tex → /tmp/evalrepair2/curr-150  (page budget: 7)
 Compiling: ws_r_curr150.tex → /tmp/evalrepair2/curr-150/
@@ -152,14 +153,14 @@ Figure labels: all consistent with JSON givens.
 
 ── step 21 · prose consistency on ss_r_curr150.tex
 Prose-consistency report: /tmp/evalrepair2/curr-150/ss_r_curr150.tex
-  problem 1: 5 prose numbers  ok
+  problem 1: 5 prose numbers  ⚠ missing from JSON: [2.0]
   problem 2: 4 prose numbers  ok
   problem 3: 7 prose numbers  ⚠ missing from JSON: [6.0, 18.0]
   problem 4: 4 prose numbers  ok
   problem 5: 3 prose numbers  ok
   problem 6: 3 prose numbers  ok
 
-Match rate: 24/26 (92.3%) across 6 problem block(s)
+Match rate: 23/26 (88.5%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

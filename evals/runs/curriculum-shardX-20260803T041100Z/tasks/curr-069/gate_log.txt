@@ -87,6 +87,9 @@ Answer-line binding: /tmp/evalrepair2/curr-069/ws_r_curr069.tex (8 problem segme
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 8 problems, 50.4cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 2's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 4's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr069.tex → /tmp/evalrepair2/curr-069  (page budget: 5)
 Compiling: ws_r_curr069.tex → /tmp/evalrepair2/curr-069/
@@ -141,12 +144,12 @@ Figure labels: all consistent with JSON givens.
 Prose-consistency report: /tmp/evalrepair2/curr-069/ss_r_curr069.tex
   problem 1: 5 prose numbers  ⚠ missing from JSON: [6.0, 9.0]
   problem 2: 3 prose numbers  ok
-  problem 3: 7 prose numbers  ⚠ missing from JSON: [8.0, 12.0, 16.0]
+  problem 3: 7 prose numbers  ⚠ missing from JSON: [8.0, 12.0, 16.0, 20.0]
   problem 4: 3 prose numbers  ok
   problem 5: 5 prose numbers  ⚠ missing from JSON: [10.0, 15.0]
   problem 6: 3 prose numbers  ok
 
-Match rate: 19/26 (73.1%) across 6 problem block(s)
+Match rate: 18/26 (69.2%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

@@ -129,29 +129,29 @@ Study-guide structure: /tmp/evalrepair2/curr-419/ss_r_curr419.tex
 
 ── step 20 · prose consistency on ws_r_curr419.tex
 Prose-consistency report: /tmp/evalrepair2/curr-419/ws_r_curr419.tex
-  problem 1: 2 prose numbers  ok
+  problem 1: 1 prose numbers  ok
   problem 2: 2 prose numbers  ok
-  problem 3: 4 prose numbers  ok
+  problem 3: 3 prose numbers  ok
   problem 4: 2 prose numbers  ⚠ missing from JSON: [150.0]
   problem 5: 3 prose numbers  ok
   problem 6: 6 prose numbers  ⚠ missing from JSON: [30.0, 150.0]
   problem 7: 2 prose numbers  ok
   problem 8: 2 prose numbers  ok
 
-Match rate: 20/23 (87.0%) across 8 problem block(s)
+Match rate: 18/21 (85.7%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_r_curr419.tex
 Prose-consistency report: /tmp/evalrepair2/curr-419/ss_r_curr419.tex
-  problem 1: 4 prose numbers  ok
-  problem 2: 3 prose numbers  ok
-  problem 3: 7 prose numbers  ⚠ missing from JSON: [2.0, 5.24, 60.0]
-  problem 4: 3 prose numbers  ok
+  problem 1: 3 prose numbers  ok
+  problem 2: 2 prose numbers  ok
+  problem 3: 6 prose numbers  ⚠ missing from JSON: [2.0, 5.24, 60.0]
+  problem 4: 2 prose numbers  ok
   problem 5: 7 prose numbers  ⚠ missing from JSON: [180.0]
   problem 6: 6 prose numbers  ok
 
-Match rate: 26/30 (86.7%) across 6 problem block(s)
+Match rate: 22/26 (84.6%) across 6 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

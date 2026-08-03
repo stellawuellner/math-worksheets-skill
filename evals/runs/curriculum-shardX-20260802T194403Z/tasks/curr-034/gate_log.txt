@@ -88,6 +88,8 @@ Answer-line binding: /tmp/evalrepair2/curr-034/ws_r_curr034.tex (6 problem segme
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 6 problems, 33.8cm of content
   ideal 2 page(s) · accepted range 1-4 · 1 sheet(s) of paper double-sided
+  NOTE: problem 1's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
+  NOTE: problem 5's stem holds a tabular and declares no workspace_cm, so it is charged 0.6cm like a one-line stem. Declare workspace_cm covering the block's real height, or this sheet will overrun the budget at compile time.
 
 ── step 14 · compile ws_r_curr034.tex → /tmp/evalrepair2/curr-034  (page budget: 4)
 Compiling: ws_r_curr034.tex → /tmp/evalrepair2/curr-034/

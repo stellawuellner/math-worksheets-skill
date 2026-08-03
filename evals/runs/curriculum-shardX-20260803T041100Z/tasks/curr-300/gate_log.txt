@@ -99,8 +99,9 @@ Layout report: /tmp/evalrepair2/curr-300/ws_r_curr300.tex
 ── step 13 · answer-line binding (answer_unit) on ws_r_curr300.tex
 Answer-line binding: /tmp/evalrepair2/curr-300/ws_r_curr300.tex (12 problem segments, 1 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 12 problems, 119.1cm of content
+Page budget (ws, letter): 12 problems, 141.3cm of content
   ideal 6 page(s) · accepted range 4-8 · 3 sheet(s) of paper double-sided
+  NOTE: 2 problem block(s) are taller than half a page, so only one fits per page and the rest of each page is stranded. The budget charges for that. If this sheet is longer than you want, the fix is a SHORTER BLOCK — a smaller figure, or workspace beside the figure instead of under it — not a larger workspace_cm, which raises the ceiling without recovering the stranded space.
 
 ── step 14 · compile ws_r_curr300.tex → /tmp/evalrepair2/curr-300  (page budget: 8)
 Compiling: ws_r_curr300.tex → /tmp/evalrepair2/curr-300/
@@ -138,12 +139,12 @@ Study-guide structure: /tmp/evalrepair2/curr-300/ss_r_curr300.tex
 
 ── step 20 · prose consistency on ws_r_curr300.tex
 Prose-consistency report: /tmp/evalrepair2/curr-300/ws_r_curr300.tex
-  problem 1: 9 prose numbers  ⚠ missing from JSON: [0.0, 2.0, 3.0, 55.0, 70.0]
-  problem 2: 2 prose numbers  ok
+  problem 1: 9 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 2.0, 3.0, 55.0, 70.0]
+  problem 2: 2 prose numbers  ⚠ missing from JSON: [1.0]
   problem 3: 8 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 3.0]
   problem 4: 4 prose numbers  ⚠ missing from JSON: [3.0]
   problem 5: 4 prose numbers  ok
-  problem 6: 9 prose numbers  ⚠ missing from JSON: [1.0, 4.0, 7.0, 12.0, 17.0, 22.0]
+  problem 6: 9 prose numbers  ⚠ missing from JSON: [1.0, 3.0, 4.0, 7.0, 12.0, 17.0, 22.0]
   problem 7: 5 prose numbers  ⚠ missing from JSON: [5.0]
   problem 8: 3 prose numbers  ok
   problem 9: 4 prose numbers  ok
@@ -151,13 +152,13 @@ Prose-consistency report: /tmp/evalrepair2/curr-300/ws_r_curr300.tex
   problem 11: 10 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 3.0, 9.0, 17.0]
   problem 12: 6 prose numbers  ok
 
-Match rate: 46/67 (68.7%) across 12 problem block(s)
+Match rate: 43/67 (64.2%) across 12 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_r_curr300.tex
 Prose-consistency report: /tmp/evalrepair2/curr-300/ss_r_curr300.tex
-  problem 1: 10 prose numbers  ⚠ missing from JSON: [0.0, 2.0, 7.0, 11.0, 15.0]
+  problem 1: 10 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 2.0, 7.0, 11.0, 15.0]
   problem 2: 8 prose numbers  ⚠ missing from JSON: [0.0, 1.0, 5.0, 11.0]
   problem 3: 11 prose numbers  ⚠ missing from JSON: [0.0, 3.0, 4.0, 7.0, 11.0, 22.0, 50.0]
   problem 4: 9 prose numbers  ⚠ missing from JSON: [0.0, 6.0, 16.0, 32.0]
@@ -166,7 +167,7 @@ Prose-consistency report: /tmp/evalrepair2/curr-300/ss_r_curr300.tex
   problem 7: 5 prose numbers  ⚠ missing from JSON: [0.0]
   problem 8: 4 prose numbers  ok
 
-Match rate: 36/58 (62.1%) across 8 problem block(s)
+Match rate: 35/58 (60.3%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 

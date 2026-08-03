@@ -20,12 +20,12 @@
      "facet": "isolate-then-substitute", "skill": "isolate-then-substitute",
      "standard": "HSA-REI.C.6", "difficulty": 3, "bloom": "apply"},
 
-    {"id": 5, "type": "manual",
-     "desc": "Worked special case: 2x + y = 6 with 4x + 2y = 5 collapses to 12 = 5, a false statement, so there is no solution. Not expressible as a verified value assignment - review by hand.",
+    {"id": 5, "type": "system", "equations": ["2*x + y - 6", "4*x + 2*y - 5"],
+     "vars": ["x", "y"], "expected": [],
      "facet": "special-case", "skill": "special-case",
      "standard": "HSA-REI.C.6", "difficulty": 3, "bloom": "analyze"},
-    {"id": 6, "type": "manual",
-     "desc": "Try-it special case: y = 3x - 4 with 6x - 2y = 8 collapses to 8 = 8, always true, so there are infinitely many solutions (every point on the line). Not expressible as a verified value assignment - review by hand.",
+    {"id": 6, "type": "system", "equations": ["y - (3*x - 4)", "6*x - 2*y - 8"],
+     "vars": ["x", "y"], "expected": {"x": 2, "y": 2},
      "role": "tryit", "facet": "special-case", "skill": "special-case",
      "standard": "HSA-REI.C.6", "difficulty": 3, "bloom": "analyze"},
 

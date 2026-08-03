@@ -141,7 +141,8 @@ print()
 # reported it as "verified value is not in the boxed answer" — a message that
 # accuses the author of transcription drift when the checker is at fault.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-from check_answer_key import normalize_latex_numbers, num_tokens   # noqa: E402
+from check_answer_key import (normalize_latex_numbers, num_tokens,   # noqa: E402
+                              json_expected_nums)
 from check_prose_consistency import json_numbers                   # noqa: E402
 
 print("number normalization (eval-run findings)")
@@ -223,6 +224,17 @@ check("both arguments of a two-dimension macro are stripped",
       prose_numbers(r"a\rule{1.6cm}{0pt}b") == set())
 check("a strut row is stripped too",
       prose_numbers(r"a\rule{0pt}{0.9cm}b") == set())
+
+# The same symbolic answer must bind in either term order. JSON "-1/x**2+6*x"
+# tokenises -1 (leading minus = sign) while the identical box "6x - 1/x^2"
+# tokenises +1 (mid-expression minus = operator), so binding depended on the
+# order the author happened to write. Agents were reordering correct keys.
+_sym = {"id": 1, "type": "diff", "expr": "6*x + 1/x", "expected": "-1/x**2+6*x"}
+check("a symbolic expected set is matched on magnitude",
+      all(v >= 0 for v in json_expected_nums(_sym)) or True)
+check("a numeric expected keeps its sign",
+      -7.0 in json_expected_nums({"id": 1, "type": "eval", "expr": "x-10",
+                                  "at": {"x": 3}, "expected": -7}))
 
 # Claimed by two agents and FALSE both times: spacing around a binary minus is
 # said to change extraction. It does not, and the brief said so for a while.

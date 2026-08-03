@@ -80,6 +80,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 
 | Topic | Code |
 |---|---|
+| Justifying steps in solving equations | HSA-REI.A.1 |
 | Quadratics: solve | HSA-REI.B.4 |
 | Systems (linear/quadratic) | HSA-REI.C.6, HSA-REI.C.7 |
 | Polynomial arithmetic/factoring | HSA-APR.A.1, HSA-SSE.B.3 |

@@ -396,12 +396,26 @@ def main():
                     hard.append((i, r, f"is the verified comparison, but {where}"))
         expected = set().union(*(json_expected_nums(e) for e in entries))
         expected = {v for v in expected if abs(v) > 1e-9}  # skip trivial 0
+        # A leading minus is a SIGN; a mid-expression minus is an OPERATOR. So
+        # one answer changes token set with term order: JSON "-1/x**2+6*x" gives
+        # -1, while the identical box "6x - 1/x^2" gives +1, and binding failed.
+        # Agents were reordering correct answer keys to satisfy the checker. For
+        # a SYMBOLIC answer the sign is carried by the printed expression, not by
+        # a token, so those are matched on magnitude. A purely numeric answer
+        # keeps strict sign — that is where a sign error IS a wrong answer.
+        symbolic = any(isinstance(e.get("expected"), str)
+                       and re.search(r"[A-Za-z]", e["expected"]) for e in entries)
+        if symbolic:
+            expected = {abs(v) for v in expected}
         if not expected:
             continue
         seg = segments[i - 1] if i - 1 < len(segments) else ""
         for v in expected:
+            box_toks = seg_boxes[i - 1] if i - 1 < len(seg_boxes) else []
+            if symbolic:
+                box_toks = [(abs(val), tok) for val, tok in box_toks]
             if strict:
-                if i - 1 < len(seg_boxes) and any_match(v, seg_boxes[i - 1]):
+                if any_match(v, box_toks):
                     continue
                 # diagnose, don't just fail: was the right number nearby?
                 if any_match(v, num_tokens(seg)):

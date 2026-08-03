@@ -192,6 +192,24 @@ check("a real exponent survives",
       prose.prose_numbers(r"A square of side $3$ has area $3^2$.") == {2.0, 3.0})
 
 print()
+print("A thousands separator is punctuation inside one numeral:")
+# "47{,}308" scanned as 47 and 308, so a grade 4-5 place-value worksheet
+# reported 15.4% matched and could not have detected a real mistyped given
+# anywhere on the sheet. check_answer_key has stripped both spellings all
+# along; only this side was missing them.
+check("the LaTeX spelling is one number",
+      prose.prose_numbers(r"The town has $47{,}308$ people.") == {47308.0})
+check("the plain spelling is the same number",
+      prose.prose_numbers(r"The town has $47,308$ people.") == {47308.0})
+check("and matches the unseparated form",
+      prose.prose_numbers(r"$47308$") == prose.prose_numbers(r"$47{,}308$"))
+# The lookahead needs exactly three digits, so ordinary commas are untouched.
+check("a coordinate pair is not merged",
+      prose.prose_numbers(r"Points $(3,4)$ and $(5,6)$.") == {3.0, 4.0, 5.0, 6.0})
+check("a comma-separated list is not merged",
+      prose.prose_numbers(r"$1, 2, 3$") == {1.0, 2.0, 3.0})
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} pipeline-fix test(s) failed: {FAILS}")
     sys.exit(1)

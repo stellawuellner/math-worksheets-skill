@@ -242,6 +242,22 @@ agent a rebuild.
   57 visible characters and a plain-English heading with no slug can still pass
   it ("Skill 1 --- Naming a shape by counting how many straight sides it has" is
   69).
+- **Count problems per page BEFORE deciding how to fix a page overrun.** The two
+  remedies are opposite and both gates recommend one of them. `pdftotext` the
+  failing PDF and look: **≥2 problems per page** means the blocks pack fine and
+  the budget is simply under-measured — declare `workspace_cm` covering the real
+  block height, which is the honest move. **≤1 per page** means the block cannot
+  share a page and no declaration will help; shorten the block.
+- **`minipage[t]` beside a `tikzpicture` silently doubles the block.** The
+  documented "figure beside the workspace" layout can produce a block twice its
+  visible height, because a tikzpicture's baseline sits at the BOTTOM of its
+  bounding box — in a `[t]`-aligned minipage the picture becomes all height and
+  the neighbouring column all depth, so the two columns stack instead of sitting
+  side by side. Put `\vspace{0pt}` immediately after `\begin{minipage}[t]{...}`
+  on BOTH columns. The tell is that shrinking the figure changes the page count
+  by exactly zero. One author measured a block at 311.8pt whose visible content
+  was about 8cm, and the fix let them *enlarge* the grid and still fit two per
+  page.
 - **When every problem carries a figure, aim the whole block at ≤ 11.5cm so two
   fit per page.** `\problem` makes the block unbreakable, so a 12.3cm block
   packs one per page and strands half of every sheet. The page budget now

@@ -136,6 +136,16 @@ def _prose_stripped(block):
     # angle argument and \\[2pt]-style line glue are markup, not prose values
     # — without this every try-it box false-flags 180 and 2, training the
     # reader to ignore the one report line that carries real drift
+    # A thousands separator is punctuation inside ONE numeral. Without this,
+    # "47{,}308" scanned as two numbers, 47 and 308, neither of which is a
+    # given — so a grade 4-5 place-value worksheet reported 15.4% matched and
+    # could not have detected a real mistyped number anywhere on the sheet. The
+    # checker was blind on the whole band. check_answer_key.normalize_latex_
+    # numbers has stripped both spellings all along; only this side was missing
+    # them, and an author found it by rewriting the same stems without
+    # separators and watching the rate go from 15.4% to 84.6%.
+    block = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", block)
+    block = re.sub(r"(?<=\d),(?=\d{3})", "", block)
     block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
     block = re.sub(r"\\\\\[[\d.]+[a-z]{2}\]", "", block)
     # Inverse-function notation is a NAME, not a number. $f^{-1}(x)$ put a

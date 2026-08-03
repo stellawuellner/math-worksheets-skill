@@ -408,6 +408,49 @@ check("a genuinely unknown name still gets close matches",
 check("a known idiom still gets its idiom hint",
       "65*pi/180" in _rejection("rad"))
 
+# ── A trust claim that was vacuous over the complex numbers ─────────────────
+# The trap gate asks whether the problem's OWN comparison would accept the
+# wrong-method value; if it would, the problem cannot catch the error it
+# targets. approx_equal called float(), which raises on a complex value, so it
+# returned "not equal" for equal and unequal alike — and every trap on a complex
+# problem looked distinguishable. A trap IDENTICAL to the right answer was
+# reported as "rejected by the problem's own check": the run printed "all
+# distinguishable" having distinguished nothing.
+#
+# Separately, three float() calls in the trap REPORTER crashed on a complex
+# value, and the crash surfaced as "error evaluating problem 1" — pointing the
+# author at their expression. One author could not declare a trap on either of
+# two complex-arithmetic problems and moved them to problems that did not need
+# them.
+_CPLX = {"id": 1, "type": "eval", "expr": "(2+3*z)*(4-z)", "at": {"z": "I"},
+         "expected": "11+10*I"}
+
+
+def _traps(*exprs):
+    return verify.check_traps(dict(_CPLX, traps=[
+        {"expr": e, "desc": f"trap {i}"} for i, e in enumerate(exprs, 1)]))
+
+
+ok, msg = _traps("11+10*I")
+check("a trap equal to the right answer is REJECTED on a complex problem",
+      ok is False)
+check("and says the problem cannot distinguish the error",
+      "cannot distinguish" in str(msg))
+ok, msg = _traps("(2*4)+(3*(-1))*I")
+check("a genuinely wrong complex trap is accepted", ok is True)
+check("and its value prints as a complex number, not a crash",
+      "8-3i" in str(msg))
+# The comparison change is a strict generalisation: abs() of a complex
+# difference is the modulus, which for real values is the old |c - e|.
+check("real tolerance comparison is unchanged (inside tol)",
+      verify.approx_equal(verify.safe_parse("4.5105"),
+                          verify.parse_value(4.51), 0.001))
+check("real tolerance comparison is unchanged (outside tol)",
+      not verify.approx_equal(verify.safe_parse("4.60"),
+                              verify.parse_value(4.51), 0.001))
+check("a non-numeric value still compares as unequal rather than crashing",
+      not verify.approx_equal(verify.safe_parse("x"), verify.parse_value(1), 0.1))
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

@@ -361,9 +361,25 @@ def dedupe(values):
 
 
 def approx_equal(computed, expected, tol):
+    """|computed - expected| <= tol, over the complex numbers.
+
+    This used to call float(), which raises on a complex value — so every
+    tolerance comparison involving one returned False, meaning "not equal",
+    for equal and unequal values alike. On the numeric checks that is a false
+    FAIL, the safe direction. On the TRAP gate it is not: that gate asks
+    whether the problem's own comparison would ACCEPT the wrong-method value,
+    and a comparison that always says no makes every trap look distinguishable.
+    A trap identical to the right answer was reported as "rejected by the
+    problem's own check" — the run printed "all distinguishable" having
+    distinguished nothing, on the one feature whose entire purpose is to prove
+    a problem can catch the error it targets.
+
+    complex() accepts real sympy numbers too and abs() is the modulus, which
+    for real values is exactly the old |c - e|, so nothing real changes.
+    """
     try:
-        c = float(sympy.N(computed, 15))
-        e = float(sympy.N(expected, 15))
+        c = complex(sympy.N(computed, 15))
+        e = complex(sympy.N(expected, 15))
     except (TypeError, ValueError):
         return False
     return abs(c - e) <= tol
@@ -921,19 +937,41 @@ def check_traps(p):
         if accepted:
             return (False,
                     f"problem {pid} trap {desc!r} computes to "
-                    f"{float(sympy.N(tv, 15)):.6g}, which this problem's own "
+                    f"{_num_str(tv)}, which this problem's own "
                     "check would accept as correct — this problem cannot "
                     "distinguish the error it targets; change the givens.")
         if "value" in t and not rounds_to(tv, t["value"]):
             return (False,
                     f"problem {pid} trap {desc!r}: the printed planted result "
                     f"{t['value']} does not match the declared wrong-method "
-                    f"arithmetic {t['expr']} = {float(sympy.N(tv, 15)):.6g} — "
+                    f"arithmetic {t['expr']} = {_num_str(tv)} — "
                     "derive the printed number from the expr.")
         lines.append(f"trap {desc!r}: {t['expr']} → "
-                     f"{float(sympy.N(tv, 15)):.6g} (rejected by the "
+                     f"{_num_str(tv)} (rejected by the "
                      "problem's own check)")
     return (True, lines)
+
+
+def _num_str(v):
+    """A numeric sympy value as text, complex ones included.
+
+    float() raises "Cannot convert complex to float" on a complex value, and it
+    sat in the SUCCESS path of the trap reporter — so a trap that had been
+    computed correctly and correctly rejected crashed the run while printing the
+    line that says so. The failure surfaced as "error evaluating problem 1",
+    which points the author at their expression. An author with two complex-
+    arithmetic problems could not declare a trap on either, and moved the traps
+    to problems that did not need them.
+    """
+    n = sympy.N(v, 15)
+    try:
+        return f"{float(n):.6g}"
+    except (TypeError, ValueError):
+        re_, im_ = sympy.re(n), sympy.im(n)
+        try:
+            return f"{float(re_):.6g}{float(im_):+.6g}i"
+        except (TypeError, ValueError):
+            return str(n)
 
 
 def _max_runs(seq):

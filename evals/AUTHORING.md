@@ -110,6 +110,11 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **A word answer inside `\ans{}` needs `\text{}` — a box is math mode.**
+  `\ans{no solution}` reaches the student as "nosolution": it compiles clean and
+  every gate passed it, because nothing read a box as prose. There is a gate for
+  it now, but write `\ans{\text{no solution}}` and it never fires.
+
 - **Any inline expression wider than about half a box line needs display math.**
   Inline math has no break point, so the surrounding prose cannot absorb it —
   and a `formulabox`'s mdframed inset makes the study guide bite at widths the

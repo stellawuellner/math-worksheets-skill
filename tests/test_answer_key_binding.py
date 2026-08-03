@@ -228,6 +228,27 @@ check("a genuinely wrong value is still transcription drift",
       code == 1 and "without its sign" not in out)
 
 print()
+print("A box is math mode, so its spaces vanish:")
+# \akheader renews \ans to wrap its argument in \ensuremath, so
+# \ans{no solution} reaches the student as "nosolution": clean log, every gate
+# green, wrong on the page. Nothing else in the chain reads a box as prose.
+# Found by an author who read their own PDF. Zero of the 300 recorded keys and
+# 300 study guides trip this, so it is a hard fault rather than a warning.
+from check_answer_key import lost_spaces  # noqa: E402
+
+check("two real words are caught", lost_spaces("no solution") == ["no solution"])
+check("wrapping them in \\text clears it",
+      lost_spaces(r"\text{no solution}") == [])
+# Single-letter runs are variable juxtaposition, not prose.
+check("an equation is not prose", lost_spaces("x = 2") == [])
+check("a function applied to a variable is not prose",
+      lost_spaces(r"\sin x + \cos x") == [])
+check("a fraction is not prose", lost_spaces(r"\dfrac{3}{8}") == [])
+check("a unit macro beside a number is fine",
+      lost_spaces(r"40 \text{cm}") == [])
+check("a polynomial is not prose", lost_spaces("y = 2x + 3") == [])
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} binding test(s) failed")
     sys.exit(1)

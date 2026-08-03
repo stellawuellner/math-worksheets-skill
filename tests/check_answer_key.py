@@ -135,6 +135,27 @@ def boxed_answers(tex):
     return out
 
 
+# A box's body is typeset in MATH MODE, where spaces do not print. \akheader
+# renews \ans to wrap its argument in \ensuremath, so \ans{no solution} prints
+# "nosolution" — compiles clean, passes every gate, and is visible only by
+# reading the PDF. Found by an author who read theirs.
+#
+# The signature is exact: two runs of two-or-more LETTERS separated by a space,
+# outside any text-mode wrapper. One-letter runs are variable juxtaposition
+# ("x = 2", "sin x") and are left alone; anything already inside \text, \mbox,
+# \mathrm, \textrm or \operatorname prints its spaces and is stripped first.
+_TEXT_WRAPPED = re.compile(
+    r"\\(?:text|mbox|textrm|mathrm|operatorname)\s*\{[^{}]*\}")
+_LOST_SPACE = re.compile(r"(?<![A-Za-z\\])[A-Za-z]{2,}\s+[A-Za-z]{2,}")
+
+
+def lost_spaces(box):
+    """The words a math-mode box will run together, or []."""
+    body = _TEXT_WRAPPED.sub(" ", box)
+    body = re.sub(r"\\[a-zA-Z]+", " ", body)      # macros are not printed words
+    return [m.group(0) for m in _LOST_SPACE.finditer(body)]
+
+
 def num_tokens(text):
     """(value, raw_token) pairs for every number printed in `text`.
 
@@ -541,6 +562,18 @@ def main():
                 unit_faults.append(
                     f"problem {i}'s boxed answer must print its verified unit "
                     f"'{u}' — add \\text{{{u}}} inside \\ans{{}}/\\boxed{{}}")
+        # Words that will print run together. A box is set in math mode, so
+        # \ans{no solution} reaches the student as "nosolution" — clean log,
+        # every gate green, wrong on the page. Nothing else in the chain reads
+        # a box as prose.
+        for _, box_body in ((s2, c2) for s2, c2 in boxes
+                            if not strict or (i - 1 < len(spans)
+                                              and spans[i - 1][0] <= s2 < spans[i - 1][1])):
+            for run in lost_spaces(box_body):
+                unit_faults.append(
+                    f"problem {i}'s boxed answer will print {run.split()[0]}"
+                    f"{run.split()[1]} — a box is typeset in math mode, where "
+                    f"spaces vanish. Wrap the words: \\text{{{run}}}")
         exp = [s for e in entries for s in expected_strings(e)]
         for u in undeclared_units(content, exp, declared):
             unit_faults.append(

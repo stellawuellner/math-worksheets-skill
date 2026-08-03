@@ -217,6 +217,17 @@ check("unstarred spacing macros are still stripped",
       prose_numbers(r"Find the slope.\vspace{4.5cm}") == set())
 check("a real measurement in prose is still counted",
       prose_numbers(r"She ran 4.5 km.") == {4.5})
+# \rule takes TWO braced dimensions; only the first was consumed, so a table
+# cell spacer leaked its 0pt thickness into the scan as a phantom 0.
+check("both arguments of a two-dimension macro are stripped",
+      prose_numbers(r"a\rule{1.6cm}{0pt}b") == set())
+check("a strut row is stripped too",
+      prose_numbers(r"a\rule{0pt}{0.9cm}b") == set())
+
+# Claimed by two agents and FALSE both times: spacing around a binary minus is
+# said to change extraction. It does not, and the brief said so for a while.
+check("spacing around a minus does not change extraction",
+      _toks("t**4 - 3*t**2") == _toks("t**4-3*t**2"))
 
 # The reverse unit gate scans \text{} inside a boxed answer. A plain-language
 # answer — "2 marbles in the last box" — was failed for an undeclared inch,

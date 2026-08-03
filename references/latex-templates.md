@@ -670,6 +670,13 @@ This is the **third document** generated alongside every worksheet. It's a one-t
 
 ### Page budget (measured, not guessed)
 
+**The worksheet budget cannot see the stem.** It charges a flat 0.6 cm per
+problem, so a stem carrying a table, a counter drawing, or a displayed equation
+runs 1.5–2 cm over its charge — on a twelve-problem sheet that is most of a
+page. Declare the difference as `workspace_cm`. Raising the printed
+`\problem[Ncm]` argument instead moves the budget and the real page count
+together and cannot close the gap.
+
 **Study-guide section cost is quantised, not additive.** `\skillheading` carries
 `\needspace{4\baselineskip}` and the boxes are unbreakable `mdframed`
 environments, so a section whose formula box will not fit in the page remainder

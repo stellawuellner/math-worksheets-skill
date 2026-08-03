@@ -111,14 +111,21 @@ agent a rebuild.
 - **Multiple verify entries may share one problem `id`** — the right encoding
   for a multi-part problem. Every entry for that id must repeat an identical
   `difficulty`.
-- **Write `expected` strings without spaces around a minus** (`"t**4-3*t**2"`,
-  not `"t**4 - 3*t**2"`) or the binding gate extracts `3` where you meant `-3`.
+- **Spacing around a minus does not matter.** `"t**4 - 3*t**2"` and
+  `"t**4-3*t**2"` extract identically, and so does a spaced boxed answer.
+  (An earlier version of this brief claimed otherwise, from an agent report
+  nobody had tested. Both claims were checked directly before this line was
+  rewritten.)
 - **Fractions in boxed answers now normalize correctly** — `\frac`, `\dfrac`
   and `\tfrac` all work, with or without a leading `\,`, and a two-digit
   numerator is safe. (Earlier guidance here said the opposite and was wrong: the
   normalizer was matching a prefix and rewriting `\tfrac{11\pi}{6}` to `1/1`.
   Fixed. A fraction whose parts are not plain numbers is now left alone rather
   than mangled.)
+- **A declared `subtitle` must contain no LaTeX markup.** `check_facet_coverage`
+  matches it as a whitespace-normalised verbatim substring, so a `$i$` in the
+  printed copy breaks a plain-text `i` in the JSON. Name symbols in words
+  ("powers of the imaginary unit").
 - **`\rule{\linewidth}` after prose needs a blank line**, not just a `\vspace`
   — `\vspace` does not end a paragraph, so the rule is typeset into the last
   prose line and overfulls by ~200pt. Same class as the `tabular`/`\ans` rule.
@@ -137,6 +144,15 @@ agent a rebuild.
 - **A prose-filled `\dfrac` is a width hazard.** Put wide `\text{}` fractions in
   display math. If a rebuild returns the *identical* overfull measurement, your
   edit hit the wrong line — the log names the paragraph, not the fraction.
+- **Declare stem furniture in `workspace_cm` BEFORE the first compile.** The
+  budget charges a flat 0.6 cm of stem per problem, so a stem holding a table, a
+  drawing, or displayed math costs 1.5–2 cm the model cannot see. Note the
+  leverage: raising the printed `\problem[Ncm]` argument moves the budget and
+  the real page count together and can never close the gap — only
+  `workspace_cm` raises the ceiling without also raising the content.
+- **Displayed math inside a `formulabox` costs about as much as a whole extra
+  section.** Four sections whose formula boxes all carry displayed math will
+  overflow the 2-page cap. Inline the formulas, or drop to three sections.
 - **Budget four study-guide sections, not five,** when any section carries a
   figure or displayed math. Section cost is quantised: a section that will not
   fit in the page remainder moves entirely to the next page.

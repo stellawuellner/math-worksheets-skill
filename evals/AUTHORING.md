@@ -110,6 +110,23 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **Sub-part labels: `\item[(a)]`, never `[label=(\alph*)]`.** The brief says to
+  use `itemize` and not `enumerate` for directions and sub-parts, and `\alph*`
+  is an enumerate counter — inside an `itemize` it raises
+  `! Missing number, treated as zero`, which `check_log` fails, and the error is
+  reported at the `\end{itemize}` rather than at the option that caused it.
+  Write the labels out. (Checked directly: `[label=(\alph*)]` produces the
+  errors, `\item[(a)]` compiles clean.)
+- **A trap on a complex-valued problem works now.** It used to crash the whole
+  run with "error evaluating problem N: Cannot convert complex to float" — a
+  message naming the problem rather than the trap, so it read like a bad `expr`.
+  Two authors designed every complex-number misconception around a real-valued
+  wrong result because of it. Declare the trap that belongs to the error.
+- **En-dashed standards codes are safe.** `HSN-CN.A.1–A.3` with a literal U+2013
+  compiles clean through the generated Curriculum block under the pdflatex
+  fallback, despite the "ASCII only in templates" rule elsewhere. Copy the map's
+  string exactly; do not invent an ASCII-fied code.
+
 Not bugs — real constraints the checkers enforce. Every one cost an earlier
 agent a rebuild.
 

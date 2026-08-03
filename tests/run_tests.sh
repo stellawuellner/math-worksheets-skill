@@ -61,6 +61,21 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_visual_environment.py"; then
 fi
 visual_env_ran=1
 
+# A recorded run is a snapshot; the code moves on. This asks whether the stored
+# artifacts still look like what the skill produces TODAY — dead workarounds for
+# fixed faults, printed defects no gate catches, content a reference file could
+# now supply. Advisory: a stale artifact passed honestly when it was made, so
+# this reports rather than fails the suite.
+if [ -d "$SCRIPT_DIR/../evals/runs" ]; then
+  echo
+  if "$PYTHON" "$SCRIPT_DIR/check_artifact_health.py" --all >/dev/null 2>&1; then
+    echo "✅ recorded eval artifacts match what the current code produces"
+  else
+    echo "⚠  recorded eval artifacts are stale against the current code —"
+    echo "   run: python3 tests/check_artifact_health.py --all"
+  fi
+fi
+
 require_fixture() {
   # a deleted/renamed fixture must fail the suite loudly, not shrink it
   for f in "$@"; do

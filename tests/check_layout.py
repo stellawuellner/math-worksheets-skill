@@ -444,7 +444,9 @@ def main():
             worst = min(c for _, c in thin)
             faults.append(
                 f"problem blocks: {len(thin)} of {len(regions)} problems have under "
-                f"{MIN_CM_PER_PROBLEM}cm of work space (thinnest {worst}cm). "
+                f"{MIN_CM_PER_PROBLEM}cm of WRITING space (thinnest {worst}cm) — "
+                f"a figure in the stem is not counted, however tall it is, "
+                f"because a student cannot write on it. "
                 f"SKILL.md specifies ~5cm per problem, 8cm multi-step. Pass the "
                 f"workspace as the macro's optional argument — \\problem[5cm]{{...}} "
                 f"— so it lives inside the problem's unbreakable minipage.")

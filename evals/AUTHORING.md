@@ -110,6 +110,28 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **Thousands separators are safe on both sides.** `4{,}187` and `4,187` are
+  normalised by the prose checker and the answer-key binder alike. Do not strip
+  them from a grade 2–5 place-value sheet; one author did, on an inference from
+  an incomplete grep, before testing and finding both forms report 100%.
+- **An `at` binding the expression never uses donates nothing.** Listing a
+  problem's other givens under `at` to quiet the prose report no longer works —
+  only keys the `expr` actually references count as verified givens. If a number
+  is printed in the stem and nothing checks it, the report is right to say so.
+- **`equiv` on a rational expression is the clean encoding for polynomial long
+  division**: `"expr": "(P)/(D)", "expected": "Q + R/(D)"` verifies the division
+  as an identity AND makes the `expected` string literally the boxed answer, so
+  the key binds by construction.
+- **`estimate` needs every operand to survive its place.** `4187*6 @ thousand`
+  rounds the 6 away; so does `632/8 @ hundred`. Both now say so by name. For a
+  compatible-numbers estimate write two entries — an `estimate` that rounds the
+  large number, then an `eval` that combines it with the exact small one, which
+  is the two steps the key shows anyway.
+- **Inline math longer than a few tokens inside a bulleted item will overfull.**
+  Inline math has no break point, so the surrounding prose cannot absorb it.
+  Put it in `\[...\]` inside the item. Same class as the `\dfrac` width hazard
+  below, and it bit a distance-formula bullet by 53pt.
+
 - **Sub-part labels: `\item[(a)]`, never `[label=(\alph*)]`.** The brief says to
   use `itemize` and not `enumerate` for directions and sub-parts, and `\alph*`
   is an enumerate counter — inside an `itemize` it raises

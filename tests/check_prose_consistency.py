@@ -226,6 +226,39 @@ def figure_label_numbers(block):
     nums = set()
     for m in re.finditer(r"\\node\b[^{]*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}", block):
         label = m.group(1)
+        # A MIXED NUMBER IS ONE VALUE, and the frac rewrite below turns
+        # "1\tfrac{1}{2}" into "11/2" — which NUM_RE, having no division
+        # branch here, then reads as 11. Every grade-4/5 line plot with
+        # half-unit ticks false-flagged a figure value of 11 that appears
+        # nowhere in the document. check_answer_key has carried a _MIXED rule
+        # for exactly this since the same bug bit the answer-key side; this
+        # detector never got one. Handled BEFORE the frac rewrite so the whole
+        # part is consumed with its fraction rather than left beside it.
+        # ...and the value is offered ALONGSIDE the parts, not instead of them,
+        # because the JSON may encode the same tick either way ("1 + 1/2", a
+        # decimal, or the two integers). This is a soft report; a reading that
+        # matches the document is worth more than one that is theoretically
+        # canonical and flags a correct figure. Each match is CONSUMED so the
+        # a/b rewrite below cannot reach it and glue "1" to "1/2" as "11/2".
+        def _take_mixed(mm):
+            whole, num, den = (int(mm.group(i)) for i in (1, 2, 3))
+            if not den:
+                return mm.group(0)
+            nums.add(abs(whole + (-1 if whole < 0 else 1) * num / den))
+            nums.update({abs(float(whole)), float(num), float(den)})
+            return " "
+
+        def _take_frac(mm):
+            a, b = int(mm.group(1)), int(mm.group(2))
+            if not b:
+                return mm.group(0)
+            nums.update({abs(a / b), abs(float(a)), abs(float(b))})
+            return " "
+
+        label = re.sub(r"(-?\d+)\s*(?:\\[,!;:>]\s*)*\\[dt]?frac\s*"
+                       r"\{\s*(\d+)\s*\}\s*\{\s*(\d+)\s*\}", _take_mixed, label)
+        label = re.sub(r"\\[dt]?frac\s*\{\s*(-?\d+)\s*\}\s*"
+                       r"\{\s*(-?\d+)\s*\}", _take_frac, label)
         label = re.sub(r"\\[dt]?frac\s*\{?(-?\d+)\}?\s*\{?(-?\d+)\}?", r"\1/\2", label)
         # subscript indices are point NAMES, not printed quantities — the SSA
         # swing figure labels its two apexes $B_1$/$B_2$
@@ -323,6 +356,21 @@ def json_numbers(entry):
                 if k2 not in ("desc", "note"):
                     walk(x)
 
+    # An `at` binding the expression never uses is not a verified given — it is
+    # a number sitting in the JSON that nothing checks. Walking all of `at` made
+    # it a one-field way to silence this gate: add "m": 6 to any entry and a 6
+    # printed in the stem stops being reported, whether or not anything verifies
+    # it. An author found the bypass, declined to use it, and said so. Five
+    # recorded tasks carry unused keys, all of them innocent — authors listing a
+    # problem's other givens to quiet the report, which is the same effect by a
+    # kinder route. Filtering here rather than rejecting in verify.py keeps every
+    # existing document valid; the numbers simply go back to being reported.
+    ent = dict(entry)
+    at = ent.get("at")
+    if isinstance(at, dict):
+        used = set(re.findall(r"[A-Za-z]+", str(ent.get("expr", ""))))
+        ent["at"] = {k: v for k, v in at.items() if k in used}
+
     # Only fields that describe the MATHEMATICS may donate a given. Bookkeeping
     # fields describe the problem's place in the sheet, and letting them in is a
     # silent pass: a "difficulty": 3 tag donated 3 to the given set, so a stem
@@ -330,7 +378,7 @@ def json_numbers(entry):
     # Found because the same stem flagged a phantom value in isolation and went
     # quiet in the real run — the only difference was the difficulty tag.
     # workspace_cm, points and the ordering keys are the same shape of leak.
-    walk({k: v for k, v in entry.items() if k not in _BOOKKEEPING})
+    walk({k: v for k, v in ent.items() if k not in _BOOKKEEPING})
     return found
 
 

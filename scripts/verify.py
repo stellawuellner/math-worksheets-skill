@@ -1516,7 +1516,27 @@ def check_problem(p, ptype):
             q = round_half_up(v / step, 0)
             return str(sympy.Rational(int(q)) * step)
 
+        # A literal that rounds AWAY is the failure this type keeps producing:
+        # "4187*6 @ thousand" becomes 4000*0 and reports a bare 0, and "632/8 @
+        # hundred" becomes 600/0 and reports an infinity. Both are the same
+        # thing — a factor smaller than the place vanishing — and neither report
+        # said so. Caught by looking at the literals rather than the result,
+        # which is what makes the multiplication case visible at all: 0 is a
+        # perfectly ordinary number for a report to print.
+        zeroed = [m.group(0) for m in re.finditer(r"\d+(?:\.\d+)?", p["expr"])
+                  if sympy.Rational(m.group(0)) != 0
+                  and sympy.Rational(round_literal(m)) == 0]
         rounded_str = re.sub(r"\d+(?:\.\d+)?", round_literal, p["expr"])
+        if zeroed:
+            return ("FAIL",
+                    f"estimate({p['expr']} @ {place} → {rounded_str}): "
+                    f"{', '.join(zeroed)} rounds to 0 at this place, so the "
+                    f"estimate is not the one being taught. Front-end "
+                    f"estimation rounds EVERY number in the expression. When "
+                    f"one factor is smaller than the place, write it as two "
+                    f"entries — an 'estimate' that rounds the large number, "
+                    f"then an 'eval' that combines it with the exact small one "
+                    f"— which is also the two steps the answer key shows.")
         result = sympy.nsimplify(sympy.N(safe_parse(rounded_str)))
         # Rounding EVERY literal is the definition of front-end estimation, and
         # on a division it can round the divisor away: "632/8 @ hundred" becomes

@@ -112,6 +112,29 @@ def run_dir(run_id):
 
 # ----------------------------------------------------------------- start
 
+def write_task_files(out, task):
+    """prompt.txt + task.json — the two files that describe the ASK, not the answer.
+
+    Written by `start` as well as by `record`, because a run driven by several
+    agents at once has no other collision-free way for an agent to read its own
+    assignment: `next` returns the next UNRECORDED task, so two agents starting
+    within a minute of each other are handed the same one. Nothing here depends
+    on the artifacts, and `record` rewrites both from the same source, so a
+    pre-written pair cannot drift from the recorded one.
+
+    Deliberately excludes anything about the generator — the rubric requires the
+    judge be blind to model identity, and this is the directory the judge gets.
+    """
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "prompt.txt"), "w", encoding="utf-8") as fh:
+        fh.write(task["prompt"] + "\n")
+    save(os.path.join(out, "task.json"), {
+        k: task[k] for k in ("id", "band", "band_label", "domain", "topic", "focus",
+                             "instructional_mode", "standard_refs",
+                             "verification_targets", "review_mode", "expected")
+        if k in task})
+
+
 def cmd_start(a):
     if a.suite not in SUITES:
         die(f"unknown suite {a.suite!r} — one of {', '.join(sorted(SUITES))}")
@@ -155,8 +178,13 @@ def cmd_start(a):
         "condition": "skill_on",
         "task_ids": [t["id"] for t in selected],
     })
+    for t in selected:
+        write_task_files(os.path.join(d, "tasks", t["id"]), t)
+
     print(f"run {run_id}")
     print(f"  {len(selected)} task(s): {selected[0]['id']}..{selected[-1]['id']}")
+    print(f"  each task's prompt.txt and task.json are written now, so parallel "
+          f"agents can read their own assignment without racing on `next`")
     print(f"  dir: {os.path.relpath(d, ROOT)}")
     print(f"\nNext: python3 evals/run_eval.py next")
     return 0
@@ -253,13 +281,7 @@ def cmd_record(a):
 
     # The judge gets the prompt and the task's own expectations — nothing about
     # who or what generated the artifacts.
-    with open(os.path.join(out, "prompt.txt"), "w", encoding="utf-8") as fh:
-        fh.write(task["prompt"] + "\n")
-    save(os.path.join(out, "task.json"), {
-        k: task[k] for k in ("id", "band", "band_label", "domain", "topic", "focus",
-                             "instructional_mode", "standard_refs",
-                             "verification_targets", "review_mode", "expected")
-        if k in task})
+    write_task_files(out, task)
 
     # Mechanical observations, kept at the run root, never in tasks/.
     verify = None

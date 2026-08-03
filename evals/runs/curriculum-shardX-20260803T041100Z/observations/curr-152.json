@@ -1,12 +1,12 @@
 {
   "task_id": "curr-152",
-  "recorded": "2026-08-03T04:53:28Z",
+  "recorded": "2026-08-03T14:53:21Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 1120.0,
-  "notes": "",
+  "latency_seconds": null,
+  "notes": "artifact repair: answerline-in-problem×1",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

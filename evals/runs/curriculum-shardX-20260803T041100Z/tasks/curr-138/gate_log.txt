@@ -1,22 +1,22 @@
 
-── step 1 · discover documents for stem 'decimals_curr138' in /tmp/evalbuild/curr-138
-   ws: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex
-   ak: /tmp/evalbuild/curr-138/ak_decimals_curr138.tex
-   ss: /tmp/evalbuild/curr-138/ss_decimals_curr138.tex  (verify: /tmp/evalbuild/curr-138/verify_ss_decimals_curr138.json)
+── step 1 · discover documents for stem 'r_curr138' in /tmp/evalrepair2/curr-138
+   ws: /tmp/evalrepair2/curr-138/ws_r_curr138.tex
+   ak: /tmp/evalrepair2/curr-138/ak_r_curr138.tex
+   ss: /tmp/evalrepair2/curr-138/ss_r_curr138.tex  (verify: /tmp/evalrepair2/curr-138/verify_ss_r_curr138.json)
 
-── step 2 · template shell on ws_decimals_curr138.tex
-Template-use report: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex
+── step 2 · template shell on ws_r_curr138.tex
+Template-use report: /tmp/evalrepair2/curr-138/ws_r_curr138.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_decimals_curr138.tex
-Template-use report: /tmp/evalbuild/curr-138/ak_decimals_curr138.tex
+── step 3 · template shell on ak_r_curr138.tex
+Template-use report: /tmp/evalrepair2/curr-138/ak_r_curr138.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_decimals_curr138.tex
-Template-use report: /tmp/evalbuild/curr-138/ss_decimals_curr138.tex
+── step 4 · template shell on ss_r_curr138.tex
+Template-use report: /tmp/evalrepair2/curr-138/ss_r_curr138.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_decimals_curr138.json)
+── step 5 · verify worksheet JSON (verify_r_curr138.json)
 Verifying: multiplying and dividing decimals using place-value reasoning (11 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a * b at {'a': 1.24, 'b': 100}) → 124 (expected 124)
@@ -40,12 +40,12 @@ traps: 3 declared, all distinguishable
     problem 1: trap 'shifted the digits the wrong way (divided by 100 instead of multiplying)': 1.24 / 100 → 0.0124 (rejected by the problem's own check)
     problem 6: trap 'divided the smaller number by the larger one': 0.6 / 4.8 → 0.125 (rejected by the problem's own check)
     problem 9: trap 'counted only one decimal place in the factors, so the point landed one place too far right': 1.4 * 0.35 * 10 → 4.9 (rejected by the problem's own check)
-facet mix: power-of-ten-shift×2, multiply-decimals×3, estimate-and-compare×2, divide-decimals×4; max in-window run: 2
+facet mix: power-of-ten-shift×2, multiply-decimals×3, estimate-and-compare×2, divide-decimals×3; max in-window run: 1
 difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_decimals_curr138.json)
+── step 6 · verify study-guide JSON (verify_ss_r_curr138.json)
 Verifying: multiplying and dividing decimals by place value — study guide (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(a * b at {'a': 3.6, 'b': 100}) → 360 (expected 360)
@@ -67,8 +67,8 @@ difficulty ramp: [1, 2, 2, 3, 3, 3, 3, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_decimals_curr138.json → verify_ss_decimals_curr138.json
-Skill coverage: /tmp/evalbuild/curr-138/verify_decimals_curr138.json → /tmp/evalbuild/curr-138/verify_ss_decimals_curr138.json
+── step 7 · skill coverage: verify_r_curr138.json → verify_ss_r_curr138.json
+Skill coverage: /tmp/evalrepair2/curr-138/verify_r_curr138.json → /tmp/evalrepair2/curr-138/verify_ss_r_curr138.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -79,13 +79,13 @@ subtitle bound: 'Place-value shifts, decimal products, decimal quotients, and es
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-138/meta_decimals_curr138.tex
+Wrote /tmp/evalrepair2/curr-138/meta_r_curr138.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-138/qa_decimals_curr138.tex
+Wrote /tmp/evalrepair2/curr-138/qa_r_curr138.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_decimals_curr138.tex
-Layout report: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_r_curr138.tex
+Layout report: /tmp/evalrepair2/curr-138/ws_r_curr138.tex
   list 1: figure scope ok (no 2 problems carry valued figures)
   list 1: work space ok (all 2 problems ≥ 2.5cm)
   list 1: answer location ok (all 2 items carry an answer-location macro)
@@ -94,65 +94,65 @@ Layout report: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_decimals_curr138.tex
-Answer-line binding: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex (10 problem segments, 8 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_r_curr138.tex
+Answer-line binding: /tmp/evalrepair2/curr-138/ws_r_curr138.tex (10 problem segments, 8 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 59.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_decimals_curr138.tex → /tmp/evalbuild/curr-138  (page budget: 5)
-Compiling: ws_decimals_curr138.tex → /tmp/evalbuild/curr-138/
+── step 14 · compile ws_r_curr138.tex → /tmp/evalrepair2/curr-138  (page budget: 5)
+Compiling: ws_r_curr138.tex → /tmp/evalrepair2/curr-138/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-138/ws_decimals_curr138.pdf
-/tmp/evalbuild/curr-138/ws_decimals_curr138.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-138/ws_r_curr138.pdf
+/tmp/evalrepair2/curr-138/ws_r_curr138.pdf
 
-── step 15 · compile ak_decimals_curr138.tex → /tmp/evalbuild/curr-138  (page budget: 5)
-Compiling: ak_decimals_curr138.tex → /tmp/evalbuild/curr-138/
+── step 15 · compile ak_r_curr138.tex → /tmp/evalrepair2/curr-138  (page budget: 5)
+Compiling: ak_r_curr138.tex → /tmp/evalrepair2/curr-138/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-138/ak_decimals_curr138.pdf
-/tmp/evalbuild/curr-138/ak_decimals_curr138.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-138/ak_r_curr138.pdf
+/tmp/evalrepair2/curr-138/ak_r_curr138.pdf
 
-── step 16 · compile ss_decimals_curr138.tex → /tmp/evalbuild/curr-138  (page budget: 2)
-Compiling: ss_decimals_curr138.tex → /tmp/evalbuild/curr-138/
+── step 16 · compile ss_r_curr138.tex → /tmp/evalrepair2/curr-138  (page budget: 2)
+Compiling: ss_r_curr138.tex → /tmp/evalrepair2/curr-138/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-138/ss_decimals_curr138.pdf
-/tmp/evalbuild/curr-138/ss_decimals_curr138.pdf
+✅ PDF ready: /tmp/evalrepair2/curr-138/ss_r_curr138.pdf
+/tmp/evalrepair2/curr-138/ss_r_curr138.pdf
 
-── step 17 · answer-key binding: ak_decimals_curr138.tex ↔ verify_decimals_curr138.json
-Answer-key binding: /tmp/evalbuild/curr-138/ak_decimals_curr138.tex
+── step 17 · answer-key binding: ak_r_curr138.tex ↔ verify_r_curr138.json
+Answer-key binding: /tmp/evalrepair2/curr-138/ak_r_curr138.tex
   11 boxed answers · 10 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_decimals_curr138.tex ↔ verify_ss_decimals_curr138.json
-Answer-key binding: /tmp/evalbuild/curr-138/ss_decimals_curr138.tex
+── step 18 · answer-key binding: ss_r_curr138.tex ↔ verify_ss_r_curr138.json
+Answer-key binding: /tmp/evalrepair2/curr-138/ss_r_curr138.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_decimals_curr138.tex
-Study-guide structure: /tmp/evalbuild/curr-138/ss_decimals_curr138.tex
+── step 19 · study-guide structure (strategy steps) on ss_r_curr138.tex
+Study-guide structure: /tmp/evalrepair2/curr-138/ss_r_curr138.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_decimals_curr138.tex
-Prose-consistency report: /tmp/evalbuild/curr-138/ws_decimals_curr138.tex
-  problem 1: 6 prose numbers  ⚠ missing from JSON: [0.9, 2.0, 4.0]
+── step 20 · prose consistency on ws_r_curr138.tex
+Prose-consistency report: /tmp/evalrepair2/curr-138/ws_r_curr138.tex
+  problem 1: 5 prose numbers  ⚠ missing from JSON: [2.0, 4.0]
   problem 2: 2 prose numbers  ok
   problem 3: 3 prose numbers  ⚠ missing from JSON: [4.0]
   problem 4: 2 prose numbers  ok
-  problem 5: 4 prose numbers  ⚠ missing from JSON: [0.75, 0.9]
+  problem 5: 3 prose numbers  ⚠ missing from JSON: [0.9]
   problem 6: 2 prose numbers  ok
   problem 7: 2 prose numbers  ok
   problem 8: 1 prose numbers  ok
   problem 9: 5 prose numbers  ⚠ missing from JSON: [1.0]
   problem 10: 6 prose numbers  ⚠ missing from JSON: [1.5, 3.2]
 
-Match rate: 24/33 (72.7%) across 10 problem block(s)
+Match rate: 24/31 (77.4%) across 10 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_decimals_curr138.tex
-Prose-consistency report: /tmp/evalbuild/curr-138/ss_decimals_curr138.tex
+── step 21 · prose consistency on ss_r_curr138.tex
+Prose-consistency report: /tmp/evalrepair2/curr-138/ss_r_curr138.tex
   problem 1: 5 prose numbers  ⚠ missing from JSON: [3.0, 6.0]
   problem 2: 3 prose numbers  ok
   problem 3: 6 prose numbers  ⚠ missing from JSON: [4.0, 6.0]
@@ -189,8 +189,8 @@ Figure labels: all consistent with JSON givens.
    prose-ws         PASS
    prose-ss         PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-138/ws_decimals_curr138.pdf
-   /tmp/evalbuild/curr-138/ak_decimals_curr138.pdf
-   /tmp/evalbuild/curr-138/ss_decimals_curr138.pdf
+   /tmp/evalrepair2/curr-138/ws_r_curr138.pdf
+   /tmp/evalrepair2/curr-138/ak_r_curr138.pdf
+   /tmp/evalrepair2/curr-138/ss_r_curr138.pdf
 
 ✅ BUILD PASSED — all gates green

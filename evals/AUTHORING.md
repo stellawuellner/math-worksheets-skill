@@ -171,10 +171,14 @@ agent a rebuild.
 - **`tikzpicture` bodies are stripped from the prose scan**, so pgfplots tick
   labels do not leak — a sheet with ten numbered coordinate grids reported 100%
   prose match. (Confirmed by observation, not inference.)
-- **Both of these are true, confirmed against the source:** any `\begin{axis}`
-  counts as a *valued* figure unless both `xtick=\empty` and `ytick=\empty`, so
-  the all-or-nothing figure rule applies to any sheet carrying a coordinate
-  grid; and `\problem[Ncm]{stem}` typesets the stem, THEN the workspace, so an
+- **A `\begin{axis}` that DRAWS something counts as a valued figure** unless both
+  `xtick=\empty` and `ytick=\empty`; an axis with nothing plotted in it is a
+  blank grid for the student and counts as value-free. The scope rule then asks
+  only that no problem be left with no figure at all beside one whose figure
+  carries data — so a sheet of ten graphing problems where three are empty
+  grids to plot on is fine, and does NOT need those grids deleted.
+- **Confirmed against the source:** `\problem[Ncm]{stem}` typesets the stem,
+  THEN the workspace, so an
   `\answerline` inside the stem prints above the blank space — use
   `\problem{stem \par\vspace*{Ncm}\answerline{unit}}` when you need a unit.
 - **A rational coefficient may be written either way.** `\dfrac{2}{9}(x^3+1)^{3/2}`

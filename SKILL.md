@@ -144,11 +144,15 @@ matching `\answerline` and an `\answerline` unit the JSON never declared;
 unit the JSON never declared — a metres problem answered in feet no longer passes any
 gate. Prefix currency symbols are out of scope: write "in dollars" in the stem.
 
-**Figure scope (all-or-nothing per list)**: a figure carrying numbers belongs to one
-problem, but on the page it merely sits *near* several. If problem 6 shows a triangle
-labelled `a=6, b=8` and problems 7-8 show none, a student reading 7 will apply the
-nearest figure to it — the figure is correct and the worksheet is still wrong. So within
-one problem list, either **every** problem gets its own valued figure or **none** does.
+**Figure scope**: a figure carrying numbers belongs to one problem, but on the page it
+merely sits *near* several. If problem 6 shows a triangle labelled `a=6, b=8` and
+problems 7-8 show none, a student reading 7 will apply the nearest figure to it — the
+figure is correct and the worksheet is still wrong. So within one problem list, **no
+problem may be left with no figure at all while another problem's figure carries
+values**. A problem holding its own *value-free* figure — a blank coordinate grid to
+plot on, an unlabelled diagram to mark up — is fine, and mixes freely with graphed
+problems beside it: the picture inside its block is visibly the one it means, and a
+grid's axis numbers are its own scale, not another problem's data.
 Shared labelling conventions go in a single value-free reference figure placed with the
 directions, captioned so it cannot be mistaken for a problem's givens, e.g. "How every
 triangle here is labelled. No values shown: use the numbers given in each problem."
@@ -157,7 +161,7 @@ opposite vertices `A/B/C`, right angle at `C`, hypotenuse `c` — the reference 
 the renderer-built `\probfig` figures share one page, so
 `tests/test_figure_convention.py` fails the build if the macro and
 `render_figures.py` ever mark the right angle at different vertices.
-`tests/check_layout.py` enforces the all-or-nothing scope.
+`tests/check_layout.py` enforces the scope rule.
 
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem

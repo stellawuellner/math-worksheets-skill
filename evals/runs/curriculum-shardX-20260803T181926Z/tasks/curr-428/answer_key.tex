@@ -6,20 +6,20 @@
 \aktitleblock{Handling Ambiguous SSA Cases Completely}{Precalculus \quad Trigonometry and Vectors}{}
 \input{qa_ssa_curr428}
 
-\problem{\textbf{Case test: $A = 30^\circ$, $b = 10$, $a = 8$.}
+\problem{\textbf{Case test: $A = 30^\circ$, $b = 10$, $a = 6$.}
 
 \textbf{Step 1.} Part (a): the height is the perpendicular from $C$ to the base
 line, $h = b\sin A = 10\sin 30^\circ$.
 \ans{h = 5.00}
 
-\textbf{Step 2.} Part (b): $h = 5 < a = 8 < b = 10$, so the swinging side is
+\textbf{Step 2.} Part (b): $h = 5 < a = 6 < b = 10$, so the swinging side is
 long enough to reach the base line but short enough to reach it twice --- two
 triangles.
 
 \textbf{Step 3.} The law of sines gives
-$\sin B = \frac{b\sin A}{a} = \frac{5}{8} = 0.625$, so
-$B = \arcsin 0.625$.
-\ans{B = 38.68^\circ}
+$\sin B = \frac{b\sin A}{a} = \frac{5}{6} = 0.8333$, so
+$B = \arcsin 0.8333$.
+\ans{B = 56.44^\circ}
 
 \textit{Why $h$ comes first:} it is the only number that decides the case, and
 it costs one multiplication. Students who skip it end up discovering the second
@@ -35,18 +35,19 @@ triangles. The acute solution comes from
 $\sin B = \frac{12\sin 40^\circ}{9} = 0.8571$.
 \ans{B = 58.99^\circ}
 
-\textbf{Step 3.} Part (b): with $a = 6$ the same rule gives
-$\sin B = \frac{12\sin 40^\circ}{6}$.
-\ans{\sin B = 1.29}
+\textbf{Step 3.} Part (b): with $a = 7$ the same rule gives
+$\sin B = \frac{12\sin 40^\circ}{7}$.
+\ans{\sin B = 1.10}
 
 \textbf{Step 4.} No angle has a sine above 1, so no triangle exists --- which
-matches the height test, since $a = 6$ is shorter than $h = 7.71$ and the
+matches the height test, since $a = 7$ is shorter than $h = 7.71$ and the
 swinging side cannot reach the base line at all. The second sighting must be a
 measurement error.
 
 \textit{Grading note:} accept either justification in part (b) --- the
 impossible sine or the comparison with $h$. They are the same fact stated two
-ways.}
+ways. Note how narrow the miss is: the side is short by less than a unit, so
+this case cannot be settled by looking at the numbers, only by computing $h$.}
 
 \problem{\textbf{Both triangles: $A = 35^\circ$, $b = 14$, $a = 9$.}
 
@@ -95,29 +96,29 @@ and $c = \frac{10\sin 100.65^\circ}{\sin 48^\circ}$.
 \textit{Worth saying aloud:} ``one triangle'' here is not luck --- it is
 guaranteed the moment $a \ge b$, before any arithmetic.}
 
-\problem{\textbf{Search and rescue: $A = 27^\circ$, $b = 40$, $a = 25$.}
+\problem{\textbf{Search and rescue: $A = 33^\circ$, $b = 40$, $a = 25$.}
 
-\textbf{Step 1.} $h = 40\sin 27^\circ = 18.16$, and $18.16 < 25 < 40$: the
-bearings allow two positions. From $\sin B = \frac{40\sin 27^\circ}{25} = 0.7264$:
-\ans{B_1 = 46.58^\circ}
+\textbf{Step 1.} $h = 40\sin 33^\circ = 21.79$, and $21.79 < 25 < 40$: the
+bearings allow two positions. From $\sin B = \frac{40\sin 33^\circ}{25} = 0.8714$:
+\ans{B_1 = 60.62^\circ}
 
 \textbf{Step 2.} The supplement passes the test
-($27^\circ + 133.42^\circ = 160.42^\circ < 180^\circ$), so it is a genuine second
+($33^\circ + 119.38^\circ = 152.38^\circ < 180^\circ$), so it is a genuine second
 position.
-\ans{B_2 = 133.42^\circ}
+\ans{B_2 = 119.38^\circ}
 
-\textbf{Step 3.} Far position: $C_1 = 180^\circ - 27^\circ - 46.58^\circ =
-106.42^\circ$, so $c_1 = \frac{25\sin 106.42^\circ}{\sin 27^\circ}$.
-\ans{c_1 = 52.82 \ \text{km}}
+\textbf{Step 3.} Far position: $C_1 = 180^\circ - 33^\circ - 60.62^\circ =
+86.38^\circ$, so $c_1 = \frac{25\sin 86.38^\circ}{\sin 33^\circ}$.
+\ans{c_1 = 45.81 \ \text{km}}
 
-\textbf{Step 4.} Near position: $C_2 = 180^\circ - 27^\circ - 133.42^\circ =
-19.58^\circ$, so $c_2 = \frac{25\sin 19.58^\circ}{\sin 27^\circ}$.
-\ans{c_2 = 18.46 \ \text{km}}
+\textbf{Step 4.} Near position: $C_2 = 180^\circ - 33^\circ - 119.38^\circ =
+27.62^\circ$, so $c_2 = \frac{25\sin 27.62^\circ}{\sin 33^\circ}$.
+\ans{c_2 = 21.28 \ \text{km}}
 
-\textit{Why this matters operationally:} the two answers are 52.82 km and
-18.46 km along the same shoreline. Reporting only the first is not a rounding
-error --- it is a search in the wrong place, and it is exactly what the law of
-sines will hand you if you never test the supplement.}
+\textit{Why this matters operationally:} the two answers are 45.81 km and
+21.28 km along the same shoreline --- roughly 24.5 km apart. Reporting only the
+first is not a rounding error; it is a search in the wrong place, and it is
+exactly what the law of sines will hand you if you never test the supplement.}
 
 \problem{\textbf{The borderline: $A = 30^\circ$, $b = 12$, $a = 6$.}
 
@@ -139,7 +140,9 @@ $c = \frac{6\sin 60^\circ}{\sin 30^\circ}$.
 
 \textit{The boundary case is the useful one:} it is the exact moment the two
 triangles of the ambiguous case collapse into each other, which is why $a = h$
-separates ``none'' from ``two''.}
+separates ``none'' from ``two''. Compare problem 1: same swinging side, same
+angle, and only $b$ changed --- lengthening $b$ raised $h$ until it caught up
+with $a$, turning two triangles into one.}
 
 \problem{\textbf{Surveying: $A = 62^\circ$, $b = 30$, $a = 45$.}
 
@@ -156,30 +159,44 @@ so $c = \frac{45\sin 81.94^\circ}{\sin 62^\circ}$.
 \textit{Check:} the largest angle here is $C = 81.94^\circ$ and the largest side
 is $c = 50.46$ m. Consistent.}
 
-\problem{\textbf{Both triangles again: $A = 30^\circ$, $b = 24$, $a = 15$.}
+\problem{\textbf{How much slack: $A = 30^\circ$, $b = 18$, $a = 10$.}
 
-\textbf{Step 1.} $h = 24\sin 30^\circ = 12.00$, and $12 < 15 < 24$: two
-triangles. From $\sin B = \frac{24\sin 30^\circ}{15} = 0.8000$:
-\ans{B_1 = 53.13^\circ}
+\textbf{Step 1.} Part (a): $h = 18\sin 30^\circ$. At $A = 30^\circ$ the height
+is exactly half of $b$, so this measurement is ambiguous precisely when
+$9 < a < 18$.
+\ans{h = 9.00}
 
-\textbf{Step 2.} The supplement passes ($30^\circ + 126.87^\circ = 156.87^\circ$).
-\ans{B_2 = 126.87^\circ}
+\textbf{Step 2.} $9 < 10 < 18$, so two triangles. From
+$\sin B = \frac{18\sin 30^\circ}{10} = 0.9000$:
+\ans{B_1 = 64.16^\circ}
 
-\textbf{Step 3.} Triangle 1: $C_1 = 96.87^\circ$ and
-$c_1 = \frac{15\sin 96.87^\circ}{\sin 30^\circ}$.
-\ans{c_1 = 29.78}
+\textbf{Step 3.} The supplement passes
+($30^\circ + 115.84^\circ = 145.84^\circ < 180^\circ$).
+\ans{B_2 = 115.84^\circ}
 
-\textbf{Step 4.} Triangle 2: $C_2 = 23.13^\circ$ and
-$c_2 = \frac{15\sin 23.13^\circ}{\sin 30^\circ}$.
-\ans{c_2 = 11.78}
+\textbf{Step 4.} Part (b), Triangle 1: $C_1 = 85.84^\circ$ and
+$c_1 = \frac{10\sin 85.84^\circ}{\sin 30^\circ}$.
+\ans{c_1 = 19.95}
 
-\textbf{Step 5.} Part (c): in the figure the solid apex is the far one, giving
-the long base $c_1$; the dashed apex sits nearer $A$, giving the short base
-$c_2$. A small given angle $A$ stretches the difference, which is why $29.78$
-and $11.78$ are so far apart.
+\textbf{Step 5.} Triangle 2: $C_2 = 34.16^\circ$ and
+$c_2 = \frac{10\sin 34.16^\circ}{\sin 30^\circ}$.
+\ans{c_2 = 11.23}
 
-\textit{Fast sanity check:} the two bases differ by $2b\cos B_1$ --- geometry
-worth showing students who suspect one of the answers is a slip.}
+\textbf{Step 6.} Part (c): the slack is $a - h = 10 - 9$.
+\ans{a - h = 1.00}
+
+\textbf{Step 7.} Part (c), second half --- open response, read the reasoning.
+Shrink $a$ by that much and $a = h$: the swinging side is then exactly as long
+as the perpendicular, so it meets the base line once, at the foot of the
+perpendicular. One triangle remains and it is right-angled at $B$ --- the
+situation of problem 6.
+
+\textit{What this problem is really about:} this is the tightest ambiguous
+measurement on the sheet, and one unit of slack is inside the error of many real
+instruments. A student who reports one triangle here is not making an arithmetic
+mistake; they are reporting a measurement they never tested. \textit{Accept} any
+answer that identifies exactly one surviving triangle and names the right angle
+at $B$ (or, equivalently, $\sin B = 1$).}
 
 \problem{\textbf{Two possible positions: $A = 44^\circ$, $b = 26$, $a = 20$.}
 

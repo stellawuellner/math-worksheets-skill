@@ -27,7 +27,9 @@ $A + (180^\circ - B) < 180^\circ$.
 \begin{formulabox}
 Compute $h = b\sin A$, then compare $h$, $a$ and $b$ before touching the law of
 sines. One multiplication decides how many answers the problem has --- and
-therefore how many you must report.
+therefore how many you must report. The gap $a - h$ is worth writing down too:
+it is how much shorter the measured side could have been before the second
+triangle disappears.
 \end{formulabox}
 
 \begin{examplebox}
@@ -99,5 +101,19 @@ line why there is no second triangle.
 \rotatebox{180}{\footnotesize check: $\ans{B = 32.32^\circ}$, and $a > b$
 rejects the supplement}
 \end{tryitbox}
+
+\begin{watchoutbox}
+\textbf{Four ways this goes wrong.}
+\begin{itemize}[leftmargin=0.9cm, itemsep=1pt, topsep=1pt]
+\item Reporting the calculator's $\arcsin$ and stopping. It only ever returns
+the acute angle, so the second triangle never appears unless you look for it.
+\item Using $a\sin A$ for the height. It is the \emph{fixed} side $b$ that
+swings down to the base line, so $h = b\sin A$.
+\item Reaching for the cosine. The height is opposite $A$ in the right triangle
+that defines it, so it is a sine.
+\item Rounding $B_1$ before subtracting it from $180^\circ$. Keep full precision
+until the last step, or $B_2$, $C$ and $c$ all inherit the error.
+\end{itemize}
+\end{watchoutbox}
 
 \end{document}

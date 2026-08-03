@@ -68,9 +68,22 @@ problems (row "Shapes & attributes | K.G / 1.G / 2.G / 3.G.A"), and
 ## Build
 
 All 21 gates green (exit 2 for the two declared manual items). The first build
-passed every gate; two later compiles were cosmetic only — the bar graph's
-value label for the first bar was being rotated into the y-axis by pgfplots'
-auto-placement, fixed by giving the axis explicit numeric x limits, and the
-line plot was widened so the stacks of X marks read cleanly. Page counts:
-worksheet 5 (budget 6), answer key 3 (budget 6), study guide 2 against its hard
-2-page cap.
+passed every gate on the first attempt; the later rebuilds fixed two layout
+defects found by rendering the PDF rather than by a gate.
+
+1. pgfplots was auto-rotating the first bar's value label into the y-axis on
+   Graph A, so an "8" printed on top of the axis line. Giving the axis explicit
+   numeric x limits (instead of symbolic coordinates plus `enlarge x limits`)
+   moved the first bar clear of the axis. The line plot was widened at the same
+   time so the stacks of X marks read cleanly.
+2. `\answerline{...}` written inside a `\problem` stem prints **immediately
+   after the stem**, because `\problem` typesets its argument before emitting
+   the workspace — so on problems 6, 9 and 11 the answer blank sat above the
+   blank work area instead of below it. The fix is to drop the optional
+   workspace argument and write the space into the stem:
+   `\problem{stem \par\vspace*{4.5cm}\answerline{inches}}`, which
+   `check_layout.py` credits identically. Problems 5 and 12 were restructured
+   the same way so their work space falls where the work happens.
+
+Page counts: worksheet 5 (budget 6), answer key 3 (budget 6), study guide 2
+against its hard 2-page cap.

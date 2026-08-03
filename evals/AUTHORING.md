@@ -144,6 +144,24 @@ agent a rebuild.
 - **A prose-filled `\dfrac` is a width hazard.** Put wide `\text{}` fractions in
   display math. If a rebuild returns the *identical* overfull measurement, your
   edit hit the wrong line — the log names the paragraph, not the fraction.
+- **Multi-entry ids work in the STUDY GUIDE too**, with the same positional
+  binding (entry *i* ↔ box *i*), and all of that id's expected values must sit
+  in that one box. This is the clean way to verify a matrix entry-by-entry:
+  four `eval` entries under ss id 1, printed as
+  `\begin{bmatrix}\ans{7} & \ans{1}\\ \ans{1} & \ans{4}\end{bmatrix}`.
+  Beats faking a scalar.
+- **A trap may omit `value` entirely.** The distinguishability check still runs.
+  Drop `value` when you do not need the wrong number printed, and the sig-fig
+  rounding hazard goes away with it.
+- **`tikzpicture` bodies are stripped from the prose scan**, so pgfplots tick
+  labels do not leak — a sheet with ten numbered coordinate grids reported 100%
+  prose match. (Confirmed by observation, not inference.)
+- **Both of these are true, confirmed against the source:** any `\begin{axis}`
+  counts as a *valued* figure unless both `xtick=\empty` and `ytick=\empty`, so
+  the all-or-nothing figure rule applies to any sheet carrying a coordinate
+  grid; and `\problem[Ncm]{stem}` typesets the stem, THEN the workspace, so an
+  `\answerline` inside the stem prints above the blank space — use
+  `\problem{stem \par\vspace*{Ncm}\answerline{unit}}` when you need a unit.
 - **A rational coefficient may be written either way.** `\dfrac{2}{9}(x^3+1)^{3/2}`
   and `\dfrac{2(x^3+1)^{3/2}}{9}` both bind now — the checker offers the
   collapsed value and its parts as alternatives for symbolic answers.

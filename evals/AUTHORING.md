@@ -110,6 +110,22 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
+- **KNOWN, OPEN: on a flat SSA triangle the swing side's `a = N` label prints
+  across the base line.** The renderer computes the FIXED side's label position
+  and still places the two swing-side labels at flat fractions, so when the
+  given angle is small (A below about 30 degrees) the swing side is nearly
+  parallel to the base and its label lands on it. No gate sees this:
+  `check_overprint` reads word boxes, and a label over a TikZ path leaves
+  nothing to overlap. Confirmed on rendered pages at (15,30,20), (15,26,25) and
+  (25,40,27). Until it is fixed, prefer A >= 30 degrees on ambiguous-SSA
+  problems, and render a page and look at it if you cannot.
+  Three attempts to fix it by computing the swing placement each made things
+  worse — they pushed labels into the arc labels, which IS gated, taking
+  collisions from 0 of 15 to 4 and then 7. The fixed-side computation stands;
+  the swing sides need a placement model validated against what \_side_node
+  actually does with its anchor and shift, which is the work that has not
+  been done.
+
 - **A word answer inside `\ans{}` needs `\text{}` — a box is math mode.**
   `\ans{no solution}` reaches the student as "nosolution": it compiles clean and
   every gate passed it, because nothing read a box as prose. There is a gate for

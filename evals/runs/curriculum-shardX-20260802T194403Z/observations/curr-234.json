@@ -1,12 +1,12 @@
 {
   "task_id": "curr-234",
-  "recorded": "2026-08-02T20:15:13Z",
+  "recorded": "2026-08-03T04:18:17Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 362.0,
-  "notes": "rebuilt after mid-run skill update (skillheading length gate); artifacts re-verified green",
+  "latency_seconds": 126.0,
+  "notes": "",
   "artifacts_present": {
     "prompt.txt": true,
     "task.json": true,

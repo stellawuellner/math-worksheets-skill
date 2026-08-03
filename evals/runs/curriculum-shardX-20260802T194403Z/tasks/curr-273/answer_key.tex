@@ -1,101 +1,111 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \input{worksheet-preamble}
-\akheader{Recursive Arithmetic Formulas}
+\akheader{Recursive Arithmetic Rules}
 \begin{document}
 \aktitleblock{Arithmetic Sequences as Linear Functions}{Algebra 1}{}
-\begingroup\raggedright
-\input{qa_recseq_curr273}
-\par\endgroup
+\input{qa_recursive_sequences_curr273}
 
-\problem{\textbf{Tile pattern 4, 11, 18, 25, \ldots\ --- recursive formula and
-stage 6.}\\
-Step 1 (find $d$): subtract consecutive terms --- $11 - 4 = 7$, $18 - 11 = 7$,
-$25 - 18 = 7$. The difference is constant, so the sequence is arithmetic with
-$d = 7$.
-Step 2 (write both lines): $a_1 = 4$ and $a_n = a_{n-1} + 7$ for $n \geq 2$.
-Step 3 (reach stage 6): from stage 1 to stage 6 there are $6 - 1 = 5$ steps, so
-$a_6 = 4 + 5(7) = \ans{39}$ tiles. (By hand: 4, 11, 18, 25, 32, 39.)}
+\problem{\textbf{Tiling pattern 5, 12, 19, 26, \ldots}\\
+\textbf{Step 1 (find $d$).} Subtract consecutive terms: $12 - 5 = 7$, and
+$19 - 12 = 7$ as well, so the step is constant and the sequence is arithmetic
+with $d = 7$.
+\textbf{Step 2 (write both lines).} $a_1 = 5$ and $a_n = a_{n-1} + 7$ for
+$n \ge 2$. Both lines are required --- the step alone does not fix the
+sequence.
+\textbf{Step 3 (count the steps).} Stage 6 is 5 steps past stage 1, so
+$a_6 = 5 + 5(7) = \ans{40}$ tiles.}
 
-\problem{\textbf{Drone heights 63, 58, 53, \ldots\ --- recursive formula and
-reading 9.}\\
-Step 1 (find $d$): $58 - 63 = -5$ and $53 - 58 = -5$, so the common difference is
-negative: $d = -5$. A falling sequence still \emph{adds} $d$; $d$ itself is
-negative.
-Step 2 (write both lines): $a_1 = 63$ and $a_n = a_{n-1} - 5$ for $n \geq 2$.
-Step 3 (reach reading 9): $9 - 1 = 8$ steps, so
-$a_9 = 63 + 8(-5) = 63 - 40 = \ans{23}$ meters.}
+\problem{\textbf{Drone altitudes 48, 41, 34, 27, \ldots}\\
+\textbf{Step 1 (find $d$).} $41 - 48 = -7$, so the sequence decreases by a
+constant 7 and $d = -7$. Writing $d$ with its sign is what keeps the rest of the
+work honest.
+\textbf{Step 2 (write both lines).} $a_1 = 48$ and $a_n = a_{n-1} - 7$ for
+$n \ge 2$.
+\textbf{Step 3 (count the steps).} The 9th reading is 8 steps past the first:
+$a_9 = 48 + 8(-7) = 48 - 56 = \ans{-8}$.
+A negative altitude means the drone has passed below the height that was called
+zero --- the launch deck --- by 8 meters.}
 
-\problem{\textbf{Tank: 240 L at the end of hour 1, $+85$ L each later hour ---
-liters at the end of hour 5.}\\
-Step 1 (identify the givens with units): $a_1 = 240$ liters (end of hour 1) and
-$d = +85$ liters per hour.
-Step 2 (write both lines): $a_1 = 240$ and $a_n = a_{n-1} + 85$ for $n \geq 2$,
-where $a_n$ is in liters.
-Step 3 (reach hour 5): hour 1 is the starting value, so hours 2, 3, 4, 5 are
-$5 - 1 = 4$ steps: $a_5 = 240 + 4(85) = 240 + 340 = \ans{580 \text{ L}}$.}
+\problem{\textbf{Stack of chairs: 82 cm for one chair, 9 cm per extra chair.}\\
+\textbf{Step 1 (identify the two pieces).} The first chair gives the starting
+height and each later chair contributes the constant rise, so $a_1 = 82$ and
+$d = 9$.
+\textbf{Step 2 (write both lines).} $a_1 = 82$ and $a_n = a_{n-1} + 9$ for
+$n \ge 2$, with $a_n$ measured in centimeters.
+\textbf{Step 3 (count the steps).} A stack of 12 chairs is 11 rises past the
+first chair, not 12: $a_{12} = 82 + 11(9) = 82 + 99$, so the stack stands
+\ans{181 \text{ cm}} tall.}
 
-\problem{\textbf{$a_1 = 12$, $a_n = a_{n-1} + 9$ --- read the rule, then find
-$a_{10}$.}\\
-Step 1 (say the rule in words): start at 12, and to get any term add 9 to the term
-before it.
-Step 2 (count the steps): reaching $a_{10}$ from $a_1$ takes $10 - 1 = 9$ additions
-of 9, not 10.
-Step 3 (compute): $a_{10} = 12 + 9(9) = 12 + 81 = \ans{93}$.}
+\problem{\textbf{$a_1 = 7$, $a_n = a_{n-1} + 6$; find $a_{15}$.}\\
+\textbf{Step 1 (read the rule).} The rule adds 6 each time it is applied, and it
+starts from 7.
+\textbf{Step 2 (count the applications).} Going from $a_1$ to $a_{15}$ applies
+the step 14 times, one for each arrow between the 15 terms.
+\textbf{Step 3 (compute).} $a_{15} = 7 + 14(6) = 7 + 84 = \ans{91}$. Using 15
+steps would answer a different question --- it would give $a_{16}$.}
 
-\problem{\textbf{$a_1 = 7$, $a_n = a_{n-1} + 4$ --- explicit rule and $a_{20}$.}\\
-Step 1 (translate the pieces): the common difference $d = 4$ is the slope $m$,
-because each step of 1 in $n$ changes the value by 4.
-Step 2 (find the intercept): $a_n = 7 + (n-1)4 = 4n + 3$, so $m = 4$ and $b = 3$.
-Here $b$ is the value the line would take at $n = 0$ --- one step \emph{before}
-the first term, not the first term itself.
-Step 3 (evaluate): $a_{20} = 4(20) + 3 = \ans{83}$, which matches
-$7 + 19(4) = 83$.}
+\problem{\textbf{$a_1 = 100$, $a_n = a_{n-1} - 12$; which term equals 16?}\\
+\textbf{Step 1 (write the explicit form).} After $n - 1$ steps of $-12$ the
+value is $100 - 12(n-1)$.
+\textbf{Step 2 (set up the equation).} The question asks which $n$ makes that
+value 16, so solve $100 - 12(n-1) = 16$.
+\textbf{Step 3 (solve).} $100 - 12n + 12 = 16$, so $112 - 12n = 16$, giving
+$12n = 96$ and $n = \ans{8}$. Check: $100 - 12(7) = 16$ $\checkmark$.}
 
-\problem{\textbf{$a_1 = 5$, $a_n = a_{n-1} + 6$ --- which term equals 89?}\\
-Step 1 (set up an equation instead of listing): the explicit form of the recursive
-rule is $a_n = 5 + (n-1)6$, and we need that to equal 89.
-Step 2 (solve): $5 + 6(n-1) = 89 \Rightarrow 6(n-1) = 84 \Rightarrow n - 1 = 14$.
-Step 3: $n = \ans{15}$, so the 15th term is 89. (Check: $5 + 14(6) = 89$.)}
+\problem{\textbf{Tank: 240 L, pump removes 15 L at the end of each hour.}\\
+\textbf{Step 1 (fix the index).} The 240 L is the volume \emph{before} any
+pumping, so it is not $a_1$. At the end of hour 1 the tank holds
+$240 - 15 = 225$ L, so $a_1 = 225$.
+\textbf{Step 2 (write both lines).} $a_1 = 225$ and $a_n = a_{n-1} - 15$ for
+$n \ge 2$, with $a_n$ in liters.
+\textbf{Step 3 (compute).} At the end of hour 8 the pump has run 8 times:
+$240 - 8(15) = 240 - 120$, so \ans{120 \text{ L}} remain. Equivalently
+$a_8 = 225 + 7(-15) = 120$, which is the same count of pumping hours reached
+from $a_1$.}
 
-\problem{\textbf{Chair stack: 84 cm for one chair, $+9$ cm per added chair ---
-height of 12 chairs.}\\
-Step 1 (identify the givens with units): $a_1 = 84$ centimeters for the first
-chair, and each chair after that adds $d = 9$ centimeters.
-Step 2 (write both lines): $a_1 = 84$ and $a_n = a_{n-1} + 9$ for $n \geq 2$,
-with $a_n$ in centimeters.
-Step 3 (reach 12 chairs): 12 chairs means the first chair plus $12 - 1 = 11$ added
-chairs: $a_{12} = 84 + 11(9) = 84 + 99 = \ans{183 \text{ cm}}$.}
+\problem{\textbf{Gym: 60-dollar joining fee, then 35 dollars a month.}\\
+\textbf{Step 1 (write the recursion).} The total after one month is
+$60 + 35 = 95$ dollars, and each further month adds 35, so $a_1 = 95$ and
+$a_n = a_{n-1} + 35$ for $n \ge 2$.
+\textbf{Step 2 (convert to explicit).} A recursive rule with constant step $d$
+is a linear function: the slope is $d = 35$ and the value at $n = 0$ is
+$a_1 - d = 95 - 35 = 60$, the joining fee. So $a_n = 35n + 60$.
+\textbf{Step 3 (evaluate).} After 24 months, $a_{24} = 35(24) + 60 = 840 + 60$,
+so the member has paid $\ans{900}$ dollars. Dropping the fee would give only
+840 dollars.}
 
-\problem{\textbf{Table with $a_3 = 20$ and $a_7 = 44$ --- recursive formula and
-$a_1$.}\\
-Step 1 (count the steps between the known terms): going from $n = 3$ to $n = 7$
-takes $7 - 3 = 4$ equal steps, and the total change is $44 - 20 = 24$.
-Step 2 (find $d$): $d = 24 \div 4 = 6$, so the recursive rule is
-$a_n = a_{n-1} + 6$.
-Step 3 (walk backwards to $a_1$): from $a_3$ back to $a_1$ is 2 steps
-\emph{down}: $a_1 = 20 - 2(6) = \ans{8}$. (Check forward: 8, 14, 20, 26, 32, 38,
-44.)}
+\problem{\textbf{$a_1 = -5$, $a_n = a_{n-1} + 4$; explicit rule and $a_{20}$.}\\
+\textbf{Step 1 (name the pieces).} The constant step is the slope, $d = 4$, and
+the starting value is $a_1 = -5$.
+\textbf{Step 2 (write the explicit rule).} $a_n = a_1 + (n-1)d = -5 + 4(n-1)$,
+which simplifies to $a_n = 4n - 9$. The slope is 4 and the value at $n = 0$ is
+$-9$ --- one step back from $a_1$, which is why $a_1 - d$ is the intercept and
+$a_1$ is not.
+\textbf{Step 3 (evaluate).} $a_{20} = 4(20) - 9 = 80 - 9 = \ans{71}$; the
+recursive count agrees: $-5 + 19(4) = 71$.}
 
-\problem{\textbf{Savings: 45 dollars at end of week 1, $+18$ dollars weekly ---
-first week the balance reaches 405 dollars.}\\
-Step 1 (write both lines): $a_1 = 45$ dollars and $a_n = a_{n-1} + 18$ for
-$n \geq 2$, with $a_n$ the balance in dollars at the end of week $n$.
-Step 2 (set up the equation): the explicit form is $a_n = 45 + (n-1)18$; set it
-equal to 405.
-Step 3 (solve): $18(n-1) = 360 \Rightarrow n - 1 = 20$, so $n = \ans{21}$ --- the
-balance first reaches 405 dollars at the end of week 21.}
+\problem{\textbf{Table: $a_3 = 23$ and $a_7 = 47$.}\\
+\textbf{Step 1 (count the gap).} From term 3 to term 7 is $7 - 3 = 4$ steps, and
+the value rises by $47 - 23 = 24$.
+\textbf{Step 2 (find $d$).} Each step is the same, so
+$d = \dfrac{47 - 23}{7 - 3} = \dfrac{24}{4} = \ans{6}$. This is the slope of the
+line through the points $(3, 23)$ and $(7, 47)$.
+\textbf{Step 3 (work back to $a_1$).} Term 3 is 2 steps past term 1, so
+$a_1 = 23 - 2(6) = \ans{11}$, and the recursive formula is $a_1 = 11$ with
+$a_n = a_{n-1} + 6$ for $n \ge 2$. Check: $11, 17, 23, \ldots$ reaches 23 at
+term 3 $\checkmark$.}
 
-\problem{\textbf{Theater: row 1 has 22 seats, each later row has 3 more --- total
-seats in the first 15 rows.}\\
-Step 1 (recursive rule): $a_1 = 22$ seats and $a_n = a_{n-1} + 3$ for $n \geq 2$.
-(ii) A recursive rule gives one row at a time, so to total 15 rows you would have
-to generate all 15 terms first --- the rule describes the \emph{step}, not the
-\emph{sum}.
-Step 2 (list what you need): the last row is
-$a_{15} = 22 + 14(3) = 64$ seats.
-Step 3 (add the arithmetic series by pairing first and last):
-$S_{15} = \dfrac{15(22 + 64)}{2} = \dfrac{15 \cdot 86}{2} = \ans{645}$ seats in
-the first 15 rows.}
+\problem{\textbf{Theater: row 1 has 18 seats, each row adds 3.}\\
+\textbf{Step 1 (write the recursion).} $a_1 = 18$ and $a_n = a_{n-1} + 3$ for
+$n \ge 2$; explicitly, $a_n = 18 + 3(n-1) = 3n + 15$.
+\textbf{Step 2 (find the last row).} Row 15 has $a_{15} = 18 + 14(3) = 60$
+seats.
+\textbf{Step 3 (add the rows).} Pair the first row with the last, the second
+with the second-to-last, and so on: each pair totals $18 + 60 = 78$, and there
+are $15/2$ such pairs, so the sum is $\frac{15}{2}(18 + 60) = \ans{585}$ seats.
+That pairing argument is exactly the ``first plus last, times half the number of
+rows'' shortcut: the amount one row gains, its partner loses, so every pair has
+the same total.}
 
 \end{document}

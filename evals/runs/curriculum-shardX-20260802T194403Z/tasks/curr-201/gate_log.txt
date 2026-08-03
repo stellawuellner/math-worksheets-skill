@@ -1,44 +1,45 @@
 
-── step 1 · discover documents for stem 'irrational_curr201' in /tmp/evalbuild/curr-201
-   ws: /tmp/evalbuild/curr-201/ws_irrational_curr201.tex
-   ak: /tmp/evalbuild/curr-201/ak_irrational_curr201.tex
-   ss: /tmp/evalbuild/curr-201/ss_irrational_curr201.tex  (verify: /tmp/evalbuild/curr-201/verify_ss_irrational_curr201.json)
+── step 1 · discover documents for stem 'irrational_curr201' in /tmp/evalrepair/curr-201
+   ws: /tmp/evalrepair/curr-201/ws_irrational_curr201.tex
+   ak: /tmp/evalrepair/curr-201/ak_irrational_curr201.tex
+   ss: /tmp/evalrepair/curr-201/ss_irrational_curr201.tex  (verify: /tmp/evalrepair/curr-201/verify_ss_irrational_curr201.json)
 
 ── step 2 · template shell on ws_irrational_curr201.tex
-Template-use report: /tmp/evalbuild/curr-201/ws_irrational_curr201.tex
+Template-use report: /tmp/evalrepair/curr-201/ws_irrational_curr201.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 3 · template shell on ak_irrational_curr201.tex
-Template-use report: /tmp/evalbuild/curr-201/ak_irrational_curr201.tex
+Template-use report: /tmp/evalrepair/curr-201/ak_irrational_curr201.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 4 · template shell on ss_irrational_curr201.tex
-Template-use report: /tmp/evalbuild/curr-201/ss_irrational_curr201.tex
+Template-use report: /tmp/evalrepair/curr-201/ss_irrational_curr201.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
 ── step 5 · verify worksheet JSON (verify_irrational_curr201.json)
 Verifying: classifying rational and irrational numbers (10 problems) · SymPy 1.14.0
 
-  ✅ [PASS] Problem 1: eval(sqrt(a) at {'a': 49}) → 7 (expected 7)
-  ✅ [PASS] Problem 2: eval(sqrt(a) at {'a': 196}) → 14 (expected 14)
-  ✅ [PASS] Problem 3: eval(a/b at {'a': 35, 'b': 100}) → 7/20 (expected 7/20)
-  ✅ [PASS] Problem 4: approx(sqrt(50)) → 7.07107 (expected 7.07, tol 0.005)
-  ✅ [PASS] Problem 5: compare(['sqrt(13)', '3.5', '18/5'], asc) → [3.50000000000000, 18/5, sqrt(13)] (expected ['3.5', '18/5', 'sqrt(13)'])
-  ✅ [PASS] Problem 6: eval(a/b at {'a': 45, 'b': 99}) → 5/11 (expected 5/11)
-  ✅ [PASS] Problem 7: approx(sqrt(30)) → 5.47723 (expected 5.48, tol 0.005)
-  ✅ [PASS] Problem 8: compare(sqrt(2) vs 1.41) → > (expected >)
-  ✅ [PASS] Problem 9: eval(sqrt(a/b) at {'a': 9, 'b': 16}) → 3/4 (expected 3/4)
-  ✅ [PASS] Problem 10: eval(sqrt(a)*sqrt(b) at {'a': 8, 'b': 2}) → 4 (expected 4)
+  ✅ [PASS] Problem 1: eval(sqrt(a) at {'a': 64}) → 8 (expected 8)
+  ✅ [PASS] Problem 2: eval(a/b at {'a': 24, 'b': 100}) → 6/25 (expected 6/25)
+  ✅ [PASS] Problem 3: approx(sqrt(20)) → 4.47214 (expected 4.47, tol 0.005)
+  ✅ [PASS] Problem 4: eval(sqrt(a) at {'a': 225}) → 15 (expected 15)
+  ✅ [PASS] Problem 5: compare(['sqrt(11)', '3.1', '16/5'], asc) → [3.10000000000000, 16/5, sqrt(11)] (expected ['3.1', '16/5', 'sqrt(11)'])
+  ✅ [PASS] Problem 6: eval(a/b at {'a': 63, 'b': 99}) → 7/11 (expected 7/11)
+  ✅ [PASS] Problem 7: approx(sqrt(40)) → 6.32456 (expected 6.32, tol 0.005)
+  ✅ [PASS] Problem 8: compare(sqrt(3) vs 1.73) → > (expected >)
+  ✅ [PASS] Problem 9: eval(sqrt(a/b) at {'a': 25, 'b': 36}) → 5/6 (expected 5/6)
+  ✅ [PASS] Problem 10: eval(sqrt(a)*sqrt(b) at {'a': 12, 'b': 3}) → 6 (expected 6)
 
 10 passed · 0 failed · 0 manual
 bloom mix: recall×1, apply×5, analyze×4
+standards: 8.NS.A×10
 skill mix: compare-order×2, decimal-and-fraction×2, nonperfect-root×3, perfect-square-root×3
 facets: perfect-square-root×3, decimal-and-fraction×2, nonperfect-root×3, compare-order×2
 traps: 2 declared, all distinguishable
-    problem 4: trap 'divided the radicand by 2 instead of taking the square root, so sqrt(50) came out as 50/2': 50/2 → 25 (rejected by the problem's own check)
-    problem 7: trap 'divided the radicand by 2 instead of taking the square root, so sqrt(30) came out as 30/2': 30/2 → 15 (rejected by the problem's own check)
+    problem 3: trap 'halved the radicand instead of taking its square root, so sqrt(20) came out as 20/2': 20/2 → 10 (rejected by the problem's own check)
+    problem 7: trap 'halved the radicand instead of taking its square root, so sqrt(40) came out as 40/2': 40/2 → 20 (rejected by the problem's own check)
 facet mix: perfect-square-root×3, decimal-and-fraction×2, nonperfect-root×3, compare-order×2; max in-window run: 1
-difficulty ramp: [1, 2, 2, 2, 3, 3, 3, 3, 4, 4]
+difficulty ramp: [1, 1, 2, 2, 3, 3, 3, 3, 4, 4]
 
 ✅ All checks passed — safe to compile.
 
@@ -46,25 +47,26 @@ difficulty ramp: [1, 2, 2, 2, 3, 3, 3, 3, 4, 4]
 Verifying: study guide: classifying rational and irrational numbers (8 problems) · SymPy 1.14.0
 
   ✅ [PASS] Problem 1: eval(sqrt(a) at {'a': 81}) → 9 (expected 9)
-  ✅ [PASS] Problem 2: eval(sqrt(a) at {'a': 144}) → 12 (expected 12)
-  ✅ [PASS] Problem 3: approx(sqrt(20)) → 4.47214 (expected 4.47, tol 0.005)
-  ✅ [PASS] Problem 4: approx(sqrt(40)) → 6.32456 (expected 6.32, tol 0.005)
+  ✅ [PASS] Problem 2: eval(sqrt(a) at {'a': 169}) → 13 (expected 13)
+  ✅ [PASS] Problem 3: approx(sqrt(28)) → 5.2915 (expected 5.29, tol 0.005)
+  ✅ [PASS] Problem 4: approx(sqrt(55)) → 7.4162 (expected 7.42, tol 0.005)
   ✅ [PASS] Problem 5: eval(a/b at {'a': 125, 'b': 1000}) → 1/8 (expected 1/8)
-  ✅ [PASS] Problem 6: eval(a/b at {'a': 24, 'b': 100}) → 6/25 (expected 6/25)
+  ✅ [PASS] Problem 6: eval(a/b at {'a': 27, 'b': 99}) → 3/11 (expected 3/11)
   ✅ [PASS] Problem 7: compare(['2.5', 'sqrt(7)', '11/4'], asc) → [2.50000000000000, sqrt(7), 11/4] (expected ['2.5', 'sqrt(7)', '11/4'])
-  ✅ [PASS] Problem 8: compare(['1.7', 'sqrt(3)', '9/5'], asc) → [1.70000000000000, sqrt(3), 9/5] (expected ['1.7', 'sqrt(3)', '9/5'])
+  ✅ [PASS] Problem 8: compare(['1.6', 'sqrt(3)', '7/4'], asc) → [1.60000000000000, sqrt(3), 7/4] (expected ['1.6', 'sqrt(3)', '7/4'])
 
 8 passed · 0 failed · 0 manual
-bloom mix: recall×1, apply×5, analyze×2
+bloom mix: recall×2, apply×4, analyze×2
+standards: 8.NS.A×8
 skill mix: compare-order×2, decimal-and-fraction×2, nonperfect-root×2, perfect-square-root×2
 facets: perfect-square-root×2, nonperfect-root×2, decimal-and-fraction×2, compare-order×2
 facet mix: perfect-square-root×2, nonperfect-root×2, decimal-and-fraction×2, compare-order×2; max in-window run: 2
-difficulty ramp: [1, 2, 2, 3, 3, 3, 3, 4]
+difficulty ramp: [1, 1, 2, 2, 2, 2, 3, 3]
 
 ✅ All checks passed — safe to compile.
 
 ── step 7 · skill coverage: verify_irrational_curr201.json → verify_ss_irrational_curr201.json
-Skill coverage: /tmp/evalbuild/curr-201/verify_irrational_curr201.json → /tmp/evalbuild/curr-201/verify_ss_irrational_curr201.json
+Skill coverage: /tmp/evalrepair/curr-201/verify_irrational_curr201.json → /tmp/evalrepair/curr-201/verify_ss_irrational_curr201.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
@@ -75,63 +77,63 @@ subtitle bound: 'perfect-square roots, non-perfect roots, decimals and fractions
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-201/meta_irrational_curr201.tex
+Wrote /tmp/evalrepair/curr-201/meta_irrational_curr201.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-201/qa_irrational_curr201.tex
+Wrote /tmp/evalrepair/curr-201/qa_irrational_curr201.tex
 
 ── step 12 · layout check (figure scope + work space + answer location) on ws_irrational_curr201.tex
-Layout report: /tmp/evalbuild/curr-201/ws_irrational_curr201.tex
+Layout report: /tmp/evalrepair/curr-201/ws_irrational_curr201.tex
   problem blocks: figure scope ok (no 10 problems carry valued figures)
   problem blocks: work space ok (all 10 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
 ── step 13 · answer-line binding (answer_unit) on ws_irrational_curr201.tex
-Answer-line binding: /tmp/evalbuild/curr-201/ws_irrational_curr201.tex (10 problem segments, 0 declared unit(s))
+Answer-line binding: /tmp/evalrepair/curr-201/ws_irrational_curr201.tex (10 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
 Page budget (ws, letter): 10 problems, 59.0cm of content
   ideal 3 page(s) · accepted range 2-5 · 2 sheet(s) of paper double-sided
 
-── step 14 · compile ws_irrational_curr201.tex → /tmp/evalbuild/curr-201  (page budget: 5)
-Compiling: ws_irrational_curr201.tex → /tmp/evalbuild/curr-201/
+── step 14 · compile ws_irrational_curr201.tex → /tmp/evalrepair/curr-201  (page budget: 5)
+Compiling: ws_irrational_curr201.tex → /tmp/evalrepair/curr-201/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 4 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-201/ws_irrational_curr201.pdf
-/tmp/evalbuild/curr-201/ws_irrational_curr201.pdf
+✅ PDF ready: /tmp/evalrepair/curr-201/ws_irrational_curr201.pdf
+/tmp/evalrepair/curr-201/ws_irrational_curr201.pdf
 
-── step 15 · compile ak_irrational_curr201.tex → /tmp/evalbuild/curr-201  (page budget: 5)
-Compiling: ak_irrational_curr201.tex → /tmp/evalbuild/curr-201/
+── step 15 · compile ak_irrational_curr201.tex → /tmp/evalrepair/curr-201  (page budget: 5)
+Compiling: ak_irrational_curr201.tex → /tmp/evalrepair/curr-201/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 5-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-201/ak_irrational_curr201.pdf
-/tmp/evalbuild/curr-201/ak_irrational_curr201.pdf
+✅ PDF ready: /tmp/evalrepair/curr-201/ak_irrational_curr201.pdf
+/tmp/evalrepair/curr-201/ak_irrational_curr201.pdf
 
-── step 16 · compile ss_irrational_curr201.tex → /tmp/evalbuild/curr-201  (page budget: 2)
-Compiling: ss_irrational_curr201.tex → /tmp/evalbuild/curr-201/
+── step 16 · compile ss_irrational_curr201.tex → /tmp/evalrepair/curr-201  (page budget: 2)
+Compiling: ss_irrational_curr201.tex → /tmp/evalrepair/curr-201/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-201/ss_irrational_curr201.pdf
-/tmp/evalbuild/curr-201/ss_irrational_curr201.pdf
+✅ PDF ready: /tmp/evalrepair/curr-201/ss_irrational_curr201.pdf
+/tmp/evalrepair/curr-201/ss_irrational_curr201.pdf
 
 ── step 17 · answer-key binding: ak_irrational_curr201.tex ↔ verify_irrational_curr201.json
-Answer-key binding: /tmp/evalbuild/curr-201/ak_irrational_curr201.tex
+Answer-key binding: /tmp/evalrepair/curr-201/ak_irrational_curr201.tex
   10 boxed answers · 10 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
 ── step 18 · answer-key binding: ss_irrational_curr201.tex ↔ verify_ss_irrational_curr201.json
-Answer-key binding: /tmp/evalbuild/curr-201/ss_irrational_curr201.tex
+Answer-key binding: /tmp/evalrepair/curr-201/ss_irrational_curr201.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
 ── step 19 · study-guide structure (strategy steps) on ss_irrational_curr201.tex
-Study-guide structure: /tmp/evalbuild/curr-201/ss_irrational_curr201.tex
+Study-guide structure: /tmp/evalrepair/curr-201/ss_irrational_curr201.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
 ── step 20 · prose consistency on ws_irrational_curr201.tex
-Prose-consistency report: /tmp/evalbuild/curr-201/ws_irrational_curr201.tex
+Prose-consistency report: /tmp/evalrepair/curr-201/ws_irrational_curr201.tex
   problem 1: 1 prose numbers  ok
-  problem 2: 1 prose numbers  ok
-  problem 3: 3 prose numbers  ⚠ missing from JSON: [2.6, 3.2]
+  problem 2: 3 prose numbers  ⚠ missing from JSON: [2.6, 3.2]
+  problem 3: 1 prose numbers  ok
   problem 4: 1 prose numbers  ok
   problem 5: 4 prose numbers  ok
   problem 6: 3 prose numbers  ⚠ missing from JSON: [0.0]
@@ -145,17 +147,17 @@ Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
 ── step 21 · prose consistency on ss_irrational_curr201.tex
-Prose-consistency report: /tmp/evalbuild/curr-201/ss_irrational_curr201.tex
+Prose-consistency report: /tmp/evalrepair/curr-201/ss_irrational_curr201.tex
   problem 1: 3 prose numbers  ok
   problem 2: 2 prose numbers  ok
-  problem 3: 7 prose numbers  ⚠ missing from JSON: [4.0, 5.0, 16.0, 25.0]
-  problem 4: 4 prose numbers  ⚠ missing from JSON: [6.0, 7.0]
+  problem 3: 7 prose numbers  ⚠ missing from JSON: [5.0, 6.0, 25.0, 36.0]
+  problem 4: 4 prose numbers  ⚠ missing from JSON: [7.0]
   problem 5: 5 prose numbers  ⚠ missing from JSON: [0.125]
-  problem 6: 3 prose numbers  ok
+  problem 6: 4 prose numbers  ⚠ missing from JSON: [0.0]
   problem 7: 9 prose numbers  ⚠ missing from JSON: [2.0, 2.75, 7.5625, 9.0]
   problem 8: 4 prose numbers  ok
 
-Match rate: 26/37 (70.3%) across 8 problem block(s)
+Match rate: 27/38 (71.1%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
@@ -182,8 +184,8 @@ Figure labels: all consistent with JSON givens.
    prose-ws         PASS
    prose-ss         PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-201/ws_irrational_curr201.pdf
-   /tmp/evalbuild/curr-201/ak_irrational_curr201.pdf
-   /tmp/evalbuild/curr-201/ss_irrational_curr201.pdf
+   /tmp/evalrepair/curr-201/ws_irrational_curr201.pdf
+   /tmp/evalrepair/curr-201/ak_irrational_curr201.pdf
+   /tmp/evalrepair/curr-201/ss_irrational_curr201.pdf
 
 ✅ BUILD PASSED — all gates green

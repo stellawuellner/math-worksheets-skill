@@ -4,7 +4,7 @@
 \akheader{Three Views of a Limit}
 \begin{document}
 \aktitleblock{Three Views of a Limit}{Precalculus / Introduction to Limits}{}
-{\raggedright\input{qa_limits_curr445}\par}
+\input{qa_limits_curr445}
 
 \problem{\textbf{Numerical --- read the trend, both sides.}
 
@@ -28,7 +28,10 @@ rewrite rather than conclude.
 $\dfrac{x^2-16}{x-4}=\dfrac{(x-4)(x+4)}{x-4}=x+4$ for $x\neq 4$.
 
 \textbf{Step 3.} Now substitution is legal: $4+4$.
-\ans{8}}
+\ans{8}
+
+\textit{Common wrong answer:} $0$ --- reading $\tfrac{0}{0}$ as a value. It is
+not one; it is the signal that a common factor is hiding in both parts.}
 
 \problem{\textbf{Graphical --- a hole does not stop a limit.}
 
@@ -53,7 +56,10 @@ point removed.}
 \ans{25}
 
 \textit{Worth noticing:} the running totals are $1,4,9,16,25$ --- the perfect
-squares. The $k$th partial sum of the odd numbers is $k^2$.}
+squares. The $k$th partial sum of the odd numbers is $k^2$.
+
+\textit{Common wrong answer:} $16$ --- the sum stopped at $n=4$. The upper limit
+of the sigma is inclusive, so $n=5$ contributes a term too.}
 
 \problem{\textbf{Numerical --- build the table, then name the exact value.}
 
@@ -72,6 +78,10 @@ $\dfrac{\sqrt{x+1}-1}{x}\cdot\dfrac{\sqrt{x+1}+1}{\sqrt{x+1}+1}
 $\dfrac{1}{1+1}$.
 \ans{\tfrac{1}{2}}
 
+\textit{Common wrong answer:} $2$ --- the denominator $\sqrt{1}+1$ reported
+instead of the whole fraction. The table rules it out immediately: the entries
+sit near $0.5$, not near $2$.
+
 \textit{Grading note:} the table alone is \emph{evidence}, not proof --- it can
 never rule out something happening between the sampled points. The algebra is
 what settles it.}
@@ -87,7 +97,11 @@ at $x=2$, so both carry a factor of $(x-2)$.
 =\frac{x^2+2x+4}{x+2}\quad (x\neq 2)
 \]
 \textbf{Step 3.} Substitute $x=2$: $\dfrac{4+4+4}{4}=\dfrac{12}{4}$.
-\ans{3}}
+\ans{3}
+
+\textit{Common wrong answer:} $2$ --- from factoring the cube as
+$(x-2)(x^2+4)$, dropping the middle term $2x$. The cube pattern is
+$a^3-b^3=(a-b)(a^2+ab+b^2)$; the middle term is not optional.}
 
 \problem{\textbf{Graphical --- one-sided limits and a jump.}
 
@@ -119,7 +133,10 @@ $S=\dfrac{3}{1-\tfrac{1}{2}}=\dfrac{3}{\tfrac{1}{2}}$.
 \textbf{The partial-sum limit it represents.}
 $S_k=\displaystyle\sum_{n=0}^{k}3\left(\tfrac{1}{2}\right)^{n}
 =6\left(1-\left(\tfrac{1}{2}\right)^{k+1}\right)$, and the value above is
-$\lim_{k\to\infty}S_k$. The sum of an infinite series is defined as that limit.}
+$\lim_{k\to\infty}S_k$. The sum of an infinite series is defined as that limit.
+
+\textit{Common wrong answer:} $3$ --- from taking the $n=1$ term,
+$\tfrac{3}{2}$, as the first term. The index starts at $n=0$, so $a=3$.}
 
 \problem{\textbf{Algebraic --- rationalize the numerator.}
 
@@ -145,7 +162,10 @@ radical, so multiply by the conjugate of the numerator.
 \textbf{The limit.} The values are marching down toward $2$. Algebraically,
 divide top and bottom by $x$: $\dfrac{2+3/x}{1-1/x}$, and both $3/x$ and $1/x$
 go to $0$ as $x$ grows.
-\ans{2}}
+\ans{2}
+
+\textit{Common wrong answer:} $0.5$ --- the leading coefficients divided the
+wrong way round. The table is the check: its entries sit just above $2$.}
 
 \problem{\textbf{Graphical then algebraic --- a horizontal asymptote.}
 
@@ -158,6 +178,9 @@ the dashed line, so the limit is the height of that line.
 \frac{3x^2+1}{x^2+2}=\frac{3+\dfrac{1}{x^2}}{1+\dfrac{2}{x^2}}
 \;\longrightarrow\; \frac{3+0}{1+0}
 \]
+\textit{Common wrong answer:} $0.5$ --- the height where the curve crosses the
+$y$-axis. That is $p(0)$, a single point, not the end behaviour.
+
 \textit{Teaching note:} a horizontal asymptote \emph{is} a limit statement about
 end behaviour. The curve may cross an asymptote elsewhere; what matters is where
 it settles.}
@@ -172,6 +195,9 @@ the common denominator $32$ this is $\tfrac{16+8+4+2+1}{32}$.
 \textbf{(b) The infinite sum.} Geometric with $a=\tfrac{1}{2}$ and
 $r=\tfrac{1}{2}$, so $S=\dfrac{1/2}{1-1/2}$.
 \ans{1}
+
+\textit{Common wrong answer to (b):} $2$ --- from using $a=1$ in
+$\tfrac{a}{1-r}$. The first term here is the $n=1$ term, $\tfrac{1}{2}$.
 
 \textbf{(c) Manual review --- expected explanation.} The running totals are
 $\tfrac{1}{2},\tfrac{3}{4},\tfrac{7}{8},\tfrac{15}{16},\tfrac{31}{32}$: each one

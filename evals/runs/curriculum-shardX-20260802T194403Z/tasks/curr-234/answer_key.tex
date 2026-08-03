@@ -1,11 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \input{worksheet-preamble}
-% The generated quick-answer bank closes its "Common wrong answers" list with a
-% full-width \rule inside the same paragraph as the last \commonerror line;
-% emergency stretch lets TeX take that line break instead of shipping an
-% overfull box.
-\setlength{\emergencystretch}{4cm}
 \akheader{Swapped Input--Output and Notation Errors}
 \begin{document}
 \aktitleblock{Diagnosing Swapped Input--Output and Function-Notation Errors}{Grade 8 / Pre-Algebra $\bullet$ Error Analysis}{}
@@ -42,7 +37,11 @@ input: $2 + 3 = 5$, so $f(2 + 3) = f(5) = 4(5) - 5 = 20 - 5 = 15$.
 \smallskip\noindent Jo's method gives $f(2) + f(3) = 3 + 7 = 10$, which is not
 $15$. The notation $f(\ )$ is a \emph{name for a rule}, not a multiplication, so
 it cannot be distributed across a sum. Splitting the input like this only ever
-works for very special functions, and $f(x) = 4x - 5$ is not one of them.}
+works for very special functions, and $f(x) = 4x - 5$ is not one of them.
+
+\smallskip\noindent\textit{Also watch for:} $21$, from multiplying the two
+outputs, $f(2) \times f(3) = 3 \times 7$. Same misreading of $f(\ )$ as an
+operation on the pieces rather than a rule applied to one input.}
 
 \problem{$C(28)$ substitutes $28$ into the \emph{input} slot, so it answers
 ``what does a $28$-mile ride cost?'' ($C(28) = 3 + 2.5(28) = 73$ dollars). Kim's

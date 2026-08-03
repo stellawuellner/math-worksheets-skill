@@ -1,11 +1,11 @@
 {
   "task_id": "curr-445",
-  "recorded": "2026-08-02T20:21:59Z",
+  "recorded": "2026-08-03T04:27:24Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 2100.0,
+  "latency_seconds": 298.0,
   "notes": "",
   "artifacts_present": {
     "prompt.txt": true,
@@ -27,6 +27,6 @@
   "problem_count_matches": true,
   "gate_chain_passed": true,
   "gate_chain_manual_flags": true,
-  "worksheet_pages": 7,
+  "worksheet_pages": 6,
   "capture_problems": []
 }

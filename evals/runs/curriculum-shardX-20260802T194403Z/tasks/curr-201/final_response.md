@@ -2,74 +2,70 @@
 
 Three PDFs are ready:
 
-- **Study guide** (`ss_irrational_curr201.pdf`, 2 pages) — read this first.
-- **Worksheet** (`ws_irrational_curr201.pdf`, 4 pages, 10 problems).
-- **Answer key** (`ak_irrational_curr201.pdf`, 3 pages) — full reasoning for every problem.
+- **Study guide** — `ss_irrational_curr201.pdf` (2 pages) — read this first.
+- **Worksheet** — `ws_irrational_curr201.pdf` (4 pages, **10 problems**).
+- **Answer key** — `ak_irrational_curr201.pdf` (3 pages), full reasoning per problem.
 
 ## What the worksheet does
 
-All ten problems ask the same underlying question — *can this number be written
-as a ratio of two integers?* — approached four ways, and the sheet rotates
-between them so the student has to pick the right test each time rather than
-repeating one procedure:
+All ten problems ask one underlying question — *can this number be written as a
+ratio of two integers?* — approached four ways, rotating between them so the
+student has to choose the right test rather than repeat one procedure:
 
-- **perfect-square roots** (problems 1, 2, 9): the root is exact, so the number
-  is rational — including $\sqrt{9/16}$, where the rule applies to numerator and
+- **perfect-square roots** (1, 4, 9): the root is exact, so the number is
+  rational — including $\sqrt{25/36}$, where the rule applies to numerator and
   denominator separately.
-- **non-perfect roots** (4, 7, 10): trap the root between two perfect squares,
-  then round. Problem 10 is the closer: $\sqrt 8 \cdot \sqrt 2 = 4$, a
+- **non-perfect roots** (3, 7, 10): trap the root between two perfect squares,
+  then round. Problem 10 is the closer: $\sqrt{12}\cdot\sqrt{3}=6$, a
   counterexample to "the product of two irrationals is always irrational".
-- **decimals and fractions** (3, 6): a terminating decimal and a repeating one,
+- **decimals and fractions** (2, 6): a terminating decimal and a repeating one,
   each converted to a fraction to *prove* rationality rather than assert it.
 - **comparing and ordering** (5, 8): ordering a root against a decimal and a
-  fraction, and deciding whether $\sqrt2 = 1.41$ (it does not — problem 8 makes
-  the difference between a number and its rounded stand-in explicit).
+  fraction, and deciding whether $\sqrt3 = 1.73$ (it does not).
 
-Two models tie the notation to something concrete: a perfect-square table printed
-with the directions, which every root problem refers back to, and a decimal /
-fraction / lowest-terms conversion table the student completes in problem 3.
-Difficulty ramps 1 to 4; the facet plan is declared in the verify JSON and bound
-to the sheet's subtitle.
+Two models tie notation to something concrete: a perfect-square table (to
+$15^2$) printed with the directions and referenced by every root problem, and a
+decimal / fraction / lowest-terms conversion table the student completes in
+problem 2. Difficulty ramps 1 to 4; the facet plan is declared in the verify JSON
+and bound to the sheet's subtitle.
 
 ## What was verified
 
-**All 10 problems were machine-verified with SymPy** — nothing on this sheet is
-flagged for manual review, and every printed answer in the key was bound back to
-the recomputed value at its printed precision. Two misconception traps were
-declared and machine-checked (dividing the radicand by 2 instead of taking its
-root); both were proved distinguishably wrong, and they print in the key's
-"Common wrong answers" block so a wrong paper tells you which error was made.
+**All 10 problems machine-verified with SymPy** — nothing is flagged manual, and
+every printed answer in the key binds back to its own problem's recomputed value
+at the printed precision. Two misconception traps are declared and machine-checked
+(halving the radicand instead of taking its root: 10 for $\sqrt{20}$, 20 for
+$\sqrt{40}$); both were proved distinguishably wrong and print in the key's
+"Common wrong answers" block. All 8 study-guide boxes are verified as well.
 
-The short written explanations the sheet also asks for (why a repeating decimal
-is still rational, what $1.41$ really is, what problem 10 shows) are teaching
-prose, not separate answers — the key gives a model response for each, and the
-value on every answer line is the machine-checked one.
+## Standards
 
-## One deliberate omission
-
-No Common Core code is tagged on these problems. The repository's
-`references/standards-map.md` has no entry covering grade-8 irrational numbers
-and roots, and the rule is to use that file verbatim and never invent a code, so
-the field was left off rather than filled with an unrelated or made-up one.
-Everything else — difficulty, Bloom level, skill and facet — is tagged.
+**Every one of the 10 problems is tagged `8.NS.A`**, taken verbatim from
+`references/standards-map.md` ("Rational vs irrational numbers, roots"). The
+study-guide entries carry the same code. Nothing was invented and nothing is
+untagged.
 
 ## Study guide
 
 Opens with the single definition and a two-column "always rational / irrational"
 summary, then four sections matching the worksheet's four facets. Each has a rule
-box, a worked example whose first step says *why* that method is the right one,
-and a try-it with the answer printed upside down inside the box. It closes with
-the two warnings that cause most of the lost marks: a radical sign does not make
-a number irrational, and a calculator display is not proof.
+box, a worked example whose first step says *why* that method applies, and a
+try-it with the answer printed upside down inside the box. It closes with the two
+warnings that cost the most marks: a radical sign does not make a number
+irrational, and a calculator display is not proof.
 
 ## Gate chain
 
-`build.sh` finished **BUILD PASSED — all gates green** (exit 0): template shells,
-both verification files, skill and facet coverage, subtitle binding, layout and
-work space, three compiles inside their page budgets, per-problem answer-key
-binding, study-guide structure, and prose consistency.
+`build.sh` finished **BUILD PASSED — all gates green** (exit 0). The answer key
+`\input`s the generated quick-answer bank directly under `\aktitleblock` with **no
+`\raggedright` and no `\emergencystretch`**; both trap lines set cleanly and the
+key compiles at 3 pages with no overfull box.
 
-One gate failed on the first attempt: the answer key overran a line
-(`Overfull \hbox`) where the generated quick-answer bank's "common wrong answers"
-text met the rule below it. It was fixed by letting that generated block set
-ragged-right; nothing about the answers changed.
+One gate failed on the first attempt, and it is worth flagging: `answer-key-ak`
+(then `answer-key-ss`) rejected boxed ordering answers written as
+`\dfrac{\,16}{5}`, `\dfrac{\,11}{4}`, `\dfrac{\,7}{4}` — the number normalizer
+did not recover 3.2 / 2.75 / 1.75 from that form. `evals/AUTHORING.md` currently
+recommends exactly that form ("`\dfrac` with a leading `\,` is safe") as the way
+to avoid a two-digit-numerator `\tfrac`. In this build the opposite held:
+`\tfrac{16}{5}` and `\tfrac{11}{4}` bound correctly and the `\dfrac{\,...}` form
+did not. Nothing else changed.

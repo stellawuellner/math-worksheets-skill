@@ -15,7 +15,7 @@ $a$ multiplies \textbf{outputs}: $|a| > 1$ stretches, $0 < |a| < 1$ compresses, 
 flips the parabola over its own vertex. $a$ never moves the vertex.
 \end{formulabox}
 
-\skillheading{Skill 1 --- Reading the vertex out of the form (vertex-from-form)}
+\skillheading{Skill 1 --- Reading the vertex out of the form}
 
 \begin{formulabox}
 \textbf{Rule:} the horizontal shift goes \emph{opposite} the printed sign, because the form
@@ -28,18 +28,18 @@ The vertical part has no such twist: $+k$ is up, $-k$ is down.
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:} \quad Find the minimum value of $y = (x - 5)^2 - 2$.
+\textbf{Example:} \quad Find the minimum value of $y = (x - 2)^2 + 6$.
 \step{The minimum of an upward parabola happens at the vertex, so I need $h$ --- the $x$ that makes the squared factor zero.}
-\step{$x - 5 = 0$ gives $x = 5$ (right 5, not left). Then $y = (5 - 5)^2 - 2 = 0 - 2$.}
-$\Rightarrow\quad$ minimum value $= \ans{-2}$ at the point $(5, -2)$
+\step{$x - 2 = 0$ gives $x = 2$ (right 2, not left). Then $y = (2 - 2)^2 + 6 = 0 + 6$.}
+$\Rightarrow\quad$ minimum value $= \ans{6}$ at the point $(2, 6)$
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:} \quad Find the minimum value of $y = (x + 3)^2 + 4$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{4}$}
+\textbf{Try it:} \quad Find the minimum value of $y = (x - 7)^2 + 1$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{1}$}
 \end{tryitbox}
 
-\skillheading{Skill 2 --- Writing the equation from a description (transform-to-equation)}
+\skillheading{Skill 2 --- Writing the equation from a description}
 
 \begin{formulabox}
 \textbf{Build it in this order:} reflection and stretch into $a$, horizontal shift inside
@@ -49,18 +49,18 @@ right $p$: $(x - p)$ \quad left $p$: $(x + p)$ \quad up $q$: $+q$ \quad down $q$
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:} \quad Reflect $y = x^2$ over the $x$-axis, shift right 4 and down 1. What is the value at $x = 6$?
+\textbf{Example:} \quad Reflect $y = x^2$ over the $x$-axis, shift left 3 and up 10. What is the value at $x = -3$?
 \step{Each described move maps to one slot of $a(x-h)^2 + k$, so I write the equation first and only then substitute.}
-\step{$a = -1$, right 4 gives $(x - 4)$, down 1 gives $-1$: \ $y = -(x - 4)^2 - 1$. Then $y(6) = -(6-4)^2 - 1 = -4 - 1$.}
-$\Rightarrow\quad \ans{-5}$
+\step{Reflection gives $a = -1$, left 3 gives $(x + 3)$, up 10 adds 10: \ $y = -(x + 3)^2 + 10$. Then $y(-3) = -(-3 + 3)^2 + 10 = 0 + 10$.}
+$\Rightarrow\quad \ans{10}$
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:} \quad Reflect $y = x^2$ over the $x$-axis, shift left 3 and up 2. What is the value at $x = -1$?\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{-2}$}
+\textbf{Try it:} \quad Stretch $y = x^2$ vertically by 2, shift left 5 and down 6. What is the value at $x = -5$?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{-6}$}
 \end{tryitbox}
 
-\skillheading{Skill 3 --- Finding and fixing a sign error (find-and-fix)}
+\skillheading{Skill 3 --- Finding and fixing a sign error}
 
 \begin{formulabox}
 \textbf{How to audit someone's work in three checks:}
@@ -70,15 +70,15 @@ $\Rightarrow\quad \ans{-5}$
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:} \quad A student says the vertex of $y = (x + 6)^2 - 5$ is at $x = 6$ and the minimum is 139. Fix it.
-\step{Check 1 first: does their $h$ zero the squared factor? $6 + 6 = 12 \ne 0$, so their $h$ is the culprit.}
-\step{$x + 6 = 0$ gives $x = -6$, so $y = (-6 + 6)^2 - 5 = 0 - 5$. Their 139 is $y(6)$ --- a genuine point on the curve, just not the lowest.}
-$\Rightarrow\quad$ true minimum $= \ans{-5}$ at $(-6, -5)$
+\textbf{Example:} \quad A student says the vertex of $y = (x + 8)^2 - 2$ is at $x = 8$ and the minimum is 254. Fix it.
+\step{Check 1 first: does their $h$ zero the squared factor? $8 + 8 = 16 \ne 0$, so their $h$ is the culprit.}
+\step{$x + 8 = 0$ gives $x = -8$, so $y = (-8 + 8)^2 - 2 = 0 - 2$. Their 254 is $y(8)$ --- a genuine point on the curve, just not the lowest.}
+$\Rightarrow\quad$ true minimum $= \ans{-2}$ at $(-8, -2)$
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:} \quad A student reports the vertex of $y = (x - 4)^2 - 6$ as $x = -4$ with minimum 58. What is the real minimum?\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{-6}$}
+\textbf{Try it:} \quad A student reports the vertex of $y = -(x - 9)^2 + 4$ as $x = -9$, with maximum $-320$. What is the real maximum?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{4}$}
 \end{tryitbox}
 
 \begin{watchoutbox}

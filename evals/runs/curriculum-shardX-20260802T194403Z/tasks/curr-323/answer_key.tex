@@ -4,7 +4,7 @@
 \akheader{Elevation and Depression}
 \begin{document}
 \aktitleblock{Right Triangles in Elevation and Depression Problems}{High School Geometry}{}
-{\raggedright\input{qa_elevation_curr323}\par}
+\input{qa_elevation_curr323}
 
 \problem{\textbf{Tree from a ground distance --- elevation, solve for a side.}
 
@@ -54,6 +54,10 @@ $\tan\theta = \dfrac{3}{20} = 0.15$.
 \textbf{Solve.} $\theta = \tan^{-1}(0.15) = 8.5308\ldots^\circ$
 \ans{8.5^\circ}
 
+\textit{Common wrong answer:} $81.47^\circ$ --- from $\tan^{-1}(20/3)$, the
+ratio built upside down. That is the angle the ramp makes with the
+\emph{vertical}; a ramp you could not walk up is the tell.
+
 \textit{Note for grading:} $\tan^{-1}$ is the inverse tangent, not
 $1/\tan$. A student who computes $1/\tan(0.15)$ gets nothing resembling an
 angle. (Real ramps are built at about $4.8^\circ$, so this one is steep.)}
@@ -69,6 +73,10 @@ angle of elevation) and $45$ m away horizontally (adjacent).
 \textbf{Reduce.} Both are divisible by $3$:
 \ans{\tfrac{8}{15}}
 
+\textit{Common wrong answer:} the reciprocal, $\dfrac{45}{24} = \dfrac{15}{8}
+= 1.875$. That is $\cot\theta$ --- adjacent over opposite --- and it describes
+the same triangle from the other angle.
+
 \textit{Why this matters:} the ratio is the exact answer. Turning it into
 $\theta \approx 28.07^\circ$ throws away exactness and was not asked for.}
 
@@ -83,6 +91,10 @@ $\sin 28^\circ = \dfrac{h}{150}$.
 
 \textbf{Solve.} $h = 150\sin 28^\circ = 150(0.469472\ldots) = 70.4207\ldots$
 \ans{70.42\ \text{ft}}
+
+\textit{Common wrong answer:} $79.76$ ft --- from $150\tan 28^\circ$, which
+treats the taut string as a ground distance. The height of a kite can never
+exceed the length of its string, and tangent will happily break that rule.
 
 \textit{Teaching note:} problems 1 and 5 look identical in words. The
 difference is which side the given length is --- ground distance (adjacent, use
@@ -150,6 +162,10 @@ the gap is the difference: $137.3739\ldots - 71.4074\ldots = 65.9665\ldots$
 ($35^\circ - 20^\circ = 15^\circ$) and working a single triangle. Angles cannot
 be subtracted that way: the two sight lines start at the same point but land on
 different triangles, so the \emph{distances} are what get subtracted.
+
+\textit{Common wrong answer:} $208.78$ m --- adding the two distances. That is
+the answer to a different picture, with the boats on opposite sides of the
+cliff; here they are both out to sea in the same direction.
 
 \textit{Check the smaller angle gives the larger distance:} a shallower look
 reaches further out, and $137.37 > 71.41$ confirms it.}

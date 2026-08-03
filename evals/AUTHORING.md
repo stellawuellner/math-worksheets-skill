@@ -107,8 +107,12 @@ agent a rebuild.
   `difficulty`.
 - **Write `expected` strings without spaces around a minus** (`"t**4-3*t**2"`,
   not `"t**4 - 3*t**2"`) or the binding gate extracts `3` where you meant `-3`.
-- **Avoid `\tfrac{NN...}{d}` with a two-digit numerator** in a boxed answer; the
-  number normalizer mis-splits it. `\dfrac` with a leading `\,` is safe.
+- **Fractions in boxed answers now normalize correctly** — `\frac`, `\dfrac`
+  and `\tfrac` all work, with or without a leading `\,`, and a two-digit
+  numerator is safe. (Earlier guidance here said the opposite and was wrong: the
+  normalizer was matching a prefix and rewriting `\tfrac{11\pi}{6}` to `1/1`.
+  Fixed. A fraction whose parts are not plain numbers is now left alone rather
+  than mangled.)
 - **Prefer `\underline{\hspace{1.2cm}}` and `\\[0.9cm]`** over bare `\rule{}{}`
   in stems — raw dimensions leak into the prose checker as phantom numbers.
 - **Budget four study-guide sections, not five,** when any section carries a

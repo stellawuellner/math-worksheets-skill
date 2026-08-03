@@ -3,8 +3,8 @@
 Three PDFs are ready:
 
 - **Study guide** (`ss_elevation_curr323.pdf`, 2 pages) — read this first.
-- **Worksheet** (`ws_elevation_curr323.pdf`, 4 pages, 8 problems).
-- **Answer key** (`ak_elevation_curr323.pdf`, 3 pages) — full setup-and-solve for every problem.
+- **Worksheet** (`ws_elevation_curr323.pdf`, 8 problems).
+- **Answer key** (`ak_elevation_curr323.pdf`) — full setup-and-solve for every problem.
 
 ## What the worksheet does
 
@@ -37,20 +37,26 @@ be misread as belonging to a neighbouring problem.
 
 **All 8 problems were machine-verified** — nothing here is flagged for manual
 review. Every answer was recomputed with SymPy from the givens (problem 5 through
-the triangle solver, from `C = 90°, A = 28°, c = 150 ft`), and each printed
-boxed answer in the key was bound back to the verified value at its printed
-precision, unit included.
+the triangle solver, from $C = 90^\circ$, $A = 28^\circ$, $c = 150$ ft), and each
+printed boxed answer in the key was bound back to the verified value at its
+printed precision, unit included.
 
-**Five misconception traps were declared and machine-checked** — sine used where
-tangent belongs, multiplying by the tangent instead of dividing (twice),
-forgetting to add the eye height, and subtracting the two depression angles
-before working the triangles. Each was proved distinguishably wrong, and each
-prints in the key's "Common wrong answers" block with the number a student would
-have written, so a wrong paper identifies its own error.
+**Nine misconception traps were declared and machine-checked** — one on every
+problem, two on the closing synthesis: sine used where tangent belongs (21.20),
+multiplying by the tangent instead of dividing (18.07 and 857.44), the inverse
+tangent taken on the flipped ratio (81.47°), the write-the-ratio answer written
+upside down (1.875 = 15/8), tangent used on a taut string (79.76), forgetting to
+add the eye height (9.38), subtracting the two depression angles before working
+the triangles (186.60), and adding the two horizontal distances instead of
+subtracting them (208.78). Verification reports **9 declared, all
+distinguishable**, and each prints in the key's "Common wrong answers" block with
+the number a student would have written, so a wrong paper identifies its own
+error.
 
 Every problem also declares its answer unit (ft, m, degrees); the sheet prints a
 matching unit on each answer line and the key prints the same unit inside the box,
-both directions gate-checked.
+both directions gate-checked. Standards are `HSG-SRT.C.8` (and `HSG-SRT.C.6` for
+the write-the-ratio item), taken verbatim from `references/standards-map.md`.
 
 ## Study guide
 
@@ -63,12 +69,16 @@ ordinary one.
 
 ## Gate chain
 
-Final verdict: **BUILD PASSED — all gates green** (exit 0), covering template
+Final verdict: **BUILD PASSED — all gates green (exit 0)**, covering template
 shells, both verification files, skill and facet coverage, subtitle binding,
 figure scope, work space, answer-unit binding in both directions, three compiles
 inside their page budgets, per-problem answer-key binding, study-guide structure,
 and prose/figure consistency.
 
-One gate failed on the first attempt: the study guide overran a line by 4.7 pt
-(`Overfull \hbox`) in the first rule box; it was rephrased to give the line a
-break point. No mathematics changed.
+One gate failed on the first attempt: `template-ss` rejected a `\skillheading`
+of 65 characters against the 57-character budget (the section titles carried
+their JSON skill slugs in parentheses). The slugs were dropped from the headings —
+they belong in the JSON, which is what the coverage gate reads. No mathematics
+changed. The quick-answer bank is `\input` plainly under the title block, with no
+`\raggedright` and no `\emergencystretch`; the nine-line "Common wrong answers"
+block compiles with no overfull box.

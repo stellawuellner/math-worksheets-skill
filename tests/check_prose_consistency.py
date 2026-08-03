@@ -245,7 +245,13 @@ def json_numbers(entry):
         if isinstance(v, bool):
             return
         if isinstance(v, (int, float)):
+            # Both signs. The prose side is scanned by an UNSIGNED regex, so a
+            # printed "-137" arrives here as 137.0 and a JSON value of -137
+            # could never match its own printed form — every negative given
+            # reported as "missing from JSON". Sign is not recoverable from the
+            # prose scan either way, so the comparison is made on magnitude.
             found.add(float(v))
+            found.add(abs(float(v)))
         elif isinstance(v, str):
             for n in NUM_RE.findall(v):
                 found.add(float(n))

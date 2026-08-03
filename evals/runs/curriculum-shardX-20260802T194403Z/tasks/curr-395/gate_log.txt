@@ -1,169 +1,172 @@
 
-── step 1 · discover documents for stem 'binomial_curr395' in /tmp/evalbuild/curr-395
-   ws: /tmp/evalbuild/curr-395/ws_binomial_curr395.tex
-   ak: /tmp/evalbuild/curr-395/ak_binomial_curr395.tex
-   ss: /tmp/evalbuild/curr-395/ss_binomial_curr395.tex  (verify: /tmp/evalbuild/curr-395/verify_ss_binomial_curr395.json)
+── step 1 · discover documents for stem 'binomial_expansions_curr395' in /tmp/evalrepair/curr-395
+   ws: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.tex
+   ak: /tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.tex
+   ss: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.tex  (verify: /tmp/evalrepair/curr-395/verify_ss_binomial_expansions_curr395.json)
 
-── step 2 · template shell on ws_binomial_curr395.tex
-Template-use report: /tmp/evalbuild/curr-395/ws_binomial_curr395.tex
+── step 2 · template shell on ws_binomial_expansions_curr395.tex
+Template-use report: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 3 · template shell on ak_binomial_curr395.tex
-Template-use report: /tmp/evalbuild/curr-395/ak_binomial_curr395.tex
+── step 3 · template shell on ak_binomial_expansions_curr395.tex
+Template-use report: /tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 4 · template shell on ss_binomial_curr395.tex
-Template-use report: /tmp/evalbuild/curr-395/ss_binomial_curr395.tex
+── step 4 · template shell on ss_binomial_expansions_curr395.tex
+Template-use report: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.tex
 ✅ template shell ok — shipped preamble \input, nothing shadowed.
 
-── step 5 · verify worksheet JSON (verify_binomial_curr395.json)
-Verifying: binomial coefficients and sequence structure in expansions (12 problems) · SymPy 1.14.0
+── step 5 · verify worksheet JSON (verify_binomial_expansions_curr395.json)
+Verifying: using binomial coefficients and sequence structure in expansions (12 problems) · SymPy 1.14.0
 
-  ✅ [PASS] Problem 1: eval(factorial(n)/(factorial(k)*factorial(n - k)) at {'n': 6, 'k': 2}) → 15 (expected 15)
-  ✅ [PASS] Problem 2: eval(factorial(n)/(factorial(k)*factorial(n - k)) at {'n': 8, 'k': 3}) → 56 (expected 56)
-  ✅ [PASS] Problem 3: expand((x + 2)**3) ≟ x**3 + 6*x**2 + 12*x + 8
-  ✅ [PASS] Problem 4: sum(factorial(5)/(factorial(n)*factorial(5 - n)), n=0..5) → 32 (expected 32)
-  ✅ [PASS] Problem 5: eval(factorial(5)/(factorial(k)*factorial(5 - k))*2**(5 - k) at {'k': 3}) → 40 (expected 40)
-  ✅ [PASS] Problem 6: expand((2*x - 1)**4) ≟ 16*x**4 - 32*x**3 + 24*x**2 - 8*x + 1
-  ✅ [PASS] Problem 7: eval(factorial(6)/(factorial(k)*factorial(6 - k))*3**(6 - k) at {'k': 2}) → 1215 (expected 1215)
-  ✅ [PASS] Problem 8: sum(factorial(5)/(factorial(n)*factorial(5 - n))*2**n, n=0..5) → 243 (expected 243)
-  ✅ [PASS] Problem 9: solve(n*(n - 1)/2 - 45, domain=real) → [-9, 10] (expected [-9, 10])
-  ✅ [PASS] Problem 10: eval(factorial(5)/(factorial(k)*factorial(5 - k))*2**k at {'k': 3}) → 80 (expected 80)
-  ✅ [PASS] Problem 11: expand((a + 3*b)**3) ≟ a**3 + 9*a**2*b + 27*a*b**2 + 27*b**3
-  ✅ [PASS] Problem 12: sum(factorial(4)/(factorial(n)*factorial(4 - n))*3**(4 - n)*(-2)**n, n=0..4) → 1 (expected 1)
+  ✅ [PASS] Problem 1: eval(factorial(n)/(factorial(r)*factorial(n - r)) at {'n': 7, 'r': 3}) → 35 (expected 35)
+  ✅ [PASS] Problem 2: eval(factorial(n)/(factorial(r)*factorial(n - r)) at {'n': 9, 'r': 2}) → 36 (expected 36)
+  ✅ [PASS] Problem 3: expand((x+3)**3) ≟ x**3+9*x**2+27*x+27
+  ✅ [PASS] Problem 4: eval(factorial(n)/(factorial(r)*factorial(n - r))*c**r at {'n': 5, 'r': 3, 'c': 4}) → 640 (expected 640)
+  ✅ [PASS] Problem 5: sum(factorial(6)/(factorial(k)*factorial(6 - k)), k=0..6) → 64 (expected 64)
+  ✅ [PASS] Problem 6: expand((2*x-1)**4) ≟ 16*x**4-32*x**3+24*x**2-8*x+1
+  ✅ [PASS] Problem 7: eval(factorial(n)/(factorial(r)*factorial(n - r))*c**(n - r) at {'n': 6, 'r': 4, 'c': 3}) → 135 (expected 135)
+  ✅ [PASS] Problem 8: solve(n*(n - 1)/2 - 45, domain=real) → [-9, 10] (expected [-9, 10])
+  ✅ [PASS] Problem 9: eval((1 + c)**n at {'c': 2, 'n': 5}) → 243 (expected 243)
+  ✅ [PASS] Problem 10: expand((a+2*b)**3) ≟ a**3+6*a**2*b+12*a*b**2+8*b**3
+  ✅ [PASS] Problem 11: eval(factorial(n)/(factorial(r)*factorial(n - r))*c**(n - r) at {'n': 5, 'r': 2, 'c': 2}) → 80 (expected 80)
+  ✅ [PASS] Problem 12: eval((c + b)**n at {'c': 3, 'b': -2, 'n': 4}) → 1 (expected 1)
 
 12 passed · 0 failed · 0 manual
-bloom mix: recall×2, apply×4, analyze×6
-standards: HSA-APR.A.1×9, HSA-SSE.B.3×3
-skill mix: binomial-coefficient×3, full-expansion×3, sequence-structure×3, specific-term×3
-facets: binomial-coefficient×3, full-expansion×3, sequence-structure×3, specific-term×3
-traps: 4 declared, all distinguishable
-    problem 2: trap 'forgot the k! in the denominator (permutations, not combinations)': factorial(8)/factorial(5) → 336 (rejected by the problem's own check)
-    problem 5: trap 'used the binomial coefficient alone and forgot the 2 raised to a power': factorial(5)/(factorial(3)*factorial(2)) → 10 (rejected by the problem's own check)
-    problem 7: trap 'raised 3 to the wrong power (used the y-exponent instead of 6 - k)': factorial(6)/(factorial(2)*factorial(4))*3**2 → 135 (rejected by the problem's own check)
-    problem 10: trap 'left the 2 inside 2x unraised, using only the binomial coefficient': factorial(5)/(factorial(3)*factorial(2)) → 10 (rejected by the problem's own check)
-facet mix: binomial-coefficient×3, full-expansion×3, sequence-structure×3, specific-term×3; max in-window run: 1
-difficulty ramp: [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5]
+bloom mix: recall×2, apply×5, analyze×5
+standards: HSA-APR.C.5×12
+skill mix: binomial-coefficient×3, full-expansion×3, row-structure×3, specific-term×3
+facets: binomial-coefficient×3, full-expansion×3, specific-term×3, row-structure×3
+traps: 7 declared, all distinguishable
+    problem 2: trap 'counted ordered pairs, computing the permutation instead of the combination': 9*8 → 72 (rejected by the problem's own check)
+    problem 4: trap 'reported the binomial coefficient alone and never raised the constant to its power': 10 → 10 (rejected by the problem's own check)
+    problem 5: trap 'doubled the row number instead of raising two to it': 2*6 → 12 (rejected by the problem's own check)
+    problem 7: trap 'left the constant unraised, multiplying the coefficient by three instead of by three squared': 15*3 → 45 (rejected by the problem's own check)
+    problem 9: trap 'used the plain row sum for a binomial whose second term is not one': 2**5 → 32 (rejected by the problem's own check)
+    problem 11: trap 'kept the two inside the first term unraised, so only the coefficient was used': 10*2 → 20 (rejected by the problem's own check)
+    problem 12: trap 'ignored the minus sign and added the two constants before raising': (3 + 2)**4 → 625 (rejected by the problem's own check)
+facet mix: binomial-coefficient×3, full-expansion×3, specific-term×3, row-structure×3; max in-window run: 1
+difficulty ramp: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
 
 ✅ All checks passed — safe to compile.
 
-── step 6 · verify study-guide JSON (verify_ss_binomial_curr395.json)
-Verifying: study guide: binomial coefficients and expansions (8 problems) · SymPy 1.14.0
+── step 6 · verify study-guide JSON (verify_ss_binomial_expansions_curr395.json)
+Verifying: study guide: binomial coefficients and sequence structure in expansions (8 problems) · SymPy 1.14.0
 
-  ✅ [PASS] Problem 1: eval(factorial(n)/(factorial(k)*factorial(n - k)) at {'n': 7, 'k': 2}) → 21 (expected 21)
-  ✅ [PASS] Problem 2: eval(factorial(n)/(factorial(k)*factorial(n - k)) at {'n': 9, 'k': 3}) → 84 (expected 84)
-  ✅ [PASS] Problem 3: expand((x + 3)**3) ≟ x**3 + 9*x**2 + 27*x + 27
-  ✅ [PASS] Problem 4: expand((x - 2)**3) ≟ x**3 - 6*x**2 + 12*x - 8
-  ✅ [PASS] Problem 5: eval(factorial(5)/(factorial(k)*factorial(5 - k))*4**(5 - k) at {'k': 2}) → 640 (expected 640)
-  ✅ [PASS] Problem 6: eval(factorial(6)/(factorial(k)*factorial(6 - k))*2**(6 - k) at {'k': 3}) → 160 (expected 160)
-  ✅ [PASS] Problem 7: sum(factorial(4)/(factorial(n)*factorial(4 - n)), n=0..4) → 16 (expected 16)
-  ✅ [PASS] Problem 8: sum(factorial(6)/(factorial(n)*factorial(6 - n)), n=0..6) → 64 (expected 64)
+  ✅ [PASS] Problem 1: eval(factorial(n)/(factorial(r)*factorial(n - r)) at {'n': 8, 'r': 3}) → 56 (expected 56)
+  ✅ [PASS] Problem 2: eval(factorial(n)/(factorial(r)*factorial(n - r)) at {'n': 10, 'r': 4}) → 210 (expected 210)
+  ✅ [PASS] Problem 3: expand((x+2)**4) ≟ x**4+8*x**3+24*x**2+32*x+16
+  ✅ [PASS] Problem 4: expand((y-3)**3) ≟ y**3-9*y**2+27*y-27
+  ✅ [PASS] Problem 5: eval(factorial(n)/(factorial(r)*factorial(n - r))*c**r at {'n': 5, 'r': 2, 'c': 2}) → 40 (expected 40)
+  ✅ [PASS] Problem 6: eval(factorial(n)/(factorial(r)*factorial(n - r))*c**r at {'n': 4, 'r': 2, 'c': 3}) → 54 (expected 54)
+  ✅ [PASS] Problem 7: sum(factorial(5)/(factorial(k)*factorial(5 - k)), k=0..5) → 32 (expected 32)
+  ✅ [PASS] Problem 8: eval((1 + c)**n at {'c': 3, 'n': 4}) → 256 (expected 256)
 
 8 passed · 0 failed · 0 manual
-bloom mix: recall×2, apply×4, analyze×2
-standards: HSA-APR.A.1×6, HSA-SSE.B.3×2
-skill mix: binomial-coefficient×2, full-expansion×2, sequence-structure×2, specific-term×2
-facets: binomial-coefficient×2, full-expansion×2, specific-term×2, sequence-structure×2
-facet mix: binomial-coefficient×2, full-expansion×2, specific-term×2, sequence-structure×2; max in-window run: 2
-difficulty ramp: [1, 2, 2, 3, 3, 3, 2, 3]
+bloom mix: apply×6, analyze×2
+standards: HSA-APR.C.5×8
+skill mix: binomial-coefficient×2, full-expansion×2, row-structure×2, specific-term×2
+facets: binomial-coefficient×2, full-expansion×2, specific-term×2, row-structure×2
+facet mix: binomial-coefficient×2, full-expansion×2, specific-term×2, row-structure×2; max in-window run: 2
+difficulty ramp: [1, 2, 2, 3, 3, 3, 3, 4]
 
 ✅ All checks passed — safe to compile.
 
-── step 7 · skill coverage: verify_binomial_curr395.json → verify_ss_binomial_curr395.json
-Skill coverage: /tmp/evalbuild/curr-395/verify_binomial_curr395.json → /tmp/evalbuild/curr-395/verify_ss_binomial_curr395.json
+── step 7 · skill coverage: verify_binomial_expansions_curr395.json → verify_ss_binomial_expansions_curr395.json
+Skill coverage: /tmp/evalrepair/curr-395/verify_binomial_expansions_curr395.json → /tmp/evalrepair/curr-395/verify_ss_binomial_expansions_curr395.json
   ✅ 4 worksheet skill(s), all covered by the study guide
 
 ── step 8 · facet coverage (ws facets ⊆ ss examples; subtitle binding)
-facet coverage: worksheet facets ['binomial-coefficient', 'full-expansion', 'sequence-structure', 'specific-term'] all have study-guide examples
-subtitle bound: 'Evaluating binomial coefficients, expanding a binomial power in full, extracting one specific term, and using the sequence structure of a row of coefficients' found in the title block
+facet coverage: worksheet facets ['binomial-coefficient', 'full-expansion', 'row-structure', 'specific-term'] all have study-guide examples
+subtitle bound: 'Evaluating binomial coefficients, expanding a binomial power in full, extracting one specific term, and reading the structure of a row of coefficients' found in the title block
 
 ── step 9 · render figures
    no triangle-type or "figure" problems in the JSON — skipping.
 
 ── step 10 · render effort markers (difficulty -> \probmeta/\probpts)
-Wrote /tmp/evalbuild/curr-395/meta_binomial_curr395.tex
+Wrote /tmp/evalrepair/curr-395/meta_binomial_expansions_curr395.tex
 
 ── step 11 · quick-answer bank for the answer key
-Wrote /tmp/evalbuild/curr-395/qa_binomial_curr395.tex
+Wrote /tmp/evalrepair/curr-395/qa_binomial_expansions_curr395.tex
 
-── step 12 · layout check (figure scope + work space + answer location) on ws_binomial_curr395.tex
-Layout report: /tmp/evalbuild/curr-395/ws_binomial_curr395.tex
+── step 12 · layout check (figure scope + work space + answer location) on ws_binomial_expansions_curr395.tex
+Layout report: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.tex
   problem blocks: figure scope ok (no 12 problems carry valued figures)
   problem blocks: work space ok (all 12 problems ≥ 2.5cm)
 
 ✅ layout ok — figures are unambiguous and every problem has room to work.
 
-── step 13 · answer-line binding (answer_unit) on ws_binomial_curr395.tex
-Answer-line binding: /tmp/evalbuild/curr-395/ws_binomial_curr395.tex (12 problem segments, 0 declared unit(s))
+── step 13 · answer-line binding (answer_unit) on ws_binomial_expansions_curr395.tex
+Answer-line binding: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.tex (12 problem segments, 0 declared unit(s))
 ✅ every declared answer_unit has a matching \answerline and no undeclared unit is printed
-Page budget (ws, letter): 12 problems, 84.6cm of content
-  ideal 4 page(s) · accepted range 2-6 · 2 sheet(s) of paper double-sided
+Page budget (ws, letter): 12 problems, 102.1cm of content
+  ideal 5 page(s) · accepted range 3-7 · 3 sheet(s) of paper double-sided
 
-── step 14 · compile ws_binomial_curr395.tex → /tmp/evalbuild/curr-395  (page budget: 6)
-Compiling: ws_binomial_curr395.tex → /tmp/evalbuild/curr-395/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 5 page(s), within the 6-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-395/ws_binomial_curr395.pdf
-/tmp/evalbuild/curr-395/ws_binomial_curr395.pdf
+── step 14 · compile ws_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395  (page budget: 7)
+Compiling: ws_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 7 page(s), within the 7-page budget.
+✅ PDF ready: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.pdf
+/tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.pdf
 
-── step 15 · compile ak_binomial_curr395.tex → /tmp/evalbuild/curr-395  (page budget: 6)
-Compiling: ak_binomial_curr395.tex → /tmp/evalbuild/curr-395/
-✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 6-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-395/ak_binomial_curr395.pdf
-/tmp/evalbuild/curr-395/ak_binomial_curr395.pdf
+── step 15 · compile ak_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395  (page budget: 7)
+Compiling: ak_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395/
+✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 3 page(s), within the 7-page budget.
+✅ PDF ready: /tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.pdf
+/tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.pdf
 
-── step 16 · compile ss_binomial_curr395.tex → /tmp/evalbuild/curr-395  (page budget: 2)
-Compiling: ss_binomial_curr395.tex → /tmp/evalbuild/curr-395/
+── step 16 · compile ss_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395  (page budget: 2)
+Compiling: ss_binomial_expansions_curr395.tex → /tmp/evalrepair/curr-395/
 ✅ log clean — no undefined references, missing characters, or overfull lines above 2.0pt. 2 page(s), within the 2-page budget.
-✅ PDF ready: /tmp/evalbuild/curr-395/ss_binomial_curr395.pdf
-/tmp/evalbuild/curr-395/ss_binomial_curr395.pdf
+✅ PDF ready: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.pdf
+/tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.pdf
 
-── step 17 · answer-key binding: ak_binomial_curr395.tex ↔ verify_binomial_curr395.json
-Answer-key binding: /tmp/evalbuild/curr-395/ak_binomial_curr395.tex
-  12 boxed answers · 12 problem segments
+── step 17 · answer-key binding: ak_binomial_expansions_curr395.tex ↔ verify_binomial_expansions_curr395.json
+Answer-key binding: /tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.tex
+  13 boxed answers · 12 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 18 · answer-key binding: ss_binomial_curr395.tex ↔ verify_ss_binomial_curr395.json
-Answer-key binding: /tmp/evalbuild/curr-395/ss_binomial_curr395.tex
+── step 18 · answer-key binding: ss_binomial_expansions_curr395.tex ↔ verify_ss_binomial_expansions_curr395.json
+Answer-key binding: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.tex
   8 boxed answers · 8 problem segments
 
 ✅ every verified answer is boxed in its own problem
 
-── step 19 · study-guide structure (strategy steps) on ss_binomial_curr395.tex
-Study-guide structure: /tmp/evalbuild/curr-395/ss_binomial_curr395.tex
+── step 19 · study-guide structure (strategy steps) on ss_binomial_expansions_curr395.tex
+Study-guide structure: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.tex
   ✅ every worked example opens with a strategy step and prints its answer
 
-── step 20 · prose consistency on ws_binomial_curr395.tex
-Prose-consistency report: /tmp/evalbuild/curr-395/ws_binomial_curr395.tex
+── step 20 · prose consistency on ws_binomial_expansions_curr395.tex
+Prose-consistency report: /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.tex
   problem 1: 2 prose numbers  ok
-  problem 2: 2 prose numbers  ok
-  problem 3: 2 prose numbers  ok
-  problem 4: 3 prose numbers  ⚠ missing from JSON: [1.0]
-  problem 5: 3 prose numbers  ok
+  problem 2: 3 prose numbers  ok
+  problem 3: 1 prose numbers  ok
+  problem 4: 3 prose numbers  ok
+  problem 5: 2 prose numbers  ⚠ missing from JSON: [1.0]
   problem 6: 3 prose numbers  ok
   problem 7: 3 prose numbers  ok
-  problem 8: 4 prose numbers  ⚠ missing from JSON: [1.0]
+  problem 8: 3 prose numbers  ok
   problem 9: 3 prose numbers  ok
-  problem 10: 3 prose numbers  ok
-  problem 11: 1 prose numbers  ok
-  problem 12: 5 prose numbers  ok
+  problem 10: 2 prose numbers  ok
+  problem 11: 3 prose numbers  ⚠ missing from JSON: [3.0]
+  problem 12: 3 prose numbers  ok
 
-Match rate: 32/34 (94.1%) across 12 problem block(s)
+Match rate: 29/31 (93.5%) across 12 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
-── step 21 · prose consistency on ss_binomial_curr395.tex
-Prose-consistency report: /tmp/evalbuild/curr-395/ss_binomial_curr395.tex
-  problem 1: 6 prose numbers  ⚠ missing from JSON: [5.0, 6.0]
+── step 21 · prose consistency on ss_binomial_expansions_curr395.tex
+Prose-consistency report: /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.tex
+  problem 1: 9 prose numbers  ⚠ missing from JSON: [2.0, 5.0, 6.0, 7.0, 336.0]
   problem 2: 3 prose numbers  ok
-  problem 3: 5 prose numbers  ⚠ missing from JSON: [1.0]
-  problem 4: 5 prose numbers  ok
-  problem 5: 6 prose numbers  ⚠ missing from JSON: [64.0]
+  problem 3: 9 prose numbers  ⚠ missing from JSON: [1.0, 6.0]
+  problem 4: 4 prose numbers  ok
+  problem 5: 6 prose numbers  ⚠ missing from JSON: [4.0, 10.0]
   problem 6: 4 prose numbers  ok
-  problem 7: 7 prose numbers  ⚠ missing from JSON: [1.0, 3.0, 6.0]
-  problem 8: 3 prose numbers  ⚠ missing from JSON: [1.0]
+  problem 7: 6 prose numbers  ⚠ missing from JSON: [1.0, 2.0, 10.0]
+  problem 8: 4 prose numbers  ok
 
-Match rate: 31/39 (79.5%) across 8 problem block(s)
+Match rate: 33/45 (73.3%) across 8 problem block(s)
 Figure labels: all consistent with JSON givens.
 (heuristic — investigate misses; derived/rounded prose values, dates, and story numbers unused by the computation are expected false flags)
 
@@ -190,8 +193,8 @@ Figure labels: all consistent with JSON givens.
    prose-ws         PASS
    prose-ss         PASS
 ── PDFs ──────────────────────────────────────
-   /tmp/evalbuild/curr-395/ws_binomial_curr395.pdf
-   /tmp/evalbuild/curr-395/ak_binomial_curr395.pdf
-   /tmp/evalbuild/curr-395/ss_binomial_curr395.pdf
+   /tmp/evalrepair/curr-395/ws_binomial_expansions_curr395.pdf
+   /tmp/evalrepair/curr-395/ak_binomial_expansions_curr395.pdf
+   /tmp/evalrepair/curr-395/ss_binomial_expansions_curr395.pdf
 
 ✅ BUILD PASSED — all gates green

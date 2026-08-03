@@ -16,6 +16,65 @@ the same question through four lenses: a table of values, a graph, algebra, and
 the partial sums of a series. After the warm-up the four are interleaved, so
 decide which tool the problem is handing you before you start computing.
 
+\medskip
+\noindent\textbf{Graphs for problems 3, 7 and 11.} The three graphs this sheet
+asks you to read are printed together here, each named. Every problem that needs
+one says which graph it means --- \emph{no graph belongs to any other problem.}
+
+\begin{center}
+\begin{minipage}{0.48\linewidth}\centering
+\begin{tikzpicture}
+\begin{axis}[width=7.4cm, height=4.4cm, axis lines=middle,
+  xmin=-1.4, xmax=5.4, ymin=-0.8, ymax=7.6,
+  xtick={-1,0,1,2,3,4,5}, ytick={0,2,4,6},
+  grid=both, grid style={line width=0.15pt, draw=gray!25},
+  xlabel={$x$}, ylabel={$y$}, samples=2, enlargelimits=false,
+  tick label style={font=\scriptsize},
+  yticklabel style={fill=white, inner sep=1pt}]
+  \addplot[thick, blue, domain=-1.4:5.4] {x+2};
+  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
+    coordinates {(2,4)};
+\end{axis}
+\end{tikzpicture}\\[-2pt]
+{\small\textbf{Graph A} --- the function $g$ (problem 3).}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}\centering
+\begin{tikzpicture}
+\begin{axis}[width=7.4cm, height=4.4cm, axis lines=middle,
+  xmin=-1.4, xmax=3.4, ymin=-0.6, ymax=4.4,
+  xtick={-1,0,1,2,3}, ytick={0,1,2,3,4},
+  grid=both, grid style={line width=0.15pt, draw=gray!25},
+  xlabel={$x$}, ylabel={$y$}, samples=2, enlargelimits=false,
+  tick label style={font=\scriptsize},
+  yticklabel style={fill=white, inner sep=1pt}]
+  \addplot[thick, blue, domain=-1.4:1] {x+1};
+  \addplot[thick, blue, domain=1:3.4] {4-x};
+  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
+    coordinates {(1,2)};
+  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=blue]
+    coordinates {(1,3)};
+\end{axis}
+\end{tikzpicture}\\[-2pt]
+{\small\textbf{Graph B} --- the function $h$ (problem 7).}
+\end{minipage}
+
+\medskip
+\begin{tikzpicture}
+\begin{axis}[width=9.4cm, height=4.4cm, axis lines=middle,
+  xmin=-8.5, xmax=8.5, ymin=-0.5, ymax=4.2,
+  xtick={-8,-6,-4,-2,2,4,6,8}, ytick={0,1,2,3,4},
+  grid=both, grid style={line width=0.15pt, draw=gray!25},
+  xlabel={$x$}, ylabel={$y$}, samples=200, enlargelimits=false,
+  tick label style={font=\scriptsize},
+  yticklabel style={fill=white, inner sep=1pt}]
+  \addplot[thick, blue, domain=-8.5:8.5] {(3*x^2+1)/(x^2+2)};
+  \addplot[dashed, gray, domain=-8.5:8.5, samples=2] {3};
+\end{axis}
+\end{tikzpicture}\\[-2pt]
+{\small\textbf{Graph C} --- the function $p$, with its horizontal asymptote
+dashed (problem 11).}
+\end{center}
+
 \problem[4cm]{The table below has already been computed for
 $f(x) = \dfrac{x^2-9}{x-3}$.
 
@@ -33,24 +92,9 @@ one sentence why ``undefined at $x=3$'' does not stop the limit from existing.}
 $\displaystyle\lim_{x\to 4}\frac{x^2-16}{x-4}$. Direct substitution gives
 $\tfrac{0}{0}$, so rewrite before you substitute.}
 
-\problem[4.5cm]{The graph of $g(x) = \dfrac{x^2-4}{x-2}$ is shown. The open
-circle marks the one input where $g$ is not defined.
-
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[width=8.2cm, height=5.4cm, axis lines=middle,
-  xmin=-1.4, xmax=5.4, ymin=-0.8, ymax=7.6,
-  xtick={-1,0,1,2,3,4,5}, ytick={0,2,4,6},
-  grid=both, grid style={line width=0.15pt, draw=gray!25},
-  xlabel={$x$}, ylabel={$y$}, samples=2, enlargelimits=false,
-  yticklabel style={fill=white, inner sep=1pt}]
-  \addplot[thick, blue, domain=-1.4:5.4] {x+2};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
-    coordinates {(2,4)};
-\end{axis}
-\end{tikzpicture}\\[-2pt]
-{\small Graph of $g$ for this problem.}
-\end{center}
+\problem[6cm]{\textbf{Use Graph A} (printed with the directions), which shows
+$g(x) = \dfrac{x^2-4}{x-2}$. Its open circle marks the one input where $g$ is
+not defined.
 
 \noindent Read $\displaystyle\lim_{x\to 2} g(x)$ from the graph, and say in one
 sentence why the open circle does not change the answer.}
@@ -75,28 +119,9 @@ fraction. Write the two table entries and the limit on your answer line.}
 $\displaystyle\lim_{x\to 2}\frac{x^3-8}{x^2-4}$. \; (Hint:
 $a^3-b^3=(a-b)(a^2+ab+b^2)$ and $a^2-b^2=(a-b)(a+b)$.)}
 
-\problem[5cm]{The graph of a piecewise function $h$ is shown. The solid dot
-marks the value of $h(1)$; the open circle marks a point the graph approaches
-but does not reach.
-
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[width=8.2cm, height=5.4cm, axis lines=middle,
-  xmin=-1.4, xmax=3.4, ymin=-0.6, ymax=4.4,
-  xtick={-1,0,1,2,3}, ytick={0,1,2,3,4},
-  grid=both, grid style={line width=0.15pt, draw=gray!25},
-  xlabel={$x$}, ylabel={$y$}, samples=2, enlargelimits=false,
-  yticklabel style={fill=white, inner sep=1pt}]
-  \addplot[thick, blue, domain=-1.4:1] {x+1};
-  \addplot[thick, blue, domain=1:3.4] {4-x};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=white]
-    coordinates {(1,2)};
-  \addplot[only marks, mark=*, mark size=2.6pt, draw=blue, fill=blue]
-    coordinates {(1,3)};
-\end{axis}
-\end{tikzpicture}\\[-2pt]
-{\small Graph of $h$ for this problem.}
-\end{center}
+\problem[6.5cm]{\textbf{Use Graph B} (printed with the directions), the
+piecewise function $h$. Its solid dot marks the value of $h(1)$; its open circle
+marks a point the graph approaches but does not reach.
 
 \noindent \textbf{(a)} $\displaystyle\lim_{x\to 1^-}h(x)$ \quad
 \textbf{(b)} $\displaystyle\lim_{x\to 1^+}h(x)$ \quad
@@ -124,23 +149,8 @@ $r(x)$ & & \\[0.9cm]\hline
 \noindent Then state $\displaystyle\lim_{x\to\infty}r(x)$. Write both table
 entries and the limit on your answer line.}
 
-\problem[5cm]{The graph of $p(x) = \dfrac{3x^2+1}{x^2+2}$ is shown with its
-horizontal asymptote dashed.
-
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[width=8.6cm, height=5.2cm, axis lines=middle,
-  xmin=-8.5, xmax=8.5, ymin=-0.5, ymax=4.2,
-  xtick={-8,-6,-4,-2,2,4,6,8}, ytick={0,1,2,3,4},
-  grid=both, grid style={line width=0.15pt, draw=gray!25},
-  xlabel={$x$}, ylabel={$y$}, samples=200, enlargelimits=false,
-  yticklabel style={fill=white, inner sep=1pt}]
-  \addplot[thick, blue, domain=-8.5:8.5] {(3*x^2+1)/(x^2+2)};
-  \addplot[dashed, gray, domain=-8.5:8.5, samples=2] {3};
-\end{axis}
-\end{tikzpicture}\\[-2pt]
-{\small Graph of $p$ for this problem.}
-\end{center}
+\problem[6cm]{\textbf{Use Graph C} (printed with the directions), which shows
+$p(x) = \dfrac{3x^2+1}{x^2+2}$ with its horizontal asymptote dashed.
 
 \noindent Read $\displaystyle\lim_{x\to\infty}p(x)$ from the graph, then confirm
 it algebraically by dividing the numerator and denominator by $x^2$.}

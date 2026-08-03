@@ -1,36 +1,51 @@
+# Writing Recursive Arithmetic Sequence Formulas (Algebra 1)
+
 Three PDFs are ready for an Algebra 1 student on arithmetic sequences as linear
-functions, focused on writing recursive formulas.
+functions, focused on writing recursive formulas. Every problem asks for both
+lines of the rule — the first term and the step — and then a number the rule
+produces, so the formula is the work and the number is what the gate can check.
 
-- **Worksheet** (10 problems, `ws_recseq_curr273.pdf`) — every problem asks for
-  both lines of the recursive rule ($a_1$ and $a_n = a_{n-1} + d$) and then a
-  numerical answer, so the formula is the work and the number is checkable. The
-  representations rotate: two listed sequences (one with a negative common
-  difference), three applications with units stated (a tank in liters, a chair
-  stack in centimeters, a savings balance in dollars), two given recursive rules
-  to run forward or backward, a table with $a_3$ and $a_7$ known and $a_1$
-  missing, a recursive-to-explicit conversion, and a closing synthesis on a
-  theater's rows that ends in a 15-term sum.
-- **Answer key** (`ak_recseq_curr273.pdf`) — three labelled steps per problem
-  (find $d$, write both lines, count the $n-1$ steps and compute), plus a
-  quick-answer bank and a generated "Common wrong answers" block for the three
-  designed traps (adding instead of subtracting a negative $d$; multiplying by
-  $n$ instead of $n-1$, in two different contexts).
-- **Study guide** (2 pages, `ss_recseq_curr273.pdf`) — four skills matching the
-  worksheet's facets: recursive rule from a listed sequence, from a situation,
-  using a recursive rule to reach a later term, and converting recursive to
-  explicit ($d$ is the slope, $a_1 - d$ the intercept). Rule box, two-step worked
-  example and upside-down try-it in each, plus a watch-out on the $n$ vs. $n-1$
-  step count.
+- **Worksheet (7 pages, 10 problems).** The representations rotate: two listed
+  sequences (a tiling pattern, and a descending drone altitude with a negative
+  common difference); three applications with units and givens stated (a stack of
+  chairs in centimeters, a draining tank in liters, a gym membership in dollars);
+  two given recursive rules to run forward and backward (one solved as an
+  equation in $n$, not by listing terms); a recursive-to-explicit conversion that
+  names the slope and the intercept; a table with $a_3$ and $a_7$ known and $a_1$
+  missing; and a synthesis on theater rows that ends in the sum of the first 15
+  rows. Work space is 8–9.5 cm per problem, **declared as `workspace_cm` in the
+  JSON** so the page budget charges for the two-line rule plus the computation
+  each problem actually asks for. That is why the sheet is seven pages: the room
+  is the content, not slack.
+- **Answer key (3 pages).** Three labelled steps per problem — find $d$, write
+  both lines, count the $n-1$ applications and compute — plus the generated
+  quick-answer bank and a **"Common wrong answers"** block covering the six
+  declared traps.
+- **Study guide (2 pages).** Four skills matching the worksheet's four facets:
+  the rule from a listed sequence, the rule from a situation, running a rule
+  forward, and converting a recursive rule to an explicit linear function. Each
+  has a rule box, a two-step worked example whose first step names the decision,
+  and an upside-down try-it, plus a watch-out on writing the step line without
+  its first line.
 
-**Verification.** All 10 worksheet answers are machine-checked with SymPy
-(7 `eval` term computations, 2 `solve` "which term" equations, 1 `series` partial
-sum of 15 terms), and all 8 study-guide results are verified the same way.
-Nothing is flagged manual. Three misconception traps were declared and proved
-distinguishably wrong. The two unit-carrying answers (580 L, 183 cm) are bound in
-both directions, the facet plan is bound to the printed subtitle, and the full
-gate chain is green.
+## Verification
 
-*Note on the standards tag:* `references/standards-map.md` has no dedicated
-arithmetic-sequence code, so every problem carries `HSF-BF.A.1c` verbatim from
-that file --- the nearest entry inside the HSF-BF.A family the task names. No
-code was invented.
+All 10 worksheet problems are machine-checked with SymPy — 11 checks, because
+the missing-first-term table problem carries two verified answers (the common
+difference and $a_1$) under one problem id. The mix is 8 `eval` term
+computations, 1 `solve` "which term" equation, and 1 `series` partial sum of 15
+rows. All 8 study-guide boxes (4 worked examples + 4 try-its) are verified the
+same way. **Nothing is flagged manual** and no tolerance was widened.
+
+**Six misconception traps are declared and machine-checked**: adding a negative
+common difference (104), multiplying by $n$ instead of $n-1$ in two different
+contexts (190 and 97), starting the tank count an hour late (135), dropping the
+joining fee from the explicit rule (840), and treating every theater row as row 1
+(270). Verification proves each is a value the problem's own check rejects.
+
+The two unit-carrying answers (181 cm, 120 L) are bound in both directions
+(`answer_unit` ↔ `\answerline` ↔ the boxed key value). The facet plan is bound to
+the printed subtitle and every facet has a study-guide worked example. Standards
+are tagged `HSF-BF.A.2, HSF-LE.A.2` — the sequences row of
+`references/standards-map.md`, verbatim; no code was invented. Full gate chain
+green — exit 0, no manual items.

@@ -39,7 +39,21 @@ from _tex_segments import segment_spans, blank_comments, box_spans  # noqa: E402
 from _units import unit_in, undeclared_units  # noqa: E402
 
 NUM = re.compile(r"-?\d+(?:\.\d+)?(?:/\d+)?")
-_FRAC = re.compile(r"\\[dt]?frac\s*\{?(-?\d+(?:\.\d+)?)\}?\s*\{?(-?\d+(?:\.\d+)?)\}?")
+# Both groups must be FULLY braced and contain nothing but a number (leading
+# spacing macros allowed). The old pattern made the braces optional, which let
+# it match a PREFIX and rewrite what it did not understand:
+#   \tfrac{11\pi}{6}  -> "1/1\pi}{6}"   the 11 destroyed, reported as a swapped key
+#   \dfrac{-16x}{4}   -> "-1/6x}{4}"    -16 became -0.1667
+#   \dfrac{3}{1+9x^2} -> "3/1+9x^2}"    the 1 swallowed
+#   \dfrac{\,16}{5}   -> unmatched      3.2 invisible in its own box
+# Three eval agents hit these as "verified value is not in the boxed answer",
+# a message that points at the author instead of at this regex. When the braces
+# hold anything else, leave the text alone: the plain number scanner then finds
+# 11 and 6 on their own, which is worse than a fraction and far better than a lie.
+_FRAC = re.compile(
+    r"\\[dt]?frac\s*"
+    r"\{\s*(?:\\[,!;:>]\s*)*(-?\d+(?:\.\d+)?)\s*\}\s*"
+    r"\{\s*(?:\\[,!;:>]\s*)*(-?\d+(?:\.\d+)?)\s*\}")
 
 
 def normalize_latex_numbers(text):

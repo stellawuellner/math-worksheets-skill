@@ -1,11 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \input{worksheet-preamble}
-% The generated quick-answer bank ends its "Common wrong answers" list with a
-% full-width \rule in the same paragraph as the last \commonerror line, which
-% TeX cannot break without an infeasibly loose line. Emergency stretch lets the
-% final pass take that break instead of shipping an overfull box.
-\setlength{\emergencystretch}{4cm}
 \akheader{Whole-Number Division by One-Digit Divisors}
 \begin{document}
 \aktitleblock{Whole-Number Division: Up to Four Digits by One-Digit Divisors}{Grades 4--5 $\bullet$ Fluency Practice}{}
@@ -24,8 +19,8 @@ quotient is \ans{75}. Check: $75 \times 5 = 375$.}
 \problem{$618 \div 6$. \quad $6 \div 6 = 1$ hundred; $6 - 6 = 0$. Bring down
 the $1$: $1$ is smaller than $6$, so write $\mathbf{0}$ in the tens place and
 bring down the next digit. That makes $18$: $18 \div 6 = 3$ ones. The quotient
-is \ans{103}. The $0$ is not optional --- dropping it gives $13$, which is far
-too small, since $13 \times 6 = 78$.}
+is \ans{103}. The $0$ is not optional --- skipping the place gives $13$, which
+is far too small, since $13 \times 6 = 78$.}
 
 \problem{Estimating $2{,}835 \div 7$ with the compatible number $2{,}800$:
 $28 \div 7 = 4$, so $2{,}800 \div 7 = 400$. Nadia's estimate is \ans{400}.
@@ -35,7 +30,11 @@ This also tells her the exact quotient will have $3$ digits.}
 $28 - 28 = 0$. Bring down the $3$: $3$ is smaller than $7$, so write
 $\mathbf{0}$ in the tens place. Bring down the $5$ to make $35$:
 $35 \div 7 = 5$ ones. The quotient is \ans{405}, which is very close to the
-estimate of $400$ from problem 4 --- a good sign the work is right.}
+estimate of $400$ from problem 4 --- a good sign the work is right.
+
+\smallskip\noindent\textit{Watch for:} a two-digit answer of $45$. That is the
+empty tens place skipped instead of recorded, and the estimate of $400$ rules it
+out at a glance.}
 
 \problem{$517 \div 4$. \quad $5 \div 4 = 1$ hundred with $1$ left. Bring down
 the $1$ to make $11$: $11 \div 4 = 2$ tens with $3$ left ($4 \times 2 = 8$,
@@ -62,14 +61,21 @@ back: $858 \div 6 = 143$.}
 with $48$ hundreds: $48 \div 8 = 6$ hundreds; $48 - 48 = 0$. Bring down the
 $7$: $7$ is smaller than $8$, so write $\mathbf{0}$ in the tens place. Bring
 down the $2$ to make $72$: $72 \div 8 = 9$ ones. The quotient is \ans{609}.
-Check: $609 \times 8 = 4{,}872$.}
+Check: $609 \times 8 = 4{,}872$.
+
+\smallskip\noindent\textit{Watch for:} $69$ --- the same dropped zero as
+problem 3, one place further left.}
 
 \problem{Divide the pencils into groups of $6$: $3{,}275 \div 6$.
 $32$ hundreds $\div\ 6 = 5$ hundreds with $2$ left ($6 \times 5 = 30$). Bring
 down the $7$ to make $27$: $27 \div 6 = 4$ tens with $3$ left. Bring down the
 $5$ to make $35$: $35 \div 6 = 5$ ones with $5$ left. So
 $3{,}275 \div 6 = 545$ R $5$. The question asks only for \emph{full} boxes, so
-the remainder is ignored here: \ans{545} full boxes.}
+the remainder is ignored here: \ans{545} full boxes.
+
+\smallskip\noindent\textit{Watch for:} $546$. Rounding the leftover up is right
+for ``how many boxes are needed'', but there are only $5$ pencils left, not a
+full box of $6$.}
 
 \problem{Same division: $3{,}275 \div 6 = 545$ R $5$. This time the question
 asks what is left after every full box is packed, and that is exactly the
@@ -78,7 +84,8 @@ $6 \times 545 + 5 = 3{,}270 + 5 = 3{,}275$.
 
 \smallskip\noindent\textit{Teaching note:} problems 10 and 11 are the same
 division. What changes is what the leftover means --- that decision is the
-skill being practised.}
+skill being practised. A student who writes $545$ here has answered problem 10
+twice.}
 
 \problem{Two divisions, one after the other.
 

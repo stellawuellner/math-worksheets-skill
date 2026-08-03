@@ -135,6 +135,43 @@ check("#8 read_data max_key accepts a tied key",
       status({"id": 1, "type": "read_data", "data": {"A": 5, "B": 5}, "query": "max_key", "expected": "B"}) == "PASS")
 
 print()
+# ── number normalization, found by the eval run ──────────────────────────────
+# _FRAC made its braces optional, so it matched a PREFIX and rewrote what it had
+# not understood: \tfrac{11\pi}{6} became "1/1", destroying the 11. Three agents
+# reported it as "verified value is not in the boxed answer" — a message that
+# accuses the author of transcription drift when the checker is at fault.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from check_answer_key import normalize_latex_numbers, num_tokens   # noqa: E402
+from check_prose_consistency import json_numbers                   # noqa: E402
+
+print("number normalization (eval-run findings)")
+
+
+def _toks(t):
+    return sorted(round(v, 6) for v, _ in num_tokens(normalize_latex_numbers(t)))
+
+
+check("plain fractions collapse to their value", _toks(r"\dfrac{16}{5}") == [3.2])
+check("tfrac collapses too", _toks(r"\tfrac{16}{5}") == [3.2])
+check("a leading spacing macro does not block the match",
+      _toks(r"\dfrac{\,16}{5}") == [3.2])
+check("negative numerators keep their sign", _toks(r"\frac{-3}{4}") == [-0.75])
+check("a two-digit numerator survives a symbolic part",
+      11.0 in _toks(r"\tfrac{11\pi}{6}"))
+check("a non-numeric numerator is left alone, not mangled",
+      -16.0 in _toks(r"\dfrac{-16x}{4}"))
+check("a compound denominator does not swallow its leading 1",
+      1.0 in _toks(r"\dfrac{3}{1+9x^2}"))
+
+# Prose is scanned by an UNSIGNED regex, so a printed "-137" arrives as 137.0.
+# A JSON value of -137 could never match its own printed form.
+_entry = {"id": 1, "type": "eval", "expr": "a-b", "at": {"a": 50, "b": 187},
+          "expected": -137,
+          "traps": [{"desc": "subtracted the wrong way", "expr": "b-a",
+                     "value": -137}]}
+check("a negative JSON given matches its unsigned printed form",
+      137.0 in json_numbers(_entry))
+
 if FAILS:
     print(f"❌ {len(FAILS)} audit-fix test(s) failed: {FAILS}")
     sys.exit(1)

@@ -26,7 +26,9 @@
      "skill": "function-notation", "standard": "8.F.A.1–8.F.B.5",
      "difficulty": 3, "bloom": "analyze",
      "traps": [{"desc": "split the input: computed f(2) + f(3) as if f distributed over addition",
-                "expr": "(4*2 - 5) + (4*3 - 5)", "value": 10}]},
+                "expr": "(4*2 - 5) + (4*3 - 5)", "value": 10},
+               {"desc": "multiplied the two outputs instead, computing f(2) times f(3)",
+                "expr": "(4*2 - 5)*(4*3 - 5)", "value": 21}]},
 
     {"id": 5, "type": "eval", "expr": "(y - 3)/2.5", "at": {"y": 28}, "expected": 10,
      "skill": "evaluate-vs-solve", "standard": "8.F.A.1–8.F.B.5",

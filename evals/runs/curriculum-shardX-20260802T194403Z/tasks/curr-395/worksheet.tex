@@ -1,75 +1,88 @@
 \documentclass[12pt]{article}
 \usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}
 \input{worksheet-preamble}
-\wsheader{Binomial Coefficients}
+\wsheader{Binomial Expansions}
 \begin{document}
 \wstitleblock{Sequences, Series, and the Binomial Theorem}{Algebra 2}{}
 
 \begin{center}
-Evaluating binomial coefficients, expanding a binomial power in full, extracting
-one specific term, and using the sequence structure of a row of coefficients
+Evaluating binomial coefficients, expanding a binomial power in full,
+extracting one specific term, and reading the structure of a row of
+coefficients
 \end{center}
 
-\noindent\small\textbf{Directions.} The binomial theorem says
-\[ (u + v)^n = \sum_{k=0}^{n} \binom{n}{k} u^{\,n-k} v^{\,k},
-   \qquad \binom{n}{k} = \frac{n!}{k!\,(n-k)!}. \]
-Decide for each problem whether you need one coefficient, one term, or the whole
-expansion --- the method is not the same.\par
-\textbf{Reference} (rows of Pascal's triangle --- no problem values here; take
-each problem's own numbers from its statement):
-\begin{center}\small
-\begin{tabular}{r@{\quad}l}
-row $n = 3$: & 1 \quad 3 \quad 3 \quad 1\\
-row $n = 4$: & 1 \quad 4 \quad 6 \quad 4 \quad 1\\
-row $n = 5$: & 1 \quad 5 \quad 10 \quad 10 \quad 5 \quad 1\\
-row $n = 6$: & 1 \quad 6 \quad 15 \quad 20 \quad 15 \quad 6 \quad 1
+\noindent\small\textbf{Directions.} The problems below rotate between four
+tools, so decide which one the question needs before you start writing.
+\[ (p+q)^{n} = \sum_{r=0}^{n} \binom{n}{r} p^{\,n-r} q^{\,r},
+   \qquad \binom{n}{r} = \frac{n!}{r!\,(n-r)!} \]
+\begin{itemize}[leftmargin=1.4cm, itemsep=1pt, topsep=2pt]
+  \item A single term needs the coefficient \emph{and} both powers --- the
+        binomial coefficient by itself is almost never the answer.
+  \item Simplify factorials by cancelling before multiplying.
+\end{itemize}
+
+\noindent\textbf{Reference.} The first rows of Pascal's triangle, shown for
+their pattern only. No problem's numbers are taken from this display; use the
+values each problem gives you.
+\begin{center}
+\begin{tabular}{c}
+1\\
+1 \quad 1\\
+1 \quad 2 \quad 1\\
+1 \quad 3 \quad 3 \quad 1\\
+1 \quad 4 \quad 6 \quad 4 \quad 1\\
 \end{tabular}
-\end{center}\normalsize
+\end{center}
+\normalsize
 
-\problem[4cm]{Evaluate the binomial coefficient $\dbinom{6}{2}$ using the
-factorial formula. Show the factorials before you cancel.}
+\problem[6cm]{\textbf{Warm-up.} Evaluate $\dbinom{7}{3}$ by cancelling
+factorials before you multiply. Show the cancellation.}
 
-\problem[4cm]{Evaluate $\dbinom{8}{3}$. Then state in one sentence what this
-number counts in the expansion of $(u+v)^8$.}
+\problem[6cm]{\textbf{Warm-up.} Evaluate $\dbinom{9}{2}$. A classmate answers
+72. Say what 72 actually counts, and give the correct value of
+$\dbinom{9}{2}$.}
 
-\problem[6cm]{Expand $(x + 2)^3$ completely, writing the coefficient of each term
-as a binomial coefficient times a power of 2 before you simplify.}
+\problem[7cm]{\textbf{Full expansion.} Expand $(x+3)^{3}$ completely, using the
+binomial theorem rather than repeated multiplication. Write the four terms in
+descending powers of $x$.}
 
-\problem[5cm]{Row 5 of Pascal's triangle holds the coefficients of $(u+v)^5$.
-Add all six of those coefficients:
-$\dbinom{5}{0} + \dbinom{5}{1} + \cdots + \dbinom{5}{5}$.
-What is the total?}
+\problem[7cm]{\textbf{One term only.} In the expansion of $(x+4)^{5}$, find the
+coefficient of the term containing $x^{2}$. Do not expand the whole binomial ---
+name the value of $r$ you need first.}
 
-\problem[5cm]{In the expansion of $(x + 2)^5$, find the \textbf{coefficient of
-$x^3$} without expanding the whole thing. (Use the term
-$\dbinom{5}{k} x^{k} 2^{\,5-k}$.)}
+\problem[7cm]{\textbf{Row structure.} Find the sum of all the entries in row 6
+of Pascal's triangle (the row whose second entry is 6). Then explain, using the
+binomial theorem, why substituting 1 for both letters in $(p+q)^{n}$ gives that
+sum.}
 
-\problem[6cm]{Expand $(2x - 1)^4$ completely. Watch two things: the 2 inside
-$2x$ gets raised to a power too, and the sign alternates.}
+\problem[8cm]{\textbf{Full expansion.} Expand $(2x-1)^{4}$ completely. Watch
+both the power on the 2 and the alternating sign.}
 
-\problem[5cm]{In the expansion of $(3 + y)^6$, find the \textbf{coefficient of
-$y^2$}. Note that here the constant 3 is the \emph{first} term of the binomial.}
+\problem[7cm]{\textbf{One term only.} In the expansion of $(3+y)^{6}$, find the
+coefficient of $y^{4}$. State which factor of the term the exponent on 3 comes
+from.}
 
-\problem[5cm]{Find the sum of all the coefficients in the expansion of
-$(2x + 1)^5$. (Hint: adding every coefficient is the same as evaluating the
-expansion at a particular value of $x$ --- but write the sum
-$\sum_{n=0}^{5}\dbinom{5}{n}2^{\,n}$ and confirm it.)}
+\problem[7.5cm]{\textbf{Solve for $n$.} A tournament pairs every team with every
+other team exactly once, so the number of games is $\dbinom{n}{2}$, which equals
+$\dfrac{n(n-1)}{2}$. Solve $\dfrac{n(n-1)}{2} = 45$ for $n$. Give both solutions
+of the equation, then say which one can be a number of teams and why.}
 
-\problem[5cm]{In the expansion of $(1 + x)^n$ the coefficient of $x^2$ is
-$\dbinom{n}{2}$. For which $n$ does that coefficient equal 45? Solve the
-resulting quadratic equation and say which root makes sense here.}
+\problem[7cm]{\textbf{Row structure.} Find the sum of the coefficients of
+$(1+2x)^{5}$ without expanding it. State the substitution that produces the sum
+of the coefficients of any polynomial.}
 
-\problem[5cm]{In the expansion of $(2x + y)^5$, find the \textbf{coefficient of
-$x^3 y^2$}. Both the binomial coefficient and the power of 2 matter.}
+\problem[8cm]{\textbf{Full expansion, two letters.} Expand $(a+2b)^{3}$
+completely, in descending powers of $a$. Keep the power of 2 attached to the
+correct factor in every term.}
 
-\problem[6cm]{Expand $(a + 3b)^3$ completely, in terms of $a$ and $b$. Then say
-which entry of Pascal's triangle produced each coefficient.}
+\problem[7.5cm]{\textbf{One term only.} In the expansion of $(2x+y)^{5}$, find
+the coefficient of the term $x^{3}y^{2}$. Say why the coefficient is not simply
+the entry from Pascal's triangle.}
 
-\problem[6cm]{\textbf{Synthesis.} Consider $(3x - 2)^4$.\\[3pt]
-(i) Write the general term of the expansion using $\dbinom{4}{n}$, a power of 3
-and a power of $-2$.
-(ii) Add all the coefficients by evaluating that sum for $n = 0$ to $n = 4$.
-(iii) Explain in one sentence why the answer had to come out this way, using the
-value of $x$ that makes every $x$-power equal 1.}
+\problem[8.5cm]{\textbf{Synthesis.} Consider $(3x-2)^{4}$.\\[3pt]
+Find the sum of its coefficients using the same substitution as before, and then
+explain what that sum tells you about the value of the polynomial at a
+particular input. Finish by saying why the answer is so much smaller than the
+individual coefficients of the expansion.}
 
 \end{document}

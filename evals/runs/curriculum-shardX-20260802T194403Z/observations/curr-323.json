@@ -1,11 +1,11 @@
 {
   "task_id": "curr-323",
-  "recorded": "2026-08-02T20:11:06Z",
+  "recorded": "2026-08-03T04:21:53Z",
   "generator": {
     "agent": "claude-code",
     "model": "claude-opus-5"
   },
-  "latency_seconds": 1600.0,
+  "latency_seconds": 211.0,
   "notes": "",
   "artifacts_present": {
     "prompt.txt": true,

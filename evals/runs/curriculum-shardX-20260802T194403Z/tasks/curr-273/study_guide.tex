@@ -1,115 +1,116 @@
 \documentclass[12pt]{article}
 \usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}
 \input{worksheet-preamble}
-\ssheader{Recursive Arithmetic Formulas}
+\ssheader{Recursive Arithmetic Rules}
 \begin{document}
 \sstitleblock{Arithmetic Sequences as Linear Functions}
 
-\skillheading{Skill 1 --- Recursive rule from a listed sequence (recursive-from-sequence)}
+\skillheading{Skill 1 --- A recursive rule from a listed sequence}
 
 \begin{formulabox}
-\textbf{A recursive formula always has two lines:}\\[4pt]
-$a_1 = \text{first term}$ \qquad $a_n = a_{n-1} + d$ \quad for $n \geq 2$\par
+\textbf{Two lines, always:}\\[4pt]
+$a_1 = \text{first term}$ \qquad $a_n = a_{n-1} + d \quad (n \ge 2)$\par
 \smallskip
-$d$ is the \textbf{common difference}: $d = a_2 - a_1 = a_3 - a_2 = \ldots$
-Check at least two pairs --- if the differences disagree, the sequence is not
-arithmetic. Reaching $a_n$ from $a_1$ takes $n - 1$ steps, not $n$.
+Find $d$ by subtracting \emph{consecutive} terms, always later minus earlier, so
+a decreasing sequence gives a negative $d$. Check the same difference twice
+before you commit: one matching gap does not make a sequence arithmetic.
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:}\quad Write the recursive formula for $6, 10, 14, 18, \ldots$ and
+\textbf{Example:}\quad Write the recursive rule for $9, 14, 19, 24, \ldots$ and
 find $a_7$.
-\step{The terms are listed, so test for a constant difference first --- that is
-what licenses a recursive arithmetic rule.}
-\step{$10 - 6 = 4$ and $14 - 10 = 4$, so $a_1 = 6$, $a_n = a_{n-1} + 4$; then
-$a_7 = 6 + 6(4) = \ans{30}$.}
+\step{Consecutive differences are constant, so this is arithmetic and the
+recursive rule is the pair (first term, constant step).}
+\step{$d = 14 - 9 = 5$, so $a_1 = 9$ and $a_n = a_{n-1} + 5$; term 7 is 6 steps
+along, giving $9 + 6(5) = \ans{39}$.}
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:}\quad Write the recursive formula for $9, 16, 23, \ldots$ and find
-$a_5$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{37}$}
+\textbf{Try it:}\quad Write the recursive rule for $40, 33, 26, \ldots$ and find
+$a_6$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{5}$}
 \end{tryitbox}
 
-\skillheading{Skill 2 --- Recursive rule from a situation (recursive-from-context)}
+\skillheading{Skill 2 --- A recursive rule from a situation}
 
 \begin{formulabox}
-\textbf{Translating a story:}\\[4pt]
-``starts at / already has'' $\rightarrow a_1$ \qquad
-``each additional / every hour after'' $\rightarrow d$\par
+\textbf{Read the context for two things:}\\[4pt]
+the \textbf{starting amount} $\rightarrow a_1$ \qquad the \textbf{repeated
+change} $\rightarrow d$\par
 \smallskip
-Carry the \textbf{units} into both lines, and say what $n$ counts (hours, chairs,
-weeks). If the starting amount happens at step 1, then step $n$ is $n-1$ additions
-later.
+Signal words: ``each,'' ``every,'' ``per'' mark the step. Gains are positive,
+losses negative. Decide what $a_1$ means \emph{before} computing: the amount
+before any change is $a_0$, not $a_1$.
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:}\quad A seedling is 12 cm tall on day 1 and grows 5 cm each day
-after that. How tall is it on day 9?
-\step{``Is 12 cm on day 1'' names $a_1$ and ``grows 5 cm each day'' names $d$, so
-the situation is arithmetic and recursive.}
-\step{$a_1 = 12$, $a_n = a_{n-1} + 5$; day 9 is $9 - 1 = 8$ growth days, so
-$a_9 = 12 + 8(5) = \ans{52}$ cm.}
+\textbf{Example:}\quad A candle is 21 cm tall and burns down 2 cm each hour. How
+tall is it after 6 hours?
+\step{``Each hour'' names a constant repeated change, so height is arithmetic
+in the number of hours, with the burn counted as negative.}
+\step{After $n$ hours the height is $21 - 2n$, so after 6 hours it is
+$21 - 12 = \ans{9}$ cm.}
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:}\quad A jar holds 30 marbles on day 1 and 7 marbles are added each
-day after that. How many marbles on day 6?\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{65}$}
+\textbf{Try it:}\quad A plant is 12 cm tall and grows 3 cm each week. How tall
+is it after 8 weeks?\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{36}$}
 \end{tryitbox}
 
-\skillheading{Skill 3 --- Reaching a later term (term-from-recursive)}
+\skillheading{Skill 3 --- Running a recursive rule forward}
 
 \begin{formulabox}
-\textbf{Rule:}\\[4pt]
-Given $a_1$ and $a_n = a_{n-1} + d$, the $n$th term is
-\[ a_n = a_1 + (n-1)d. \]
-Adding $d$ term by term always works; the $(n-1)$ shortcut is the same thing done
-all at once. A decreasing sequence simply has $d < 0$.
-\end{formulabox}
-
-\begin{examplebox}
-\textbf{Example:}\quad For $a_1 = 3$ and $a_n = a_{n-1} + 8$, find $a_{12}$.
-\step{Listing twelve terms is slow, so count the steps instead and use
-$a_1 + (n-1)d$.}
-\step{From term 1 to term 12 is $12 - 1 = 11$ steps of 8:
-$a_{12} = 3 + 11(8) = \ans{91}$.}
-\end{examplebox}
-
-\begin{tryitbox}
-\textbf{Try it:}\quad For $a_1 = 100$ and $a_n = a_{n-1} - 6$, find $a_{10}$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{46}$}
-\end{tryitbox}
-
-\skillheading{Skill 4 --- Recursive $\rightarrow$ explicit linear rule (recursive-to-explicit)}
-
-\begin{formulabox}
-\textbf{Same sequence, two views:}\\[4pt]
-recursive $a_n = a_{n-1} + d$ \quad $\Longleftrightarrow$ \quad
-explicit $a_n = dn + (a_1 - d)$\par
+\textbf{Count the steps, not the terms:}\\[4pt]
+$a_n = a_1 + (n-1)d$\par
 \smallskip
-The common difference $d$ is the \textbf{slope}, so an arithmetic sequence is a
-linear function of $n$. The intercept is $a_1 - d$, the value one step
-\emph{before} the first term.
+Between $a_1$ and $a_n$ there are $n-1$ arrows, so the step is applied $n-1$
+times. Using $n$ jumps one term too far --- that single off-by-one is the most
+common lost mark on this topic.
 \end{formulabox}
 
 \begin{examplebox}
-\textbf{Example:}\quad Write $a_1 = 5$, $a_n = a_{n-1} + 7$ as an explicit rule and
-find $a_{30}$.
-\step{The question asks for a far-out term, so convert the step rule into a linear
-function of $n$ rather than iterating.}
-\step{$a_n = 5 + (n-1)7 = 7n - 2$, so $a_{30} = 7(30) - 2 = \ans{208}$.}
+\textbf{Example:}\quad $a_1 = 4$ and $a_n = a_{n-1} + 11$. Find $a_{10}$.
+\step{Listing ten terms is slow and error-prone; count the applications of the
+step instead.}
+\step{From term 1 to term 10 is 9 steps, so
+$a_{10} = 4 + 9(11) = 4 + 99 = \ans{103}$.}
 \end{examplebox}
 
 \begin{tryitbox}
-\textbf{Try it:}\quad Write $a_1 = 11$, $a_n = a_{n-1} + 4$ explicitly and find
-$a_{25}$.\\[2pt]
-\rotatebox{180}{\footnotesize check: $\ans{107}$}
+\textbf{Try it:}\quad $a_1 = 90$ and $a_n = a_{n-1} - 6$. Find $a_{12}$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{24}$}
+\end{tryitbox}
+
+\skillheading{Skill 4 --- Recursive rule to explicit linear function}
+
+\begin{formulabox}
+\textbf{The step is the slope:}\\[4pt]
+$a_n = a_1 + (n-1)d = dn + (a_1 - d)$\par
+\smallskip
+So the slope is $d$ and the value at $n = 0$ is $a_1 - d$ --- one step
+\emph{back} from the first term. Writing $a_1$ as the intercept is the classic
+error; check it by testing $n = 1$.
+\end{formulabox}
+
+\begin{examplebox}
+\textbf{Example:}\quad $a_1 = 8$ and $a_n = a_{n-1} + 5$. Write the explicit
+rule and find $a_9$.
+\step{A constant step means the sequence is a linear function of $n$, so
+rewrite the rule as slope times $n$ plus an intercept.}
+\step{$a_n = 8 + 5(n-1) = 5n + 3$, so $a_9 = 5(9) + 3 = \ans{48}$.}
+\end{examplebox}
+
+\begin{tryitbox}
+\textbf{Try it:}\quad $a_1 = -2$ and $a_n = a_{n-1} + 7$. Write the explicit
+rule and find $a_{11}$.\\[2pt]
+\rotatebox{180}{\footnotesize check: $\ans{68}$}
 \end{tryitbox}
 
 \begin{watchoutbox}
-\textbf{(!) Watch out:} The commonest error is multiplying by $n$ instead of
-$n - 1$. The first term costs no steps: reaching term 5 takes 4 additions.
+\textbf{(!) Watch out:} A recursive rule without its first line is not a
+formula --- $a_n = a_{n-1} + 5$ fits every sequence that counts by fives. Always
+write $a_1$, and always state the domain $n \ge 2$ on the step line.
 \end{watchoutbox}
 
 \end{document}

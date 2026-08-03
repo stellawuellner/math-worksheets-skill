@@ -97,6 +97,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Sine/cosine of complementary angles | HSG-SRT.C.7 |
 | Right-triangle trig (solve sides/angles, elevation/depression) | HSG-SRT.C.8 |
 | Circles (arcs, sectors) | HSG-C.B.5 |
+| Conic sections: derive from focus/directrix, complete the square | HSG-GPE.A.1–A.3 |
 | Coordinate geometry proofs | HSG-GPE.B.4–B.7 |
 | Volume, solids, area/volume of similar figures | HSG-GMD.A.1–A.3 |
 | Modelling with geometry (density, design) | HSG-MG.A.1–A.3 |

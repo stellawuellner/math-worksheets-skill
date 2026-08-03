@@ -257,6 +257,23 @@ check("a lone zero answer stays in the expected set",
       0.0 in json_expected_nums({"id": 1, "type": "eval", "expr": "x-5",
                                  "at": {"x": 5}, "expected": 0}))
 
+# Two boxes in one segment were joined with a plain space, so \ans{40} then
+# \ans{\dfrac{3}{8}} read as the mixed number 40.375 and BOTH failed to bind.
+# A regression from today's own mixed-number fix: within one box that IS a
+# mixed number; across two boxes it never is.
+check("adjacent boxes do not merge into a mixed number",
+      _toks(r"40 | \dfrac{3}{8}") == [0.375, 40.0])
+check("a mixed number inside one box still reads as one value",
+      _toks(r"2\tfrac{3}{4}") == [2.75])
+
+# Python prints floats below 1e-4 in scientific notation, so _decimals_of
+# returned 0 and sent an ordinary small value down the integer branch — every
+# trap value under 1e-4 failed its own round trip.
+check("a value below 1e-4 rounds to itself",
+      verify.rounds_to(0.00000416667, 0.00000416667))
+check("ordinary precisions are unchanged",
+      verify.rounds_to(6.3, 6.3) and verify._decimals_of(6.3) == 1)
+
 # Claimed by two agents and FALSE both times: spacing around a binary minus is
 # said to change extraction. It does not, and the brief said so for a while.
 check("spacing around a minus does not change extraction",

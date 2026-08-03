@@ -81,7 +81,7 @@ import os
 import re
 import statistics
 import sys
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 # Teach the fix instead of dumping a traceback (mirrors compile.sh's
 # no-engine message). Naming sys.executable matters: machines routinely have
@@ -416,7 +416,15 @@ def _decimals_of(expected_raw):
     s = repr(expected_raw) if isinstance(expected_raw, float) else str(expected_raw)
     if "." in s and s.replace(".", "").replace("-", "").isdigit():
         return len(s.split(".")[-1])
-    return 0
+    # Python prints floats below 1e-4 in scientific notation, so the isdigit
+    # test above rejected "4.16667e-06" and returned 0 decimals — which then
+    # sent an ordinary small value down the INTEGER branch and failed it against
+    # itself. Every trap value under 1e-4 was rejected on its own round trip.
+    try:
+        exp = Decimal(s).as_tuple().exponent
+        return -exp if isinstance(exp, int) and exp < 0 else 0
+    except (InvalidOperation, ValueError, TypeError):
+        return 0
 
 
 def round_half_up(value, decimals):

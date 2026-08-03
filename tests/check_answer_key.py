@@ -373,7 +373,7 @@ def main():
     seg_boxes = []   # per segment: number tokens of its concatenated boxes
     seg_box_text = []  # ...and their raw text, for answers that are not numbers
     for a, b in spans:
-        content = " ".join(c for s, c in boxes if a <= s < b)
+        content = " | ".join(c for s, c in boxes if a <= s < b)
         seg_boxes.append(num_tokens(content))
         seg_box_text.append(content)
     doc_tokens = num_tokens(tex)
@@ -470,7 +470,7 @@ def main():
                     if isinstance(e.get("answer_unit"), str)]
         if strict and i - 1 < len(spans):
             a, b = spans[i - 1]
-            content = " ".join(c for s, c in boxes if a <= s < b)
+            content = " | ".join(c for s, c in boxes if a <= s < b)
         else:
             content = " ".join(c for _, c in boxes)
         for u in declared:

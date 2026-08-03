@@ -100,7 +100,16 @@ def check_task(d, task):
         # string, which means a comment could raise a false alarm and a
         # rephrasing could hide a real one. The option only matters inside
         # \addplot[...], so look there.
-        if re.search(r"\\addplot\s*\[[^\]]*only\s+marks", tex):
+        # ...and only when it is actually LAYERED ON ONE. The fault needs both
+        # halves: marks drawn over a plot the engine is sampling. Firing on the
+        # option alone flagged two recorded sheets whose only \addplot is a
+        # scatter of explicit coordinates — no function, no `samples`, and zero
+        # nullfont warnings in either log. A health check that reports a defect
+        # a document does not have costs exactly what a noisy gate always costs.
+        if re.search(r"\\addplot\s*\[[^\]]*only\s+marks", tex) and (
+                re.search(r"\\addplot\s*\[[^\]]*\]\s*\{", tex)
+                or re.search(r"\\addplot(?!\s*\[)[^;]*\{", tex)
+                or "samples" in tex):
             found.append(("defect", f"{label}: \\addplot[only marks] layered on a "
                                     f"function plot — types a stray 0.1pt in "
                                     f"nullfont on some `samples` values; use \\fill"))

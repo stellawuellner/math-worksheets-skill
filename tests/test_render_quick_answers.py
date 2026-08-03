@@ -116,6 +116,30 @@ with open(akp, "w") as f:
 check("preflight failure is exit 1 via the CLI", rqa.main(["rqa", jp, akp]) == 1)
 
 print()
+
+# ── degenerate bank (eval run) ───────────────────────────────────────────────
+# Verifying "find the inverse" by equiv on the composition passes every gate and
+# makes every expected value literally "x", so the grader's quick-reference
+# reads "x, x, x, x". The JSON is correct, the binding is correct, and the
+# printed artifact is useless — no gate saw it. Found by an eval agent.
+import contextlib as _ctx, io as _io   # noqa: E402
+print("degenerate answer bank")
+
+
+def _stderr_of(data):
+    err = _io.StringIO()
+    with _ctx.redirect_stderr(err):
+        rqa.render(data)
+    return err.getvalue()
+
+
+_deg = {"problem_count": 4, "problems": [
+    {"id": i, "type": "equiv", "expr": "f", "expected": "x"} for i in range(1, 5)]}
+_var = {"problem_count": 4, "problems": [
+    {"id": i, "type": "equiv", "expr": "f", "expected": f"{i}*x+1"} for i in range(1, 5)]}
+check("an all-identical bank warns", "WARNING" in _stderr_of(_deg))
+check("a varied bank stays silent", "WARNING" not in _stderr_of(_var))
+
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")
     sys.exit(1)

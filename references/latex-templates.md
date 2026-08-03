@@ -281,8 +281,15 @@ $3$  & \\[0.5cm]\hline
 ### Completed graph (answer key — plot a function)
 ```latex
 \addplot[blue, thick, domain=-1:5, samples=100] {x^2 - 4*x + 3};
-\addplot[only marks, mark=*, mark size=2.5pt, red] coordinates {(1,0)(3,0)};   % x-intercepts
-\addplot[only marks, mark=diamond*, mark size=3pt, green!60!black] coordinates {(2,-1)};  % vertex
+% Mark points with \fill, NOT a second \addplot[only marks]. Layering a marks
+% plot on a function plot made the engine typeset a stray 0.1pt in nullfont —
+% five "Missing character" faults, which check_log treats as fatal. The trigger
+% is erratic in `samples` (60 and 100 fail; 25, 40 and 200 pass), so it survives
+% casual testing and then fails someone else's sheet. Found by an eval agent who
+% bisected it; \fill has none of that behaviour.
+\fill[red] (axis cs:1,0) circle (1.7pt);   % x-intercepts
+\fill[red] (axis cs:3,0) circle (1.7pt);
+\fill[green!60!black] (axis cs:2,-1) circle (2pt);   % vertex
 \draw[dashed, gray] (axis cs:2,-6) -- (axis cs:2,8) node[above] {$x=2$};
 ```
 

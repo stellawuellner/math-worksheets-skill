@@ -96,6 +96,20 @@ def render(data):
     if n == 0:
         raise ValueError("no problems in the verify JSON — nothing to bank")
     entries = [render_entry(by_id.get(i, [])) for i in range(1, n + 1)]
+    # A bank of identical answers is a useless bank. Verifying "find the
+    # inverse" by equiv on the composition passes every gate and makes every
+    # expected value literally "x", so the grader's quick-reference reads
+    # "x, x, x, x, ...". No gate catches it — the JSON is correct, the binding
+    # is correct, and the printed artifact is worthless. Found by an eval agent
+    # who noticed it and re-encoded as solve-for-y to get the real formulas.
+    real = [e for e in entries if e != "---"]
+    if len(real) >= 4 and len(set(real)) == 1:
+        print(f"render_quick_answers: WARNING — all {len(real)} banked answers "
+              f"are {real[0]!r}. The bank is meant to let a grader scan the "
+              f"answers; identical entries mean the verification is proving a "
+              f"tautology (e.g. equiv on a composition) rather than the answer "
+              f"the student writes. Re-encode so 'expected' holds the real "
+              f"result.", file=sys.stderr)
     cols = column_count(entries)
     lines = [
         "% GENERATED every build by scripts/render_quick_answers.py from the",

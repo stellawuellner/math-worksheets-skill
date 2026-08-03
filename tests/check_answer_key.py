@@ -479,6 +479,21 @@ def main():
             if strict:
                 if any_match(v, box_toks):
                     continue
+                # A negative answer whose magnitude IS boxed is almost always
+                # a detached sign: "k = - 2" tokenises as +2, because a minus
+                # with a space after it is indistinguishable from the
+                # subtraction in "3|x-5| - 2" without parsing the expression.
+                # Both readings are defensible, so the checker cannot resolve
+                # it — but the generic message ("the boxed value is wrong")
+                # sends the author looking for an arithmetic slip that is not
+                # there. Say what is actually different.
+                if v < 0 and any_match(abs(v), box_toks):
+                    hard.append((i, v, f"is boxed as {abs(v):g} without its "
+                                 f"sign. If the sign is printed, put it against "
+                                 f"the digit — \\ans{{-{abs(v):g}}}, not "
+                                 f"\\ans{{- {abs(v):g}}} — a detached minus "
+                                 f"cannot be told from a subtraction"))
+                    continue
                 # diagnose, don't just fail: was the right number nearby?
                 if any_match(v, num_tokens(seg)):
                     hard.append((i, v, "is in the worked steps but NOT in the "

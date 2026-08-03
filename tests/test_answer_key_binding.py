@@ -195,6 +195,39 @@ check("and still accepts the correct negative",
       binds(_NUMERIC, r"\problem{value $\ans{-0.33}$}"))
 
 print()
+print("A detached minus sign:")
+# "k = - 2" tokenises as +2, because a minus with a space after it cannot be
+# told from the subtraction in "3|x-5| - 2" without parsing the expression.
+# Both readings are defensible, so the checker cannot resolve it — but the
+# generic message ("the boxed value is wrong") sent an author looking for an
+# arithmetic slip that was not there. It now says what is actually different.
+_NEG = [{"id": 1, "type": "eval", "expr": "a", "at": {"a": -2}, "expected": -2}]
+
+
+def bind_msg(problems, body):
+    d = tempfile.mkdtemp()
+    json.dump({"topic": "p", "problem_count": 1, "problems": problems},
+              open(os.path.join(d, "v.json"), "w"))
+    open(os.path.join(d, "ak.tex"), "w").write(
+        _HEAD + body + "\n" + r"\end{document}" + "\n")
+    r = subprocess.run(
+        [sys.executable, CHECKER, os.path.join(d, "ak.tex"),
+         os.path.join(d, "v.json")], capture_output=True, text=True)
+    return r.returncode, r.stdout
+
+
+code, out = bind_msg(_NEG, r"\problem{$k = \ans{- 2}$}")
+check("a detached sign still fails", code == 1)
+check("and is diagnosed as a detached sign, not a wrong value",
+      "without its sign" in out and "against the digit" in out)
+check("an attached sign binds",
+      bind_msg(_NEG, r"\problem{$k = \ans{-2}$}")[0] == 0)
+# The diagnosis must not swallow a genuinely wrong answer.
+code, out = bind_msg(_NEG, r"\problem{$k = \ans{-5}$}")
+check("a genuinely wrong value is still transcription drift",
+      code == 1 and "without its sign" not in out)
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} binding test(s) failed")
     sys.exit(1)

@@ -76,6 +76,7 @@ across the worksheet; `verify.py` reports coverage and flags ramp drops.
 | Compound events, tree diagrams | 7.SP.C.8 |
 | Sampling & inference | 7.SP.A |
 | Bivariate data, scatter plots | 8.SP.A.1 |
+| Two-way tables, categorical association | 8.SP.A.4 |
 
 ## High school (CCSS-HS)
 

@@ -724,6 +724,15 @@ _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
                      # so, and compressed the sheet instead. That is exactly the
                      # trade this project decided against.
                      "workspace_cm",
+                     # THE SAME BUG, LEFT BEHIND. page_budget.py charges a word
+                     # problem 1.2cm of stem instead of 0.6cm, and its own tests
+                     # exercise the field — but the schema rejected it, so the
+                     # one lever built for prose-heavy stems was unreachable and
+                     # workspace_cm was the only way to say anything. Found when
+                     # an author read both sources and noticed the field could
+                     # never arrive. Fixing workspace_cm and not its neighbour is
+                     # what made this survive a second time.
+                     "word_problem",
                      # the declarative figure spec render_figures.py draws from
                      "figure",
                      # ── facet/misconception fields (grouped so schema merges
@@ -1168,6 +1177,13 @@ def check_schema(p):
         if not 0 < ws <= 24:
             raise VerifyInputError(
                 f"'workspace_cm' must be between 0 and 24 cm, got {ws}")
+    # word_problem is a flag, and the budget branches on truthiness — so a
+    # string would silently charge the longer stem for "no" as readily as "yes".
+    if "word_problem" in p and not isinstance(p["word_problem"], bool):
+        raise VerifyInputError(
+            f"'word_problem' must be true or false, got {p['word_problem']!r} "
+            f"— it flags a stem whose prose wraps, and the page budget charges "
+            f"1.2cm of stem instead of 0.6cm for it")
     # "role" tags a study-guide try-it and is position-matched against
     # tryitbox segments by check_answer_key.py — any other value would bind
     # to nothing, so it is a schema error, not a free string.
@@ -1464,6 +1480,22 @@ def check_problem(p, ptype):
 
         rounded_str = re.sub(r"\d+(?:\.\d+)?", round_literal, p["expr"])
         result = sympy.nsimplify(sympy.N(safe_parse(rounded_str)))
+        # Rounding EVERY literal is the definition of front-end estimation, and
+        # on a division it can round the divisor away: "632/8 @ hundred" becomes
+        # 600/0, and the report said "→ zoo (expected 75)" without ever
+        # mentioning that the 8 had been zeroed. The compatible-numbers estimate
+        # a grade 4-5 sheet actually teaches rounds the DIVIDEND to something the
+        # divisor divides — which is two steps, not one, so say that instead of
+        # printing an infinity.
+        if result.has(sympy.zoo, sympy.nan, sympy.oo, -sympy.oo):
+            return ("FAIL",
+                    f"estimate({p['expr']} @ {place} → {rounded_str}) is "
+                    f"undefined: rounding to the nearest {place} took a divisor "
+                    f"to zero. Front-end estimation rounds every number in the "
+                    f"expression. For a compatible-numbers estimate, write it as "
+                    f"two entries — an 'estimate' that rounds the dividend, then "
+                    f"an 'eval' that divides by the exact divisor — which is "
+                    f"also the two steps the answer key shows.")
         expected = parse_value(p["expected"])
         ok = sym_equal(result, expected)
         return ("PASS" if ok else "FAIL",

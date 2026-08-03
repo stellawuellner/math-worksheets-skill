@@ -287,11 +287,44 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
         shift = extra_shift if extra_shift else (2.0 if thin else 0.0)
         return _node(_anchor(*nu), pos, text, thin, shift_dir=nu, shift_pt=shift)
 
-    # fixed side at 0.55: high enough to clear both the given-angle arc label
-    # at P0 and the "?" arc label at W2 (which sits up-left of W2, right where
-    # the reference figure's 0.35 anchor lands); swing labels per the
-    # reference figure (0.45 solid, 0.30 + 3pt dashed)
-    lines.append(_side_node(p0, fp, 0.55, w1,
+    # THE FIXED SIDE'S LABEL POSITION IS COMPUTED, NOT CHOSEN.
+    #
+    # It used to sit at a flat 0.55, picked because it cleared the arc labels
+    # in the reference figure. It does not clear them in every valid triangle:
+    # where W2 lands on the base, and where 0.55 of P0->F lands, both move with
+    # the givens, and for some of them the "?" arc at W2 prints on top of
+    # "b = N". An author probing ten SSA triangles found one collision, caught
+    # only by check_overprint — the LaTeX log says nothing about two things
+    # drawn in the same place. Their only lever was to change the givens, on a
+    # topic whose entire point is this figure.
+    #
+    # A pic label's position is not a mystery: `angle radius=7mm,
+    # angle eccentricity=1.6` puts it 1.12cm from the vertex along the
+    # bisector of the two rays. So the arc labels can be located and the side
+    # label placed where there is actually room.
+    def _arc_label_pos(vertex, ray_a, ray_b, radius_cm=0.7 * 1.6):
+        ua = _unitv(ray_a[0] - vertex[0], ray_a[1] - vertex[1])
+        ub = _unitv(ray_b[0] - vertex[0], ray_b[1] - vertex[1])
+        bis = _unitv(ua[0] + ub[0], ua[1] + ub[1])
+        return (vertex[0] + bis[0] * radius_cm, vertex[1] + bis[1] * radius_cm)
+
+    crowd = [_arc_label_pos(p0, w1, fp)]              # the given angle, always drawn
+    if w_ang in solve_fors:
+        crowd.append(_arc_label_pos(w1, fp, p0))
+        crowd.append(_arc_label_pos(w2, fp, p0))
+    if f_ang in solve_fors:
+        crowd.append(_arc_label_pos(fp, p0, w1))
+
+    def _clearance(frac):
+        pos = (p0[0] + frac * (fp[0] - p0[0]), p0[1] + frac * (fp[1] - p0[1]))
+        return min(math.hypot(pos[0] - c[0], pos[1] - c[1]) for c in crowd)
+
+    # 0.55 stays FIRST so every figure that was already clean is unchanged —
+    # this only moves the label on the geometries where it was landing on
+    # something. Candidates walk outward from there along the same side.
+    fixed_frac = max((0.55, 0.65, 0.45, 0.72, 0.38, 0.80, 0.30),
+                     key=lambda f: (_clearance(f) >= 1.0, _clearance(f)))
+    lines.append(_side_node(p0, fp, fixed_frac, w1,
                             "$" + other + " = " + _disp(raw[other]) + "$"))
     swing_text = "$" + opp + " = " + _disp(raw[opp]) + "$"
     lines.append(_side_node(w1, fp, 0.45, p0, swing_text))

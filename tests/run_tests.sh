@@ -345,6 +345,20 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ test_figure_scope.py (valued figure vs blank workspace)"
 
+# ── SSA figure labels (tests/test_ssa_figure_labels.py) ─────────────────────
+# The swing figure placed its fixed-side label at a flat 0.55, chosen against
+# the reference drawing. Seven of twelve valid parameterisations printed the
+# "?" arc on top of "b = N" — invisible to the LaTeX log, caught only by
+# check_overprint, and the author's only lever was to change the givens.
+echo
+output=$("$PYTHON" "$SCRIPT_DIR/test_ssa_figure_labels.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_ssa_figure_labels.py failed"
+  echo "$output" | sed 's/^/     /'
+  exit 1
+fi
+echo "✅ test_ssa_figure_labels.py (every accepted triangle is readable)"
+
 # ── Template verdicts are separate faults (check_template_use.py) ────────────
 # A 60-character \skillheading was reported under the headline "hand-rolled
 # shell" with twelve lines telling the author to start the document with the

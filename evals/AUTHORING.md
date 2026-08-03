@@ -77,6 +77,11 @@ now degrades the artifact.
   escaped for you now. Write the description in plain English.
 - **Stem length no longer breaks the page gate.** `check_log.py` reads a wrapped
   log. Name files for clarity, not brevity.
+- **`word_problem: true` is a legal field now.** It tells the page budget the
+  stem is prose that wraps, charging 1.2cm instead of 0.6cm. It had always been
+  read by the budget and rejected by the schema, so the one lever built for
+  prose-heavy stems was unreachable — use it before reaching for `workspace_cm`
+  when the extra height is stem rather than writing room.
 - **`workspace_cm` is a legal field** (0 < cm ≤ 24). If a problem genuinely
   needs more room than its type's default — displayed student work, a
   hand-built figure, a table to fill in — declare it and the page budget will
@@ -138,11 +143,17 @@ agent a rebuild.
 - **Multiple verify entries may share one problem `id`** — the right encoding
   for a multi-part problem. Every entry for that id must repeat an identical
   `difficulty`.
-- **Spacing around a minus does not matter.** `"t**4 - 3*t**2"` and
-  `"t**4-3*t**2"` extract identically, and so does a spaced boxed answer.
-  (An earlier version of this brief claimed otherwise, from an agent report
-  nobody had tested. Both claims were checked directly before this line was
-  rewritten.)
+- **Spacing around a SUBTRACTION does not matter** — `"t**4 - 3*t**2"` and
+  `"t**4-3*t**2"` extract identically. **Spacing around a SIGN does.** A
+  negative answer must print its minus against the digit: `\ans{-2}`, never
+  `\ans{- 2}`, because a detached minus is indistinguishable from the
+  subtraction in `3|x-5| - 2` without parsing the expression, and the checker
+  reads `- 2` as $+2$. If you hit it the message now names it as a detached
+  sign rather than a wrong value, but printing the sign against the digit is
+  better typography anyway.
+  (Both halves of this were checked directly. An earlier version of this brief
+  claimed spacing never mattered, from an agent report nobody had tested; that
+  claim was right about subtraction and wrong about signs.)
 - **Fractions in boxed answers now normalize correctly** — `\frac`, `\dfrac`
   and `\tfrac` all work, with or without a leading `\,`, and a two-digit
   numerator is safe. (Earlier guidance here said the opposite and was wrong: the

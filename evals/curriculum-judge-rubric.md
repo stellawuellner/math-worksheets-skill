@@ -26,6 +26,9 @@ Give the judge only:
 5. Inspect every page at normal reading size for clipping, overlap, missing
    glyphs, tiny type, poor page flow, and inadequate work or answer space.
 6. Apply the hard-fail rules. If none applies, score all eight dimensions.
+7. Record every objective defect under `errors`, and capture important
+   evidence, risks, or unusually strong/weak patterns under
+   `critical_observations`. Identify the artifact and page/problem when known.
 
 ## Hard failures
 
@@ -60,4 +63,10 @@ material revision needed; 3 good and acceptance-ready; 4 excellent.
 
 Accept only when there are no hard failures, every dimension scores at least
 3, and the total is at least 27/32. Return the structured verdict described in
-the manifest's `judge_protocol.verdict_schema`.
+the manifest's `judge_protocol.verdict_schema`. Do not copy a supplied total or
+ACCEPT label: the scoring harness recalculates both from the dimension scores
+and combined machine/judge hard failures.
+
+Run `scripts/score_eval_run.py prepare` before judgment and
+`scripts/score_eval_run.py aggregate --require-complete` afterward. The full
+artifact layout and commands are in `evals/scoring-harness.md`.

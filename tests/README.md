@@ -108,6 +108,20 @@ requires no hard failure, at least 3/4 on every quality dimension, and at least
 500 distinct focus strings and normalized-unique prompts, the 50-per-band
 distribution, artifact contract, all 26 verifier targets, and the judge threshold.
 
+Use `scripts/score_eval_run.py` to grade a retained run. `prepare` performs
+deterministic artifact/PDF/gate checks and renders blind judge packets;
+`aggregate` validates the completed verdicts, recalculates every score and
+verdict, and emits JSON, Markdown, CSV, and JSONL issue reports. The canonical
+download layout and commands are in `evals/scoring-harness.md`.
+
+After independent scoring, use `scripts/review_eval_run.py` to prepare one
+diagnostic packet per case for the author system. Its response schema requires
+evidence, root causes, concrete changes, and regression tests while declaring
+the official score immutable. `aggregate` folds shared issue keys into a
+deduplicated backlog. The complete protocol is in `evals/author-review.md`, and
+`.github/workflows/eval-results.yml` validates submitted verdicts, reports, and
+author reviews.
+
 **SkillsBench** — the community benchmark for agent skills
 (https://github.com/benchflow-ai/skillsbench, paper: arXiv:2602.12670), built
 on the BenchFlow harness with uniform skill injection and sandboxed trials.

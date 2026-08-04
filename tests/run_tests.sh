@@ -45,6 +45,20 @@ fi
 curriculum_eval_ran=1
 
 echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_scoring_harness.py"; then
+  echo "❌ test_scoring_harness.py failed"
+  exit 1
+fi
+scoring_harness_ran=1
+
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_author_review.py"; then
+  echo "❌ test_author_review.py failed"
+  exit 1
+fi
+author_review_ran=1
+
+echo
 if ! "$PYTHON" "$SCRIPT_DIR/test_page_budget.py"; then
   echo "❌ test_page_budget.py failed"
   exit 1
@@ -1308,4 +1322,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector"

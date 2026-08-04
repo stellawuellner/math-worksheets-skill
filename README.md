@@ -146,6 +146,8 @@ math-worksheets/
 │   ├── page_budget.py               ← page budget computed from the problem set (paper-aware)
 │   ├── find_python.sh               ← shared finder: first python3 that can import sympy
 │   ├── run_verify.sh                ← gates compilation on SymPy pass
+│   ├── review_eval_run.py           ← author diagnosis packets and improvement backlog
+│   ├── score_eval_run.py            ← PDF evidence, judge packets, and run scoring
 │   └── verify.py                    ← the fixed, audited verifier (26 check types; --schema)
 ├── templates/
 │   ├── worksheet-preamble.tex       ← the \input-able preamble (headers, boxes, \problem)
@@ -160,11 +162,15 @@ math-worksheets/
 │   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, and coverage map
 │   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus acceptance prompts
 │   ├── curriculum-judge-rubric.md    ← human/independent-agent acceptance procedure
+│   ├── author-review.md              ← scored-run feedback loop for the author system
+│   ├── scoring-harness.md            ← retained-run layout and two-stage grading workflow
 │   └── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
 ├── tests/
 │   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
 │   ├── test_eval_suite.py            ← eval schema, coverage, balance, and smoke-sync contract
 │   ├── test_curriculum_eval_suite.py ← 500-prompt uniqueness, distribution, and judge contract
+│   ├── test_author_review.py         ← author packets, response schema, and backlog contract
+│   ├── test_scoring_harness.py       ← PDF evidence, verdict validation, and aggregation contract
 │   ├── test_page_budget.py           ← page-budget cost model and CLI contract
 │   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
 │   ├── test_visual_environment.py    ← the guard deciding whether baselines apply here
@@ -176,8 +182,9 @@ math-worksheets/
 │   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
 │   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
 │   └── fixtures/
-└── .github/workflows/tests.yml       ← CI: both suites everywhere, plus the
-                                        visual gate on a pinned TeX runner
+└── .github/workflows/
+    ├── tests.yml                     ← regression and pinned visual gates
+    └── eval-results.yml              ← scored-run intake and author-review packets
 ```
 
 ## Testing
@@ -187,11 +194,13 @@ bash tests/run_tests.sh                    # contract suite (105 fixtures/checks
 bash tests/coverage.sh                     # every suite under coverage, floor 90%
 python3 tests/visual_regression.py         # rendered pages vs approved baselines
 python3 tests/visual_regression.py --approve   # re-record after an intended design change
+python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
+python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability- and curriculum-eval integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, and prove the 500 curriculum prompts remain unique and evenly distributed. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability-, curriculum-, scoring-harness-, and author-review integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
-`coverage.sh` runs those plus **15 Python suites** under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+`coverage.sh` runs those plus the Python suites under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
 **Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
 

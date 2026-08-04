@@ -964,6 +964,32 @@ def build_suite():
                 "verification_json", "gate_logs", "latency", "token_usage", "cost",
             ],
         },
+        "scoring_harness": {
+            "script": "scripts/score_eval_run.py",
+            "documentation": "evals/scoring-harness.md",
+            "stages": ["prepare", "independent_judgment", "aggregate"],
+            "machine_outputs": [
+                "machine findings", "rendered PDF pages", "judge packets",
+                "validated task scores", "run summary", "issue ledger",
+            ],
+            "trust_boundary": (
+                "Deterministic checks collect structural evidence and enforce score "
+                "arithmetic; a trained human or independent vision agent judges math, "
+                "pedagogy, curriculum alignment, and rendered-page quality."
+            ),
+        },
+        "author_review": {
+            "script": "scripts/review_eval_run.py",
+            "documentation": "evals/author-review.md",
+            "stages": ["prepare", "author_system_diagnosis", "aggregate"],
+            "response_per_task": True,
+            "official_score_is_immutable": True,
+            "github_workflow": ".github/workflows/eval-results.yml",
+            "outputs": [
+                "validated case reviews", "root-cause category counts",
+                "deduplicated improvement backlog", "GitHub issue ledger",
+            ],
+        },
         "distribution": {
             "tasks_per_band": dict(sorted(band_counts.items())),
             "tasks_per_topic_family": 5,
@@ -1026,6 +1052,20 @@ def build_suite():
                 "total_score": "integer 0..32",
                 "manual_items_reviewed": "integer",
                 "incorrect_or_ambiguous_items": ["problem identifier and explanation"],
+                "errors": [
+                    {
+                        "description": "objective defect with evidence",
+                        "severity": "critical, major, or minor",
+                        "artifact": "artifact role",
+                        "location": "page, problem, or section",
+                    }
+                ],
+                "critical_observations": [
+                    {
+                        "description": "important evidence-backed observation",
+                        "category": "math, pedagogy, layout, accessibility, or instruction",
+                    }
+                ],
                 "artifact_findings": ["concise evidence-backed note"],
                 "rationale": "concise acceptance rationale",
             },

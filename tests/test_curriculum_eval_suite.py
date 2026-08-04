@@ -69,6 +69,17 @@ check("manifest contains exactly 500 tasks", len(tasks) == 500)
 check("ids are contiguous curr-001..curr-500",
       task_ids == [f"curr-{i:03d}" for i in range(1, 501)])
 check("standalone judge rubric exists", os.path.isfile(RUBRIC_PATH))
+check("scoring harness is declared",
+      manifest.get("scoring_harness", {}).get("script") == "scripts/score_eval_run.py"
+      and manifest.get("scoring_harness", {}).get("stages") == [
+          "prepare", "independent_judgment", "aggregate",
+      ])
+check("post-eval author review is declared",
+      manifest.get("author_review", {}).get("script") == "scripts/review_eval_run.py"
+      and manifest.get("author_review", {}).get("stages") == [
+          "prepare", "author_system_diagnosis", "aggregate",
+      ]
+      and manifest.get("author_review", {}).get("official_score_is_immutable") is True)
 
 print("Prompt and curriculum uniqueness:")
 names = [task.get("curriculum_key") for task in tasks]
@@ -160,7 +171,7 @@ check("acceptance threshold is explicit",
 check("structured judge verdict schema is present",
       set(judge.get("verdict_schema", {})) >= {
           "task_id", "verdict", "hard_failures", "dimension_scores",
-          "total_score", "rationale",
+          "total_score", "errors", "critical_observations", "rationale",
       })
 
 if FAILS:

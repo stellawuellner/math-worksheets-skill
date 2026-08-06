@@ -798,7 +798,21 @@ _UNIVERSAL_FIELDS = {"id", "type", "note", "standard", "difficulty", "bloom",
                      # "unit": "ft" is still rejected there. answer_unit is
                      # enforced against the printed documents by
                      # tests/check_answer_key.py and tests/check_answer_line.py.
-                     "answer_unit"}
+                     "answer_unit",
+
+                     # "slot": the NAME of the response this entry covers, on a
+                     # problem that asks for more than one — "AC", "the ones
+                     # digit", "(b)". Read by no check: it is a pure label,
+                     # printed by render_quick_answers so the Quick Answers bank
+                     # can say which value is which. Without it the bank joins
+                     # values in JSON array order, and a reviewed case asking
+                     # for "AC and BD" printed "2. 2.83, 8.49" with BD first —
+                     # correct numbers a grader cannot assign to the questions.
+                     # Now that every printed response needs its own entry
+                     # (tests/check_answer_slots.py), multi-entry ids are the
+                     # normal case rather than the exception, so the labels earn
+                     # their keep.
+                     "slot"}
 
 # One canonical, WORKING example per type — printed by --schema and executed
 # by tests/test_pipeline_fixes.py (each must pass check_schema + check_problem),
@@ -853,12 +867,22 @@ _RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
 # greppable and a tag can never hide a second value in punctuation.
 _FACET_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
-# Traps only make sense on a type whose expected is one comparable scalar —
-# there is nothing to be "distinguishable from" on a root LIST or a manual
-# review flag.
+# Traps on a type whose expected is one comparable scalar: the wrong method
+# yields one number, and "distinguishable" means that number is rejected.
 _TRAP_TYPES = {"approx", "eval", "triangle", "distance", "slope",
                "polygon_area", "stats", "probability", "limit", "series",
                "definite_integral", "estimate", "read_data"}
+
+# Traps on a type whose expected is a SOLUTION SET. These were excluded on the
+# reasoning that "there is nothing to be distinguishable from on a root LIST" —
+# which is exactly backwards for the misconception these topics teach. Dropping
+# a root IS the error: squaring away a solution, cancelling a factor, taking
+# only the positive square root. A reviewed case whose declared focus was
+# "diagnosing incomplete root sets" could not declare a single one of its six
+# planted wrong answers, because every one was a set. The trap carries "exprs"
+# (the roots the wrong method produces) instead of a scalar "expr", and is
+# distinguishable when that set differs from the expected set.
+_SET_TRAP_TYPES = {"solve", "zeros", "solve_interval"}
 
 
 def validate_traps(p, ptype):
@@ -873,11 +897,12 @@ def validate_traps(p, ptype):
     traps = p.get("traps")
     if traps is None:
         return
-    if ptype not in _TRAP_TYPES:
+    is_set = ptype in _SET_TRAP_TYPES
+    if ptype not in _TRAP_TYPES and not is_set:
         raise VerifyInputError(
-            f"type {ptype!r} cannot carry traps — a trap needs a single "
-            f"comparable answer to be distinguishable from (allowed types: "
-            f"{' '.join(sorted(_TRAP_TYPES))})")
+            f"type {ptype!r} cannot carry traps — a trap needs a comparable "
+            f"answer to be distinguishable from (allowed types: "
+            f"{' '.join(sorted(_TRAP_TYPES | _SET_TRAP_TYPES))})")
     if not isinstance(traps, list) or not traps:
         raise VerifyInputError(
             '"traps" must be a non-empty list of objects like '
@@ -885,15 +910,35 @@ def validate_traps(p, ptype):
     for t in traps:
         if not isinstance(t, dict):
             raise VerifyInputError("each trap must be a JSON object")
-        unknown = set(t) - {"desc", "expr", "value"}
+        unknown = set(t) - {"desc", "expr", "exprs", "value"}
         if unknown:
             raise VerifyInputError(
                 f"trap has unknown field(s) {sorted(unknown)} — a trap is "
-                '{"desc": str, "expr": str, optional "value": number}')
+                '{"desc": str, "expr": str (or "exprs": [str] on a '
+                'solution-set type), optional "value"}')
         if not isinstance(t.get("desc"), str) or not t["desc"].strip():
             raise VerifyInputError(
                 "trap 'desc' must be a non-empty string naming the "
                 "misconception (e.g. \"used cos instead of sin\")")
+        if is_set:
+            if "exprs" not in t or "expr" in t:
+                raise VerifyInputError(
+                    f"a trap on {ptype!r} declares 'exprs' — the list of "
+                    "roots the wrong method produces (e.g. [\"3\"] where the "
+                    "correct set is [3, -3]) — and never a scalar 'expr'. The "
+                    "answer is a set, so the wrong answer is a set too.")
+            if "exprs" in t:
+                if (not isinstance(t["exprs"], list)
+                        or not all(isinstance(x, str) for x in t["exprs"])):
+                    raise VerifyInputError(
+                        "trap 'exprs' must be a list of expression strings, "
+                        "one per root the wrong method yields (an empty list "
+                        'means the error is "found no solutions")')
+                if "value" in t and not isinstance(t["value"], list):
+                    raise VerifyInputError(
+                        "on a solution-set trap, 'value' is the wrong set as "
+                        "printed in the planted work, so it must be a list")
+                continue
         if not isinstance(t.get("expr"), str):
             raise VerifyInputError(
                 "trap 'expr' must be an expression string — the wrong-method "
@@ -903,6 +948,77 @@ def validate_traps(p, ptype):
             raise VerifyInputError(
                 "trap 'value' must be a plain number — the wrong result as "
                 "printed in the worksheet's planted work")
+
+
+def _root_set(values, what, pid, desc):
+    """Parse a list of root expressions into a comparable set of sympy values."""
+    out = set()
+    for v in values:
+        try:
+            r = safe_parse(str(v))
+        except VerifyInputError as e:
+            raise VerifyInputError(
+                f"problem {pid} trap {desc!r}: bad {what} entry {v!r} — {e}")
+        if r.free_symbols:
+            raise VerifyInputError(
+                f"problem {pid} trap {desc!r}: {what} entry {v!r} must be "
+                f"fully numeric (found {sorted(map(str, r.free_symbols))})")
+        out.add(sympy.nsimplify(r))
+    return out
+
+
+def _check_set_traps(p, pid, expected_raw):
+    """Distinguishability for solution-set answers.
+
+    The scalar path asks "would this problem's own check accept the wrong
+    number?". Here the wrong ANSWER is a set, and the check accepts exactly one
+    set, so a trap is distinguishable when its set differs from the expected
+    one. Dropping a root, gaining an extraneous root and finding nothing at all
+    are all expressible, which is the point — those are the three errors these
+    topics exist to teach.
+    """
+    if not isinstance(expected_raw, list):
+        return (False,
+                f"problem {pid} declares solution-set traps but its 'expected' "
+                f"({expected_raw!r}) is not a list of roots")
+    try:
+        want = _root_set(expected_raw, "expected", pid, "<expected>")
+    except VerifyInputError as e:
+        return (False, str(e))
+    lines = []
+    for t in p["traps"]:
+        desc = t["desc"]
+        try:
+            got = _root_set(t["exprs"], "exprs", pid, desc)
+        except VerifyInputError as e:
+            return (False, str(e))
+        if got == want:
+            return (False,
+                    f"problem {pid} trap {desc!r} produces the same solution "
+                    f"set as the correct answer ({sorted(map(str, want))}) — "
+                    "this problem cannot distinguish the error it targets; "
+                    "change the givens.")
+        if "value" in t:
+            try:
+                printed = _root_set(t["value"], "value", pid, desc)
+            except VerifyInputError as e:
+                return (False, str(e))
+            if printed != got:
+                return (False,
+                        f"problem {pid} trap {desc!r}: the printed planted set "
+                        f"{t['value']} does not match the declared wrong-method "
+                        f"roots {t['exprs']} — derive the printed set from "
+                        "exprs.")
+        missing = sorted(map(str, want - got))
+        extra = sorted(map(str, got - want))
+        how = []
+        if missing:
+            how.append(f"drops {', '.join(missing)}")
+        if extra:
+            how.append(f"adds {', '.join(extra)}")
+        lines.append(f"trap {desc!r}: {' and '.join(how)} "
+                     "(rejected by the problem's own check)")
+    return (True, lines)
 
 
 def check_traps(p):
@@ -921,6 +1037,8 @@ def check_traps(p):
     """
     pid = p.get("id")
     expected_raw = p.get("expected")
+    if p.get("type") in _SET_TRAP_TYPES:
+        return _check_set_traps(p, pid, expected_raw)
     try:
         expected = parse_value(expected_raw)
     except VerifyInputError:
@@ -2236,6 +2354,7 @@ def print_schema(mode="table"):
             "universal_optional": universal,
             "top_level_optional": ["facets", "format", "subtitle"],
             "traps_allowed_types": sorted(_TRAP_TYPES),
+            "traps_allowed_set_types": sorted(_SET_TRAP_TYPES),
             "functions": sorted(_FUNCS),
             "constants": sorted(_CONSTS),
             "variables": sorted(_VARS),
@@ -2256,10 +2375,16 @@ def print_schema(mode="table"):
           'tests/check_facet_coverage.py), "format" ("drill" waives the '
           "interleave check).")
     print('"traps" (universal): [{"desc": str, "expr": wrong-method '
-          'expression, optional "value": printed wrong number}] — allowed '
-          "only on types with a single comparable answer "
-          f"({', '.join(sorted(_TRAP_TYPES))}); each trap must compute to a "
-          "value the problem's own check rejects.")
+          'expression, optional "value": printed wrong number}] on types with '
+          "a single comparable answer "
+          f"({', '.join(sorted(_TRAP_TYPES))}) — each must compute to a value "
+          "the problem's own check REJECTS.")
+    print('"traps" on a solution-set type '
+          f"({', '.join(sorted(_SET_TRAP_TYPES))}): "
+          '[{"desc": str, "exprs": [the roots the wrong method yields], '
+          'optional "value": that set as printed}] — distinguishable when the '
+          "set differs from expected, so a dropped root, an extraneous root "
+          "and finding nothing at all are all declarable.")
     print(f"Allowed functions: {' '.join(sorted(_FUNCS))}")
     print(f"Allowed constants: {' '.join(sorted(_CONSTS))}")
     print(f"Allowed variables: {' '.join(sorted(_VARS))}")

@@ -59,6 +59,33 @@ BLANK_INK_FRACTION = 0.0005
 LOW_INK_FRACTION = 0.0015
 EDGE_INK_FRACTION = 0.02
 
+# build.sh names its outputs `<prefix>_<role><variant>_<stem>.pdf`; `record`
+# renames them to canonical roles, so a delivery message and a retained
+# artifact refer to the same file under two different names.
+BUILD_ROLE_TAGS = {
+    "student_worksheet": "ws",
+    "step_by_step_answer_key": "ak",
+    "study_guide": "ss",
+}
+TAG_TO_ROLE = {tag: role for role, tag in BUILD_ROLE_TAGS.items()}
+ROLE_PHRASES = {
+    "student_worksheet": ("worksheet",),
+    "step_by_step_answer_key": ("answer key", "answer-key", "answer_key"),
+    "study_guide": ("study guide", "study-guide", "skills summary", "skills-summary"),
+}
+# Verdict fields whose prose can quote artifact values.
+CLAIM_FIELDS = (
+    "hard_failures",
+    "incorrect_or_ambiguous_items",
+    "errors",
+    "critical_observations",
+    "artifact_findings",
+    "rationale",
+)
+# A claim in one of these fields is what a REJECT rests on, so an unsupported
+# value there blocks the verdict from being counted without adjudication.
+BLOCKING_CLAIM_FIELDS = ("hard_failures",)
+
 
 class HarnessError(RuntimeError):
     """A harness/configuration failure, distinct from a rejected eval task."""
@@ -396,7 +423,18 @@ def resolve_artifacts(case_dir, case_record):
         surfaced = local_record.get("surfaced_artifacts")
     metrics = dict(local_record.get("metrics", {}))
     metrics.update(case_record.get("metrics", {}))
-    return resolved, ambiguities, surfaced, metrics
+    originals = {}
+    for source in (local_record, case_record):
+        declared = source.get("original_filenames") or {}
+        if isinstance(declared, dict):
+            for role, names in declared.items():
+                if isinstance(names, str):
+                    names = [names]
+                originals.setdefault(role, [])
+                originals[role].extend(
+                    name for name in names if name not in originals[role]
+                )
+    return resolved, ambiguities, surfaced, metrics, originals
 
 
 def find_case_directory(run_dir, task_id):
@@ -499,18 +537,303 @@ def extract_problem_numbers(text):
     return sorted(set(values))
 
 
-def response_surfaces(response, role, path):
-    lower = response.lower()
-    if path and Path(path).name.lower() in lower:
+def wrap_tolerant(literal):
+    """Regex for ``literal`` that survives line wrapping inside the token.
+
+    A delivery message is prose: the filename it names can be broken across a
+    line, and a role phrase can be split by the same wrap. Matching the raw
+    string misses both, so every character is separated by optional space.
+    """
+    return r"\s*".join(re.escape(char) for char in literal)
+
+
+def build_name_pattern(role):
+    """Match build.sh's own output naming for ``role``, wrap tolerantly.
+
+    The retained artifact is `worksheet.pdf`; the response names
+    `ws_addstories_curr023.pdf`. Nothing records that mapping, so the role tag
+    plus the stem convention is what identifies the file.
+    """
+    tag = BUILD_ROLE_TAGS[role]
+    return (rf"(?<![a-z0-9])(?:[a-z]+\s*_\s*)*{tag}\s*[scx]?\s*_\s*"
+            rf"[a-z0-9_][a-z0-9_\s]*\.\s*pdf")
+
+
+BUILD_NAME_RE = re.compile(
+    r"(?<![A-Za-z0-9])((?:[a-z]+_)*(ws|ak|ss)[scx]?_[A-Za-z0-9_]+\.pdf)"
+)
+
+
+def discover_original_names(texts):
+    """Recover per-role build filenames from recorded evidence (e.g. gate logs)."""
+    names = defaultdict(list)
+    for text in texts:
+        for match in BUILD_NAME_RE.finditer(text or ""):
+            role = TAG_TO_ROLE[match.group(2)]
+            if match.group(1) not in names[role]:
+                names[role].append(match.group(1))
+    return dict(names)
+
+
+def surfacing_evidence(response, role, path=None, original_names=()):
+    """How — not merely whether — the delivery message surfaces ``role``.
+
+    Naming the file is the only evidence that an artifact was handed over;
+    saying the word "worksheet" near the word "PDF" is vocabulary. Both are
+    reported, distinguishably, so the gate can be read for what it measured.
+    """
+    lower = (response or "").lower()
+    collapsed = re.sub(r"\s+", " ", lower)
+    candidates = []
+    if path:
+        candidates.append(Path(path).name)
+    candidates.extend(original_names or ())
+    for name in candidates:
+        name = str(name).strip().lower()
+        if not name:
+            continue
+        match = re.search(rf"(?<![a-z0-9]){wrap_tolerant(name)}", lower)
+        if match:
+            return {"surfaced": True, "basis": "declared_filename",
+                    "match": re.sub(r"\s+", "", match.group(0))}
+    if role in BUILD_ROLE_TAGS:
+        match = re.search(build_name_pattern(role), lower)
+        if match:
+            return {"surfaced": True, "basis": "build_filename",
+                    "match": re.sub(r"\s+", "", match.group(0))}
+    if re.search(r"(?:\.pdf\b|\bpdfs?\b)", collapsed):
+        for phrase in ROLE_PHRASES[role]:
+            if phrase in collapsed:
+                return {"surfaced": True, "basis": "description", "match": phrase}
+    return {"surfaced": False, "basis": None, "match": None}
+
+
+def response_surfaces(response, role, path=None, original_names=()):
+    return surfacing_evidence(response, role, path, original_names)["surfaced"]
+
+
+# ---------------------------------------------------------------------------
+# Claim auditing: a finding that quotes a value must quote one the artifact has
+#
+# pdftotext flattens `\frac{3}{5}` to "35", splits a display fraction across
+# lines, and mangles radicals, so a literal comparison would flag correct
+# findings constantly. Every check below therefore normalises first, accepts
+# every plausible extraction of the same value, and reports "not found" as a
+# review flag — never as an automatic overturn of the judge.
+
+DASHES = "−–—‐‑‒"
+NUMBER_RE = re.compile(r"(?<![\w.])-?\d+(?:\.\d+)?")
+REF_WORDS = (r"problems?|items?|questions?|pages?|steps?|parts?|sections?|rows?|"
+             r"columns?|lines?|tasks?|figures?|standards?|grades?|dimensions?|"
+             r"scores?|totals?|facets?|boxes?|examples?|entry|entries|no|number|"
+             r"factor(?: of)?")
+REF_BEFORE_RE = re.compile(rf"(?:{REF_WORDS})\W{{0,3}}$", re.I)
+COMPOUND_BEFORE_RE = re.compile(r"[A-Za-z]-$")
+RADICAL_BEFORE_RE = re.compile(r"(?:√|sqrt|root)\s*\(?$", re.I)
+COUNT_AFTER_RE = re.compile(
+    r"^\s*(?:manual|problems?|items?|questions?|pages?|steps?|examples?|"
+    r"dimensions?|facets?|boxes?|sections?|figures?|rows?|columns?)\b", re.I)
+FRACTION_RE = re.compile(r"(?<![\d/])(-?\d+)\s*/\s*(\d+)(?![\d/])")
+PAIR_RE = re.compile(
+    r"\(\s*((?<![\w.])-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)\s*,"
+    r"\s*(-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)\s*\)")
+RELATION_RE = re.compile(
+    r"(-?\d+(?:\.\d+)?)\s*(<=|>=|!=|<|>|=)\s*(-?\d+(?:\.\d+)?)")
+ASSIGN_RE = re.compile(
+    r"\b([A-Za-z][A-Za-z0-9_']{0,7}(?:\([^)]{0,6}\))?)\s*=\s*"
+    r"(-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)")
+
+
+def normalize_math_text(text):
+    """Fold the characters PDF extraction varies on, so matching is stable."""
+    text = str(text or "")
+    for dash in DASHES:
+        text = text.replace(dash, "-")
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+    return text
+
+
+def artifact_value_index(texts):
+    """Every numeric token the artifacts contain, plus their joined text."""
+    numbers = set()
+    parts = []
+    for text in texts:
+        if not text:
+            continue
+        normalized = normalize_math_text(text)
+        parts.append(normalized)
+        for match in NUMBER_RE.finditer(normalized):
+            numbers.add(match.group(0))
+            numbers.add(match.group(0).lstrip("-"))
+    return {"numbers": numbers, "text": "\n".join(parts)}
+
+
+def extract_claim_values(claim):
+    """Pull the checkable values a finding quotes, ignoring artifact references.
+
+    "problem 7" and "four pages" describe where to look; "36" and "12 < 16"
+    assert what is printed there. Only the second kind is checkable.
+    """
+    text = normalize_math_text(claim)
+    values = []
+    spans = []
+
+    def covered(match):
+        return any(start <= match.start() and match.end() <= end
+                   for start, end in spans)
+
+    for kind, pattern, parts in (
+        ("pair", PAIR_RE, lambda m: [m.group(1), m.group(2)]),
+        ("relation", RELATION_RE, lambda m: [m.group(1), m.group(3)]),
+        ("assignment", ASSIGN_RE, lambda m: [m.group(2)]),
+        ("fraction", FRACTION_RE, lambda m: [m.group(1), m.group(2)]),
+    ):
+        for match in pattern.finditer(text):
+            if covered(match):
+                continue
+            values.append({"kind": kind, "value": match.group(0).strip(),
+                           "components": parts(match)})
+            spans.append(match.span())
+    for match in NUMBER_RE.finditer(text):
+        if covered(match):
+            continue
+        before = text[max(0, match.start() - 24):match.start()]
+        after = text[match.end():match.end() + 20]
+        if (REF_BEFORE_RE.search(before) or COMPOUND_BEFORE_RE.search(before)
+                or RADICAL_BEFORE_RE.search(before) or COUNT_AFTER_RE.match(after)):
+            continue
+        values.append({"kind": "number", "value": match.group(0),
+                       "components": [match.group(0)]})
+    unique = []
+    seen = set()
+    for item in values:
+        key = (item["kind"], item["value"].replace(" ", ""))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique
+
+
+def number_present(value, index):
+    value = value.replace(" ", "")
+    if value in index["numbers"] or value.lstrip("-") in index["numbers"]:
         return True
-    if not re.search(r"(?:\.pdf\b|\bpdfs?\b)", lower):
+    try:
+        number = float(value)
+    except ValueError:
         return False
-    phrases = {
-        "student_worksheet": ("worksheet",),
-        "step_by_step_answer_key": ("answer key", "answer-key", "answer_key"),
-        "study_guide": ("study guide", "study-guide", "skills summary", "skills-summary"),
-    }
-    return any(phrase in lower for phrase in phrases[role])
+    return number == int(number) and str(int(number)) in index["numbers"]
+
+
+def fraction_present(numerator, denominator, index):
+    numerator = numerator.replace(" ", "")
+    denominator = denominator.replace(" ", "")
+    # `\frac{a}{b}` extracts as "a/b", as "ab", or as "a" and "b" on two lines.
+    if re.search(rf"(?<![\d.]){re.escape(numerator)}\s*/?\s*{re.escape(denominator)}"
+                 r"(?![\d.])", index["text"]):
+        return True
+    if (numerator.lstrip("-") + denominator) in index["numbers"]:
+        return True
+    # "115/65" is as often two values written with a slash as it is a fraction,
+    # so both parts being present is enough to keep the claim out of the ledger.
+    return (number_present(numerator, index)
+            and number_present(denominator, index))
+
+
+def _pair_alternatives(component):
+    component = component.replace(" ", "")
+    if "/" in component:
+        numerator, denominator = component.split("/", 1)
+        return [re.escape(numerator) + r"\s*/?\s*" + re.escape(denominator),
+                re.escape(denominator + numerator.lstrip("-"))]
+    return [re.escape(component)]
+
+
+def claim_value_supported(item, index):
+    kind, components = item["kind"], item["components"]
+    if kind == "fraction":
+        return fraction_present(components[0], components[1], index)
+    if kind == "assignment" and "/" in components[0]:
+        numerator, denominator = components[0].replace(" ", "").split("/", 1)
+        return fraction_present(numerator, denominator, index)
+    if kind == "pair":
+        left, right = (_pair_alternatives(part) for part in components)
+        pattern = (r"(?<![\w.\-])(?:" + "|".join(left)
+                   + r")\s*[,;]\s*(?:[A-Za-z][A-Za-z0-9_]{0,3}\s*=\s*)?(?:"
+                   + "|".join(right) + r")(?![\d.])")
+        return bool(re.search(pattern, index["text"]))
+    return all(number_present(part, index) for part in components)
+
+
+def audit_claim(claim, index):
+    """Values this finding quotes that no artifact contains."""
+    return [item for item in extract_claim_values(claim)
+            if not claim_value_supported(item, index)]
+
+
+def iter_verdict_claims(verdict):
+    for field in CLAIM_FIELDS:
+        value = (verdict or {}).get(field)
+        if isinstance(value, str):
+            if value.strip():
+                yield field, value, None
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    yield field, item, None
+                elif isinstance(item, dict) and isinstance(item.get("description"), str):
+                    yield field, item["description"], item.get("severity")
+
+
+def audit_verdict_claims(verdict, index):
+    """Findings for verdict claims quoting values absent from the artifacts.
+
+    A blocking claim is one a REJECT rests on. It is flagged for adjudication,
+    never silently dropped and never silently believed: PDF extraction is lossy
+    enough that "not found" means "a person has to look", not "the judge lied".
+    """
+    findings = []
+    if not index["text"].strip():
+        # Nothing was extracted, so nothing can be looked up. A task with no
+        # readable artifacts already fails on its own evidence; flagging every
+        # value in its verdict would bury that under noise.
+        return findings
+    for field, claim, severity in iter_verdict_claims(verdict):
+        unsupported = audit_claim(claim, index)
+        if not unsupported:
+            continue
+        blocking = field in BLOCKING_CLAIM_FIELDS or severity == "critical"
+        for item in unsupported:
+            findings.append({
+                "code": "claim_value_not_in_artifact",
+                "severity": "critical" if blocking else "review",
+                "field": field,
+                "value": item["value"],
+                "value_kind": item["kind"],
+                "blocking": blocking,
+                "claim": claim,
+                "message": (
+                    f"{field} quotes {item['value']!r}, which does not appear in "
+                    "the artifacts' extracted text or verification data."
+                ),
+            })
+    return findings
+
+
+def machine_artifact_index(machine):
+    """Build a value index from a prepared task's recorded artifacts."""
+    texts = []
+    artifacts = (machine or {}).get("artifacts", {})
+    for role in PDF_ROLES:
+        texts.append(artifacts.get(role, {}).get("extracted_text", ""))
+    for role in ("worksheet_verification", "study_guide_verification"):
+        path = artifacts.get(role, {}).get("path")
+        if path and Path(path).is_file():
+            try:
+                texts.append(Path(path).read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                pass
+    return artifact_value_index(texts)
 
 
 def case_record_for(task_id, run_dir, run_cases):
@@ -544,8 +867,12 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
         ))
         resolved = {}
         surfaced = None
+        original_names = {}
+        surfacing = {}
     else:
-        resolved, ambiguities, surfaced, discovered_metrics = resolve_artifacts(case_dir, record)
+        resolved, ambiguities, surfaced, discovered_metrics, original_names = (
+            resolve_artifacts(case_dir, record)
+        )
         metrics.update(discovered_metrics)
         for role, choices in ambiguities.items():
             findings.append(finding(
@@ -616,15 +943,37 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
                 ))
         response = artifacts.get("final_response", {}).get("text", "")
         surfaced_set = set(surfaced or [])
-        for role in PDF_ROLES:
-            visible = role in surfaced_set if surfaced is not None else response_surfaces(
-                response, role, resolved.get(role),
+        # `record` renames build outputs to canonical roles, so the response
+        # and the retained file disagree by construction. Recover the build
+        # names from the evidence that kept them before matching.
+        for role, names in discover_original_names([gate_text]).items():
+            original_names.setdefault(role, [])
+            original_names[role].extend(
+                name for name in names if name not in original_names[role]
             )
-            if not visible:
+        surfacing = {}
+        for role in PDF_ROLES:
+            if surfaced is not None:
+                evidence = {"surfaced": role in surfaced_set,
+                            "basis": "declared_surfaced_list" if role in surfaced_set else None,
+                            "match": None}
+            else:
+                evidence = surfacing_evidence(
+                    response, role, resolved.get(role), original_names.get(role, ()),
+                )
+            surfacing[role] = evidence
+            if not evidence["surfaced"]:
                 findings.append(finding(
                     "artifact_not_surfaced", "critical",
                     f"Final delivery evidence does not surface {role}.", artifact=role,
                     hard_failure=True,
+                ))
+            elif evidence["basis"] == "description":
+                findings.append(finding(
+                    "artifact_surfaced_without_filename", "warning",
+                    f"Final delivery evidence describes {role} but never names a file; "
+                    "surfacing is inferred from wording alone.",
+                    artifact=role, evidence=evidence["match"],
                 ))
 
     manual_count = sum(
@@ -642,6 +991,7 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
         "machine_status": status,
         "machine_hard_failures": hard_failures,
         "manual_item_count": manual_count,
+        "artifact_surfacing": surfacing,
         "metrics": metrics,
         "artifacts": artifacts,
         "findings": findings,
@@ -869,6 +1219,9 @@ def write_summary_markdown(path, summary):
         f"- Rejected: {counts['rejected']}",
         f"- Pending: {counts['pending']}",
         f"- Invalid verdicts: {counts['invalid']}",
+        f"- Verdicts quoting values absent from the artifacts: "
+        f"{counts.get('verdicts_with_unsupported_claims', 0)}",
+        f"- Verdicts needing adjudication: {counts.get('needs_adjudication', 0)}",
         f"- Acceptance rate: {metrics['acceptance_rate']}",
         f"- Hard-gate pass rate: {metrics['hard_gate_pass_rate']}",
         f"- Mean quality score among hard-gate passes: {metrics['mean_quality_score_among_hard_gate_passes']}",
@@ -880,6 +1233,20 @@ def write_summary_markdown(path, summary):
         lines.append(
             f"| {name} | {item['accepted']} | {item['completed']} | {item['expected']} | {item['acceptance_rate']} |"
         )
+    claims = summary.get("unsupported_claims", [])
+    if claims:
+        lines.extend([
+            "", "## Claims not found in the artifacts", "",
+            "A finding is evidence only if the value it quotes is printed in the",
+            "artifact it cites. PDF extraction is lossy, so these are flagged for a",
+            "person to adjudicate, not counted as judge errors.", "",
+            "| Task | Field | Value | Blocking |", "|---|---|---|---|",
+        ])
+        for item in claims[:100]:
+            lines.append(
+                f"| `{item['task_id']}` | {item['field']} | `{item['value']}` | "
+                f"{'yes' if item['blocking'] else 'no'} |"
+            )
     lines.extend(["", "## Errors", ""])
     errors = summary.get("errors", [])
     lines.extend(
@@ -910,6 +1277,8 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
     rows = []
     issues = []
     invalid_details = []
+    unsupported_claims = []
+    needs_adjudication = []
     for task_id in manifest["task_ids"]:
         task = tasks[task_id]
         task_dir = grading_dir / "tasks" / task_id
@@ -960,6 +1329,27 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             status, source, score, scores, combined_hard = "INVALID", "judge", None, {}, machine_hard
         else:
             status, source, score, scores, combined_hard = "PENDING", None, None, {}, machine_hard
+
+        # A judge's finding is evidence only if the value it quotes is in the
+        # artifact it cites. Audited here rather than in validate_verdict,
+        # because only aggregation has the extracted text to check against.
+        claim_findings = []
+        if verdict is not None:
+            index = machine_artifact_index(machine)
+            claim_findings = audit_verdict_claims(verdict, index)
+            for item in claim_findings:
+                unsupported_claims.append({"task_id": task_id, **item})
+                issues.append({
+                    "task_id": task_id, "source": "harness", "kind": "unsupported_claim",
+                    **item,
+                })
+        blocking_claims = [item for item in claim_findings if item["blocking"]]
+        if blocking_claims:
+            needs_adjudication.append({
+                "task_id": task_id,
+                "status": status,
+                "values": sorted({item["value"] for item in blocking_claims}),
+            })
         row = {
             "task_id": task_id,
             "band": task.get("band"),
@@ -975,6 +1365,8 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
                 verdict and verdict.get("manual_items_reviewed", 0)
             ),
             "hard_failures": combined_hard,
+            "unsupported_claim_count": len(claim_findings),
+            "hard_failure_claims_unverified": bool(blocking_claims),
             "metrics": machine.get("metrics", {}),
         }
         rows.append(row)
@@ -1015,6 +1407,10 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             "machine_rejected": sum(
                 row["status"] == "REJECT" and row["decision_source"] == "machine" for row in rows
             ),
+            "verdicts_with_unsupported_claims": len(
+                {item["task_id"] for item in unsupported_claims}
+            ),
+            "needs_adjudication": len(needs_adjudication),
         },
         "metrics": {
             "completion_rate": rate(accepted + rejected, expected),
@@ -1024,12 +1420,17 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
                 round(statistics.mean(scored_hard_passes), 4) if scored_hard_passes else None
             ),
             "manual_review_rate": rate(sum(row["manual_review"] for row in rows), expected),
+            "unsupported_claim_rate": rate(
+                len({item["task_id"] for item in unsupported_claims}), expected,
+            ),
             "median_latency_seconds": numeric_metric(rows, "latency_seconds"),
             "median_cost": numeric_metric(rows, "cost"),
         },
         "by_band": group_metrics(rows, "band"),
         "by_domain": group_metrics(rows, "domain"),
         "invalid_verdicts": invalid_details,
+        "unsupported_claims": unsupported_claims,
+        "needs_adjudication": needs_adjudication,
         "errors": errors,
         "critical_observations": observations,
         "task_results": rows,
@@ -1053,14 +1454,29 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             flat.update(row["dimension_scores"])
             flat["hard_failure_count"] = len(row["hard_failures"])
             writer.writerow(flat)
+    with open(output_dir / "unsupported-claims.jsonl", "w", encoding="utf-8") as handle:
+        for item in unsupported_claims:
+            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
     print(
         f"Scored {accepted + rejected}/{expected}: {accepted} ACCEPT, {rejected} REJECT, "
         f"{pending} PENDING, {invalid} INVALID"
     )
+    if unsupported_claims:
+        print(
+            f"⚠️  {len(unsupported_claims)} judge claim(s) across "
+            f"{len({item['task_id'] for item in unsupported_claims})} task(s) quote values "
+            "absent from the artifacts; see unsupported-claims.jsonl"
+        )
+    if needs_adjudication:
+        print(
+            f"❌ {len(needs_adjudication)} verdict(s) rest on a hard failure whose cited "
+            "value is not in the artifact — adjudicate before using these scores"
+        )
     print(f"Results: {output_dir}")
     if invalid:
         return 2
-    if require_complete and (pending or accepted + rejected != expected):
+    if require_complete and (pending or accepted + rejected != expected
+                             or needs_adjudication):
         return 1
     return 0
 

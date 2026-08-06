@@ -443,6 +443,41 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ test_facets.py (facet/trap/interleave unit suite)"
 
+# The slot-coverage gate: 172 of 300 reviewed cases shipped a printed answer
+# nothing verified, because the coverage rule counted problems and the promise
+# was about answers.
+output=$("$PYTHON" "$SCRIPT_DIR/test_answer_slots.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_answer_slots.py failed"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+echo "✅ test_answer_slots.py (every printed response slot has a check)"
+
+# test_check_log.py existed but was never wired into this runner, so its
+# assertions drifted from check_log.py's messages unnoticed and it had been
+# failing silently. A test suite nothing runs is not a test suite.
+output=$("$PYTHON" "$SCRIPT_DIR/test_check_log.py" 2>&1)
+if [ $? -ne 0 ]; then
+  echo "❌ test_check_log.py failed"
+  echo "$output" | sed 's/^/     /'; exit 1
+fi
+echo "✅ test_check_log.py (page-budget and log-fault contract)"
+
+# Six more suites were present in tests/ and invoked by nothing. They all pass
+# today, which is exactly why this matters: test_check_log.py also passed once,
+# then drifted from the message it asserts and stayed red without anyone
+# noticing, because no runner called it. Any tests/test_*.py not named in this
+# file is dead weight pretending to be coverage.
+for suite in test_answer_key_binding test_audit_fixes test_branches \
+             test_error_paths test_pipeline_fixes test_preamble_layout; do
+  output=$("$PYTHON" "$SCRIPT_DIR/$suite.py" 2>&1)
+  if [ $? -ne 0 ]; then
+    echo "❌ $suite.py failed"
+    echo "$output" | sed 's/^/     /'; exit 1
+  fi
+  echo "✅ $suite.py"
+done
+
 # the 10+-problem nudge is exit-NEUTRAL but must be visible
 output=$("$PYTHON" "$VERIFY_PY" "$FIXTURES/pass_calculus.json" 2>&1)
 if echo "$output" | grep -q 'no "facets" declared'; then

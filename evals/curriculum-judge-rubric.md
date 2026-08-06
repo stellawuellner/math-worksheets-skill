@@ -30,11 +30,37 @@ Give the judge only:
    evidence, risks, or unusually strong/weak patterns under
    `critical_observations`. Identify the artifact and page/problem when known.
 
+## Quoting values
+
+Every number, fraction, coordinate pair, and relation a finding quotes must be
+one the artifact actually prints. Name the artifact and the problem alongside
+it. This is not a style rule: a hard failure that recites a value the worksheet
+does not contain rejects a correct packet, and an ACCEPT whose "independently
+recomputed" list does not match the sheet is not evidence that anything was
+recomputed.
+
+Copy values from the artifact rather than from your own working. Where you
+assert what the artifact *should* say instead of what it does, say so in those
+words, so the claim is not read as a transcription.
+
+`scripts/score_eval_run.py aggregate` looks up every quoted value in the
+extracted PDF text and the verification JSON and lists the ones it cannot find
+under "Claims not found in the artifacts". PDF extraction is lossy —
+`\frac{3}{5}` extracts as `35`, a display fraction splits across two lines, and
+radicals are mangled — so a miss is a flag for adjudication, not proof of a bad
+verdict. A miss inside `hard_failures` blocks the run from being scored as
+complete until a person resolves it.
+
 ## Hard failures
 
 Reject the run if any of these is true:
 
-- A requested PDF is missing, unreadable, or not surfaced to the user.
+- A requested PDF is missing, unreadable, or not surfaced to the user. Surfaced
+  means the delivery message names the file. The harness credits the delivered
+  build name (`ws_....pdf`, `ak_....pdf`, `ss_....pdf`) as well as the retained
+  canonical name, tolerates line wrapping inside either, and falls back to a
+  description of the artifact — but records that a fallback was used, because a
+  message that merely mentions the word "worksheet" has not handed one over.
 - The worksheet problem count differs from the task expectation.
 - Any problem is wrong, ambiguous, internally inconsistent, or mismatched
   with its answer.

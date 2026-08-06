@@ -34,14 +34,15 @@ print("rendering rules:")
 check("Decimal keeps the JSON's written precision (6.30, not 6.3)",
       rqa._fmt(Decimal("6.30")) == "6.30")
 check("int verbatim", rqa._fmt(5) == "5")
-check("string via sympify->latex",
-      rqa._fmt("(x-3)*(x-4)") == r"$\left(x - 4\right) \left(x - 3\right)$")
+check("string via safe_parse->latex, in the author's own order",
+      rqa._fmt("(x-3)*(x-4)") == r"$\left(x - 3\right) \left(x - 4\right)$")
 check("probability fraction typesets",
       rqa._fmt("3/8") == r"$\frac{3}{8}$")
-check("sympify failure falls back to --- (never raw injection)",
-      rqa._fmt("x = 2 or x = 3") == "---")
-check("injection-shaped string falls back to ---",
-      rqa._fmt(r"\input{/etc/passwd}") == "---")
+check("a non-expression prints as itself, not as --- (see defect 1/4 below)",
+      rqa._fmt("x = 2 or x = 3") == "x = 2 or x = 3")
+check("injection-shaped string is escaped, never injected",
+      rqa._fmt(r"\input{/etc/passwd}")
+      == r"\textbackslash{}input\{/etc/passwd\}")
 check("list comma-joined", rqa._fmt([2, 3]) == "2, 3")
 check("dict as var = value pairs",
       rqa._fmt({"x": 3, "y": 2}) == "$x = $ 3, $y = $ 2")
@@ -194,6 +195,158 @@ check("a standards code is still escaped",
       r"\&" in rqa.render({"problem_count": 1, "problems": [
           {"id": 1, "type": "equiv", "expr": "x", "expected": "x",
            "standard": "4.MD & 5.MD"}]}, ""))
+
+print()
+# ── the 300-case post-eval review of _fmt ────────────────────────────────────
+# Every defect below was found in a DELIVERED answer key and traces to one line:
+# "$" + sympy.latex(sympy.sympify(v)) + "$", plus a "---" that meant two
+# opposite things at once. Each check here is a case that shipped wrong.
+print("post-eval review — defect 1: verified relations must not vanish")
+
+# 63 cases. sympify("<") raises, so a VERIFIED compare printed "---" — the SAME
+# glyph a manual-only id prints. On curr-154 the signalling was exactly
+# inverted: three verified relations printed "---" and three genuinely manual
+# items printed nothing a grader could distinguish from them.
+check("a verified relation typesets as the relation", rqa._fmt("<") == "$<$")
+check("every compare relation survives",
+      [rqa._fmt(r) for r in ("<", ">", "=", "<=", ">=")]
+      == ["$<$", "$>$", "$=$", r"$\le$", r"$\ge$"])
+_rel = rqa.render_entry([{"type": "compare", "expected": "<"}])
+_man = rqa.render_entry([{"type": "manual", "desc": "proof"}])
+check("verified and manual no longer print the same glyph", _rel != _man)
+check("--- stays reserved for 'no machine check exists'", _man == "---")
+
+print("post-eval review — defect 2: python builtins must never typeset")
+
+# 5 cases. sympify("open") SUCCEEDS and hands back the builtin, whose repr
+# sympy dutifully typesets: curr-184's delivered key printed
+# "2. -oo, -3, <built-in function open>" on four rows. safe_parse's allowlist
+# rejects the name outright, so the printer never sees a non-mathematical object.
+for _b in ("open", "print", "eval", "exec", "__import__"):
+    check(f"builtin {_b!r} never reaches the printer",
+          "built-in" not in rqa._fmt(_b))
+check("a rejected name prints as the word it is", rqa._fmt("open") == "open")
+check("an inequality's interval spec prints as an interval",
+      rqa.render_entry([{"type": "inequality", "relation": "<",
+                         "expected": ["-oo", -3, "open"]}])
+      == r"$(-\infty, -3)$")
+
+print("post-eval review — defect 3: the author's form must survive")
+
+# 37 cases, six of them a WRONG factor answer: sympify canonicalises, and
+# Mul flattening distributes the coefficient, so a completely factored
+# 3*(x-3)*(x+3) came out as (x+3)(3x-9) on a sheet whose directions read
+# "Factor completely". evaluate=False is what preserves the author's form.
+check("an unreduced fraction stays unreduced", rqa._fmt("9/12") == r"$\frac{9}{12}$")
+check("25/30 is not silently reduced to 5/6",
+      rqa._fmt("25/30") == r"$\frac{25}{30}$")
+check("a mixed number stays a mixed number",
+      rqa._fmt("2 + 3/4") == r"$2 + \frac{3}{4}$")
+check("a completely factored answer stays completely factored",
+      rqa._fmt("3*(x-3)*(x+3)")
+      == r"$3 \left(x - 3\right) \left(x + 3\right)$")
+check("a factored answer is not expanded",
+      rqa._fmt("6*(2*n-3)") == r"$6 \left(2 n - 3\right)$")
+
+print("post-eval review — defect 4: a label is not an expression")
+
+# 1 case, and it evaded BOTH obvious guards: sympify("20-29") SUCCEEDS and
+# returns a valid sympy Number, so curr-446 id 8's histogram bin label "20-29"
+# was banked as -9.
+check("a bin label prints as the label", rqa._fmt("20-29") == "20-29")
+check("a decimal-range label survives too", rqa._fmt("2.5-3.5") == "2.5-3.5")
+check("real subtraction still computes as mathematics",
+      rqa._fmt("29-20") == "$29 - 20$")
+
+print("post-eval review — defect 5: a verified empty solution set")
+
+# 5+1 cases. A verified "no solution" (expected []) joined to the empty string:
+# curr-390 row 10 printed the dangling "10. 0," and curr-262 printed "---",
+# claiming nobody had checked an answer the verifier had proved.
+check("a verified empty solution set prints the empty set",
+      rqa.render_entry([{"type": "solve", "expected": []}]) == r"$\emptyset$")
+check("no solution is never confused with no check",
+      rqa.render_entry([{"type": "solve", "expected": []}]) != "---")
+_dangle = rqa.render_entry([{"expected": 0}, {"type": "solve", "expected": []}])
+check("no dangling comma on a mixed empty/non-empty id",
+      _dangle == r"0, $\emptyset$")
+
+print("post-eval review — defect 6: a partially manual id says so")
+
+# 6 cases. The "---" was guarded by "if not vals", so an id mixing a machine
+# check with a manual entry showed no manual marker at all — the grader read a
+# complete answer where half of it was never checked.
+check("a machine + manual id still shows the manual marker",
+      rqa.render_entry([{"type": "approx", "expected": 5},
+                        {"type": "manual", "desc": "sketch"}]) == "5, ---")
+check("an all-machine id carries no manual marker",
+      rqa.render_entry([{"type": "approx", "expected": 5},
+                        {"type": "approx", "expected": 7}]) == "5, 7")
+
+print("post-eval review — defect 7: multi-slot answers are labelled")
+
+# 9 cases. Values were joined in verify.json ARRAY order with no labels:
+# curr-334 asks for "AC and BD" and printed "2. 2.83, 8.49" with BD first;
+# curr-427's rows 5 and 11 were correct only by coincidence of declaration
+# order. The label has to come from the JSON entry, so order stops mattering.
+_slots = rqa.render_entry([{"type": "approx", "expected": 2.83, "slot": "BD"},
+                           {"type": "approx", "expected": 8.49, "slot": "AC"}])
+check("each slot is named by its own JSON label",
+      _slots == "BD = 2.83, AC = 8.49")
+check("a slot label is escaped, not injected",
+      "\\textbackslash{}" in rqa.render_entry(
+          [{"expected": 1, "slot": r"\bad"}]))
+check("an unlabelled entry is unchanged",
+      rqa.render_entry([{"expected": 2.83}]) == "2.83")
+# "slot" is READ here but not yet ACCEPTED by verify.py's strict schema, so the
+# labels cannot reach a real sheet until _UNIVERSAL_FIELDS learns the field.
+# This check is the reminder: it flips to a pass the moment that lands.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+import verify  # noqa: E402
+print("     (follow-up) verify.py accepts a 'slot' label:",
+      "yes" if "slot" in verify._UNIVERSAL_FIELDS else
+      "NOT YET — add \"slot\" to _UNIVERSAL_FIELDS in scripts/verify.py")
+
+print("post-eval review — defect 8: minus signs, ln, points, units, cents")
+
+check("a negative integer uses a real minus, not a text hyphen",
+      rqa._fmt(-3) == "$-3$" and rqa._fmt(Decimal("-6.30")) == "$-6.30$")
+check("a positive integer stays plain text", rqa._fmt(7) == "7")
+check("ln prints as ln, not log",
+      rqa._fmt("ln(x)") == r"$\ln{\left(x \right)}$")
+check("log still prints as log", rqa._fmt("log(x)").startswith(r"$\log"))
+check("a midpoint prints as a bracketed pair",
+      rqa._fmt([5, 2], "midpoint") == "(5, 2)")
+check("a solution list is still a comma-joined list", rqa._fmt([5, 2]) == "5, 2")
+check("a declared answer_unit is printed with the value",
+      rqa.render_entry([{"type": "approx", "expected": Decimal("6.30"),
+                         "answer_unit": "ft"}]) == "6.30 ft")
+check("a squared unit typesets its exponent",
+      rqa.render_entry([{"type": "polygon_area", "expected": 17,
+                         "answer_unit": "cm^2"}]) == "17 cm$^{2}$")
+check("money keeps its cents", rqa._fmt("12.50") == "12.50")
+
+# The bank must stay PLAIN TEXT whatever the new renderings emit: check_answer_key.py
+# binds only boxed answers inside problem segments, and never resolves \input.
+_mixed = {"problem_count": 6, "problems": [
+    {"id": 1, "type": "compare", "values": ["1/2", "0.6"], "order": "relation",
+     "expected": "<"},
+    {"id": 2, "type": "inequality", "relation": "<", "expr": "x+3",
+     "expected": ["-oo", -3, "open"]},
+    {"id": 3, "type": "solve", "expr": "x**2+1", "expected": []},
+    {"id": 4, "type": "approx", "expr": "9", "expected": Decimal("6.30"),
+     "answer_unit": "ft"},
+    {"id": 5, "type": "manual", "desc": "sketch"},
+    {"id": 6, "type": "read_data", "data": {}, "query": "mode",
+     "expected": "20-29"}]}
+_mtext = rqa.render(_mixed)
+_mbody = "\n".join(l for l in _mtext.split("\n") if not l.startswith("%"))
+check("the new renderings still emit no \\ans/\\boxed",
+      "\\ans" not in _mbody and "\\boxed" not in _mbody)
+check("every id still gets exactly one numbered line",
+      all(f"\n{i}.~" in "\n" + _mtext for i in range(1, 7)))
+check("only the manual id prints ---",
+      "5.~---" in _mtext and "1.~$<$" in _mtext and "6.~20-29" in _mtext)
 
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")

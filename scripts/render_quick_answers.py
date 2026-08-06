@@ -18,12 +18,31 @@ strict per-problem gate (fixture-locked invariant).
 
 Rendering rules (nothing raw is ever injected into LaTeX):
   * numeric expected — verbatim as written in the JSON (Decimal parse keeps
-    a verified 6.30 printing as 6.30, not 6.3);
-  * string expected — sympify -> sympy.latex; if sympify fails the entry
-    falls back to "---" (TeX em-dash, "see solution");
-  * lists comma-joined, dicts as var = value pairs;
-  * manual-only ids print "---";
-  * multi-entry ids join all expected values.
+    a verified 6.30 printing as 6.30, not 6.3); a negative number is set in
+    math mode so its minus sign is a real minus, not a text hyphen;
+  * string expected — validated by verify.py's safe_parse (ONE allowlist for
+    the whole system, so a Python builtin like "open" can never reach the
+    printer), then re-parsed with evaluate=False and printed in the AUTHOR's
+    form: 9/12 stays 9/12, "2 + 3/4" stays a mixed number, and a completely
+    factored 3*(x-3)*(x+3) is not silently redistributed;
+  * a string that is NOT a mathematical expression under that allowlist
+    (a relation "<", a bin label "20-29", "no solution") prints as ITSELF,
+    TeX-escaped — never evaluated arithmetically and never hidden;
+  * lists comma-joined; an inequality's interval spec prints as an interval,
+    a midpoint's pair prints bracketed; dicts as var = value pairs;
+  * a VERIFIED empty solution set prints the empty-set symbol, never "---";
+  * "---" is RESERVED for "no machine check exists": a manual-only id prints
+    it alone, and an id that mixes machine checks with a manual entry prints
+    it after the verified values, so a grader can always tell a verified
+    answer from an unchecked one;
+  * multi-entry ids join all expected values, each labelled by its own
+    "slot" (which side, which intercept) when the JSON declares one, so a
+    two-slot answer can never read in the wrong order. FOLLOW-UP: "slot" is
+    an optional per-entry label this generator reads but verify.py's strict
+    schema does not yet accept — add it to _UNIVERSAL_FIELDS there (a label,
+    like "note", never touched by any check) before authors can declare it;
+    until then a multi-slot id renders as it always did, unlabelled;
+  * a declared answer_unit is printed with the value.
 Column count adapts to the widest rendered entry (4 / 3 / 2) so factored and
 interval answers don't wreck the layout.
 
@@ -44,36 +63,207 @@ import sys
 from decimal import Decimal
 
 import sympy
+from sympy.parsing.sympy_parser import parse_expr
+
+# ONE parser for the whole system. verify.py validates every expression against
+# a token allowlist before it reaches sympy; reusing that function here (rather
+# than a second, laxer sympify) means the bank can only ever print something the
+# verifier would also accept. The bare sympify this replaced typeset PYTHON
+# BUILTINS: sympify("open") SUCCEEDS and returns <built-in function open>, and
+# an inequality's [-oo, -3, "open"] shipped that repr into a delivered key.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import verify  # noqa: E402
+from verify import safe_parse, VerifyInputError  # noqa: E402
+
+# safe_parse is the GATE; these locals only pin name -> sympy object for the
+# second, printing parse. If verify ever renames the table, the printer keeps
+# working on sympy's own defaults (identical LaTeX for every allowlisted name) —
+# a renamed table must not be able to take the answer key down.
+_LOCALS = getattr(verify, "_SYMPY_LOCALS", {})
+
+# "---" is RESERVED: it means "no machine check exists here, read the worked
+# solution". It used to double as the fallback for anything sympify could not
+# swallow, which made a VERIFIED relation ("<") and an unchecked proof print the
+# SAME glyph — the one distinction the bank exists to draw.
+MANUAL = "---"
+# A verified empty solution set is a RESULT, not a missing check.
+EMPTY_SET = r"$\emptyset$"
+
+# Relations are answers on compare/order sheets, and none of them survives a
+# parser: "<" is not an expression. Typeset as the relation it is.
+_RELATIONS = {"<": "$<$", ">": "$>$", "=": "$=$", "==": "$=$",
+              "<=": r"$\le$", ">=": r"$\ge$", "!=": r"$\neq$",
+              "≤": r"$\le$", "≥": r"$\ge$", "≠": r"$\neq$"}
+
+# A plain decimal numeral is printed EXACTLY as the author wrote it, for the
+# same reason JSON floats are parsed as Decimal: sympy turns "12.50" into 12.5
+# and drops the cents off a money answer.
+_NUMERAL_RE = re.compile(r"-?(?:\d+\.\d+|\d+|\.\d+)\Z")
+# A bin/interval LABEL ("20-29", "90-100") is data, not arithmetic. It passes
+# the allowlist — every character is legal — so no parser guard can catch it;
+# only the shape can. Requiring no spaces around the hyphen and a non-decreasing
+# pair keeps real subtraction (which authors write as "20 - 29", and which is
+# an odd thing to bank as an ANSWER anyway) on the mathematical path.
+_RANGE_LABEL_RE = re.compile(r"(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\Z")
+
+# Types whose "expected" is a POINT rather than a list of independent answers.
+_POINT_TYPES = {"midpoint"}
 
 
-def _fmt(v):
+def _is_range_label(s):
+    m = _RANGE_LABEL_RE.match(s)
+    return bool(m) and float(m.group(1)) <= float(m.group(2))
+
+
+def _math(s):
+    """Typeset an expression string the author's way, or raise VerifyInputError.
+
+    safe_parse is the gate (allowlist + rejection message); the second parse is
+    the PRINTER, with evaluate=False so sympy cannot rewrite the author's form.
+    Canonicalisation is not cosmetic here: it turned a completely factored
+    3*(x-3)*(x+3) into (x+3)(3x-9) on a sheet whose directions say "Factor
+    completely", and shipped a wrong answer.
+    """
+    safe_parse(s)                      # validate — raises VerifyInputError
+    normalized = s.replace("^", "**")
+    try:
+        expr = parse_expr(normalized, local_dict=_LOCALS, evaluate=False)
+    except Exception:                  # printer-only fallback; already validated
+        expr = safe_parse(s)
+    # order='none' keeps the author's term order, so "2 + 3/4" prints as the
+    # mixed number it is instead of being reordered to 3/4 + 2.
+    tex = sympy.latex(expr, order="none")
+    # sympy has one natural logarithm and prints it \log. An author who wrote
+    # ln means ln — on the sheets where both appear, printing \log for ln is
+    # a different function to the student.
+    if re.search(r"\bln\s*\(", s) and not re.search(r"\blog\s*\(", s):
+        tex = tex.replace(r"\log", r"\ln")
+    return "$" + tex + "$"
+
+
+def _interval(spec):
+    """An inequality's [lo, hi, openness] spec -> interval notation.
+
+    Same vocabulary as verify.py's parse_interval_spec, so what the verifier
+    proved is what the bank prints. Unwrapped single intervals and unions both
+    arrive here.
+    """
+    if spec and not isinstance(spec[0], list):
+        spec = [spec]
+    parts = []
+    for iv in spec:
+        if not (isinstance(iv, list) and len(iv) == 3):
+            return None
+        lo, hi, openness = iv
+        lopen = openness in ("open", "loopen") or lo in ("-oo", "oo")
+        hopen = openness in ("open", "hiopen") or hi in ("-oo", "oo")
+        parts.append("$" + ("(" if lopen else "[") + _bare(lo) + ", "
+                     + _bare(hi) + (")" if hopen else "]") + "$")
+    return r" $\cup$ ".join(parts) if parts else None
+
+
+def _bare(v):
+    """An interval endpoint, printed without its own math delimiters."""
+    t = _fmt(v)
+    return t[1:-1] if t.startswith("$") and t.endswith("$") else t
+
+
+def _fmt(v, ptype=None):
     """One expected value -> bank text (never raw string injection)."""
     if isinstance(v, bool):
-        return "---"
+        return MANUAL
     if isinstance(v, (int, Decimal)):
-        return str(v)
+        return _signed(str(v))
     if isinstance(v, float):
-        return repr(v)
+        return _signed(repr(v))
     if isinstance(v, str):
+        if not v.strip():   # nothing declared is not an answer
+            return MANUAL
+        if v.strip() in _RELATIONS:
+            return _RELATIONS[v.strip()]
+        if _NUMERAL_RE.match(v.strip()):
+            return _signed(v.strip())
+        if _is_range_label(v.strip()):
+            return _texsafe(v.strip())
         try:
-            return "$" + sympy.latex(sympy.sympify(v)) + "$"
-        except (sympy.SympifyError, SyntaxError, TypeError, ValueError):
-            return "---"
+            return _math(v)
+        except Exception:   # VerifyInputError is the expected one
+            # Not mathematics under the allowlist — so it is a LABEL, a word,
+            # or a relation the author wrote out. It prints as itself, escaped:
+            # never "---" (which would claim nobody checked it) and never run
+            # through arithmetic. The catch is deliberately total: this is a
+            # PRINTER, and no parser surprise may take the answer key down when
+            # the honest, escaped literal is always available.
+            return _texsafe(v)
     if isinstance(v, list):
-        return ", ".join(_fmt(x) for x in v)
+        if not v:                      # a verified "no solution"
+            return EMPTY_SET
+        if ptype == "inequality":
+            iv = _interval(v)
+            if iv:
+                return iv
+        if ptype in _POINT_TYPES and len(v) == 2:
+            return f"({_fmt(v[0])}, {_fmt(v[1])})"
+        return ", ".join(_fmt(x, ptype) for x in v)
     if isinstance(v, dict):
         return ", ".join(f"${k} = $ {_fmt(x)}" for k, x in sorted(v.items()))
-    return "---"
+    return MANUAL
+
+
+def _signed(text):
+    """A negative number is math: sympy's minus sign next to a text hyphen in
+    the same column is two different glyphs for one operation."""
+    return f"${text}$" if text.startswith("-") else text
+
+
+def _fmt_unit(unit):
+    """A declared answer_unit, printed with the value it belongs to.
+
+    The unit is half the answer on a measurement sheet — "6.30" and "6.30 ft"
+    are not the same thing to grade — and the JSON already declares it for the
+    unit gates. Exponents go to math mode so cm^2 is not a literal caret.
+    """
+    parts = str(unit).split("^")
+    out = _texsafe(parts[0])
+    for p in parts[1:]:
+        out += "$^{" + _texsafe(p) + "}$"
+    return out
+
+
+def _render_expected(entry):
+    """One JSON entry -> its text, with its declared slot label and unit."""
+    text = _fmt(entry["expected"], entry.get("type"))
+    unit = entry.get("answer_unit")
+    if isinstance(unit, str) and unit.strip():
+        text = f"{text} {_fmt_unit(unit.strip())}"
+    slot = entry.get("slot")
+    if isinstance(slot, str) and slot.strip():
+        # Which value is which. Unlabelled, a two-entry id printed in verify.json
+        # ARRAY order: "2. 2.83, 8.49" for a problem asking "AC and BD", with BD
+        # first. The label has to come from the JSON, because declaration order
+        # is not an answer.
+        text = f"{_texsafe(slot.strip())} = {text}"
+    return text
 
 
 def render_entry(entries):
     """All of one problem id's entries -> its single bank line text."""
-    vals = [e["expected"] for e in entries
-            if isinstance(e, dict) and "expected" in e]
-    if not vals:  # manual-only: the worked solution is the answer
-        return "---"
-    text = ", ".join(_fmt(v) for v in vals)
-    return text if text else "---"
+    vals, has_manual = [], False
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        if "expected" in e:
+            vals.append(_render_expected(e))
+        else:                     # manual: the worked solution is the answer
+            has_manual = True
+    if not vals:
+        return MANUAL
+    text = ", ".join(vals)
+    if not text:
+        return MANUAL
+    # A PARTIALLY manual id used to hide its manual half completely, because the
+    # marker was guarded by "no machine values at all".
+    return f"{text}, {MANUAL}" if has_manual else text
 
 
 def column_count(entries_text):
@@ -156,7 +346,7 @@ def render(data, level=""):
     # "x, x, x, x, ...". No gate catches it — the JSON is correct, the binding
     # is correct, and the printed artifact is worthless. Found by an eval agent
     # who noticed it and re-encoded as solve-for-y to get the real formulas.
-    real = [e for e in entries if e != "---"]
+    real = [e for e in entries if e != MANUAL]
     if len(real) >= 4 and len(set(real)) == 1:
         print(f"render_quick_answers: WARNING — all {len(real)} banked answers "
               f"are {real[0]!r}. The bank is meant to let a grader scan the "
@@ -194,9 +384,16 @@ def render(data, level=""):
 # machine-checked, and the document still would not build. Escaping here rather
 # than forbidding the characters keeps the failure impossible instead of merely
 # documented.
+#
+# "<" and ">" are here for the bank rather than for prose: a literal answer can
+# now be a written-out relation ("x < 3 or x > 5"), and in text mode those two
+# characters are font-encoding-dependent (they come out as inverted marks under
+# OT1). \textless/\textgreater print the glyph the author meant under any
+# encoding.
 _TEX_ESCAPES = {"\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$",
                 "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}",
-                "^": r"\textasciicircum{}", "~": r"\textasciitilde{}"}
+                "^": r"\textasciicircum{}", "~": r"\textasciitilde{}",
+                "<": r"\textless{}", ">": r"\textgreater{}"}
 
 
 def _texsafe(text):

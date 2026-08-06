@@ -12,11 +12,38 @@ So this pins:
   - the three noise classes calibration removed stay removed: a radical over its
     argument, a composed relation (congruence is a tilde stacked on an equals),
     and punctuation kerning into its neighbour
+  - a FIGURE LABEL printed on top of another figure label is caught, and the
+    innocent same-column stacks it must not be confused with stay silent
 
 Calibration record: across 450 PDFs this repository had already produced and
 gated, the tuned detector fires on exactly one, and that one has a genuine
 caption collision confirmed by looking at the rendered page. Before the noise
 rules it fired on 77.
+
+FIGURE-LABEL CALIBRATION (`stacked_label`). The 0.45 area threshold is a prose
+number and misses figure labels entirely: a `?` dropped onto a length digit
+hides the digit while covering only 0.19-0.30 of the smaller box, because most
+of a word box is leading, not ink. The geometry below is measured, not invented
+— every tuple in GEOMETRY is copied out of `pdftotext -bbox` on a real PDF in
+evals/runs, and each was checked by rendering the page to PNG and looking at it:
+
+  caught   curr-428 worksheet p3   '?' over '9'    vertical interpenetration .45
+  caught   curr-428 worksheet p4   '?' over '25'                             .34
+  silent   curr-428 worksheet p6   'B' with subscript '2'   (adjacent, not stacked)
+  silent   curr-127 answer_key p1  \frac{8}{23}                              .22
+  silent   curr-463 answer_key p1  two crowded fraction lines                .26
+  silent   curr-202 answer_key p2  \sqrt[3]{} index over the surd            .38
+  silent   curr-431 answer_key p3  denominator over a degree mark            .22
+  silent   curr-200 answer_key p3  \underbrace label under its brace         .31
+
+The last three are the ones that make a naive rule cry wolf. curr-202 and
+curr-431 are poppler radical-boxing artifacts on visually clean pages — the
+surd is mis-decoded as a word and its box swallows what it covers. They are
+rejected by font size: everything TeX legitimately stacks is set smaller than
+what it sits over, while a stray label is set at full size.
+
+Over all 900 PDFs in evals/runs the rule fires on two pages, both curr-428,
+both confirmed by eye. Before it, the detector fired on none of them.
 
 Requires pdflatex/tectonic and pdftotext; skips cleanly without them.
 """
@@ -53,12 +80,67 @@ COLLIDING = HEAD + r"""
 # Every construction calibration proved innocent, in one document: a radical
 # whose box covers its argument, a congruence built by stacking two marks, a
 # fraction, subscripts and superscripts, and an ellipsis kerning into a word.
+# The last two problems are the figure-label rule's own noise cases: a cube
+# root, whose index poppler reports as a word overlapping the surd by 0.38, and
+# an underbrace, whose label sits squarely under the brace.
 CLEAN = HEAD + r"""
 \problem[2cm]{Evaluate $\sqrt{x^2 + y_1}$ and $\dfrac{a+b}{c-d}$.}
 \problem[2cm]{Given $\triangle ABC \cong \triangle DEF$, name the parts.}
 \problem[2cm]{Continue the pattern $2, 4, 6, \ldots$ and explain.}
+\problem[2cm]{Simplify $\sqrt[3]{\dfrac{8}{125}}$ and $\dfrac{3}{x^2}$.}
+\problem[2cm]{Name the parts of
+  $\underbrace{2x + 5}_{\text{lower bound}} \le 17$.}
 \end{document}
 """
+
+# The defect this rule exists for, reproduced. A `?` marker set at the same size
+# as a length label and dropped onto it — the geometry of the SSA figures in
+# curr-428, where the arc's "?" landed on the digit of a side label. 0.24cm puts
+# the two baselines 6.8pt apart, which is what the real figure produced (6.97pt
+# on curr-428 p4), and the `?`'s dot lands inside the `2`. The boxes then share
+# 39% of the smaller: a genuine, unreadable collision that the 0.45 prose
+# threshold does not see. If this probe ever starts passing the prose threshold
+# it has stopped testing the label rule — hence the explicit assertion below.
+COLLIDING_LABEL = HEAD + r"""
+\problem[3cm]{A length label with a marker dropped onto it:
+\begin{center}\begin{tikzpicture}
+\node at (0,0) {25};
+\node at (-0.04,0.24) {?};
+\end{tikzpicture}\end{center}}
+\end{document}
+"""
+
+# Boxes copied verbatim from `pdftotext -bbox` on PDFs in evals/runs, so the
+# rule is pinned against measured typesetting rather than against a guess about
+# what typesetting looks like. (x0, y0, x1, y1, text); see the module docstring
+# for which page each came from and how each was verified.
+GEOMETRY = [
+    # (label, word a, word b, must_flag)
+    ("a '?' marker printed on a length digit (curr-428 p3)",
+     (337.545, 181.880091, 343.073084, 192.496309, "?"),
+     (339.298626, 187.770091, 345.151892, 198.386309, "9"), True),
+    ("a '?' marker printed on a two-digit length (curr-428 p4)",
+     (334.881, 190.977091, 340.409084, 201.593309, "?"),
+     (335.586626, 197.949091, 347.293158, 208.565309, "25"), True),
+    ("a subscript beside its base (curr-428 p6, $B_2$)",
+     (301.08, 199.56, 309.97, 210.17, "B"),
+     (309.97, 204.11, 314.21, 211.19, "2"), False),
+    ("a fraction's numerator over its denominator (curr-127 p1)",
+     (324.298, 185.403751, 328.532514, 192.481199, "8"),
+     (324.298, 190.895751, 332.767028, 197.973199, "23"), False),
+    ("two crowded fraction lines (curr-463 p1)",
+     (349.321, 199.239751, 354.087917, 206.317199, "x"),
+     (347.099, 204.444751, 355.568028, 211.522199, "25"), False),
+    ("a cube root's index over the surd (curr-202 p2)",
+     (151.904, 562.580792, 163.8592, 570.23212, "q"),
+     (154.893, 568.225546, 158.545911, 573.533654, "3"), False),
+    ("a denominator over a degree mark (curr-431 p3)",
+     (176.586, 95.084751, 181.352917, 102.162199, "x"),
+     (177.218, 100.622425, 181.452514, 108.146199, "◦"), False),
+    ("an underbrace over its label (curr-200 p3)",
+     (247.798, 112.985792, 258.55768, 120.63712, "{z"),
+     (235.179, 118.448751, 254.475409, 125.526199, "lower"), False),
+]
 
 
 def check(label, cond, detail=""):
@@ -110,6 +192,24 @@ def main():
     check("two overlapping words are NOT excused as a composed glyph",
           not op.composed_glyph(word_a, word_b))
 
+    print("figure labels, on geometry measured off real pages")
+    for label, a, b, must_flag in GEOMETRY:
+        got = op.stacked_label(a, b)
+        check(f"{'flagged' if must_flag else 'silent'}: {label}", got == must_flag,
+              f"stacked_label returned {got}")
+    # The whole point: these sit under the prose threshold, so the page-level
+    # check has to catch them through the label rule or not at all.
+    for label, a, b, must_flag in GEOMETRY:
+        if not must_flag:
+            continue
+        f = op.overlap_fraction(a[:4], b[:4])
+        check(f"under the prose threshold, so only the label rule sees it "
+              f"({f * 100:.0f}% < {op.OVERLAP * 100:.0f}%)", f < op.OVERLAP)
+        onpage = op.page_faults(612.0, 792.0, [a, b], op.OVERLAP)
+        check(f"reported as a page fault: {label}",
+              any(k == "overprint" for k, _ in onpage),
+              f"page_faults returned {onpage}")
+
     with tempfile.TemporaryDirectory() as tmp:
         print("rendered documents")
         bad = build(COLLIDING, tmp, "collide")
@@ -122,12 +222,29 @@ def main():
             check("it is reported as overprinting",
                   any(k == "overprint" for k, _ in f))
 
+        marker = build(COLLIDING_LABEL, tmp, "label")
+        if not marker:
+            check("the marker-on-label probe compiles", False, "no PDF produced")
+        else:
+            pair = [w for _, _, ws in op.words_by_page(marker) for w in ws
+                    if w[4].strip() in ("?", "25")]
+            worst = max((op.overlap_fraction(x[:4], y[:4])
+                         for x in pair for y in pair if x is not y), default=0.0)
+            check(f"the probe stays under the prose threshold, so only the "
+                  f"label rule can catch it ({worst * 100:.0f}% < "
+                  f"{op.OVERLAP * 100:.0f}%)",
+                  0.0 < worst < op.OVERLAP, f"measured {worst:.3f}")
+            f = faults(marker)
+            check("a marker printed on a figure label is caught", len(f) >= 1,
+                  "the detector saw nothing")
+
         good = build(CLEAN, tmp, "clean")
         if not good:
             check("the clean probe compiles", False, "no PDF produced")
         else:
             f = faults(good)
-            check("radicals, congruence, fractions and ellipses stay clean",
+            check("radicals, congruence, fractions, cube roots, underbraces "
+                  "and ellipses stay clean",
                   not f, "; ".join(m for _, m in f)[:200])
 
     print()

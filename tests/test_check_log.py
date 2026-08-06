@@ -124,8 +124,13 @@ check("subprocess: bad fixture -> exit 1", run([BAD]).returncode == 1)
 check("subprocess: ok fixture -> exit 0", run([OK]).returncode == 0)
 over_run = run([OVER, "--max-pages", "2"])
 check("subprocess: over-budget -> exit 1", over_run.returncode == 1)
+# The message used to end at "split the sheet". It now leads with the fix that
+# preserves the work — declare workspace_cm on problems carrying content the
+# budget cannot see — and treats splitting as the last resort. Assert the fix it
+# actually teaches, not the wording it used to have.
 check("over-budget message names the cap's source (SKILL.md) and the fix",
-      "SKILL.md" in over_run.stdout and "split the sheet" in over_run.stdout)
+      "SKILL.md" in over_run.stdout and "workspace_cm" in over_run.stdout
+      and "split" in over_run.stdout)
 
 print()
 if FAILS:

@@ -23,11 +23,22 @@ WHAT THIS REFUSES TO DO
    count matches the task, whether the gate chain passed. An ACCEPT on a task
    with a missing PDF is not a disagreement about quality; it means the judge
    did not look. Those contradictions are reported separately from the scores.
+
+4. Take a quoted value on trust. A finding that says the key prints 36 is
+   evidence only if 36 is printed somewhere in the artifacts. Every numeric and
+   symbolic value quoted in a verdict is looked up in the extracted text and the
+   verification JSON; the ones that are not there are listed. PDF extraction is
+   lossy — `\\frac{3}{5}` comes out as "35" and radicals come out mangled — so a
+   miss is reported for adjudication, never used to overturn a judgment.
 """
 import argparse
+import importlib.util
 import json
 import os
+import re
+import shutil
 import statistics
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,6 +46,55 @@ RUNS = os.path.join(ROOT, "evals", "runs")
 MIN_DIMENSION = 3
 MIN_TOTAL = 27
 MAX_TOTAL = 32
+
+
+def _load_scoring_harness():
+    """The claim audit lives with the rest of the harness; share it, don't fork it."""
+    path = os.path.join(ROOT, "scripts", "score_eval_run.py")
+    if not os.path.isfile(path):
+        return None
+    spec = importlib.util.spec_from_file_location("score_eval_run", path)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:  # a broken sibling must not block scoring
+        return None
+    return module
+
+
+HARNESS = _load_scoring_harness()
+ARTIFACT_PDFS = ("worksheet.pdf", "answer_key.pdf", "study_guide.pdf")
+ARTIFACT_JSON = ("verify.json", "verify_study_guide.json")
+
+
+def artifact_text(task_dir):
+    """Everything the judge was shown, as text, for looking values up in."""
+    texts = []
+    if shutil.which("pdftotext"):
+        for name in ARTIFACT_PDFS:
+            path = os.path.join(task_dir, name)
+            if os.path.isfile(path):
+                proc = subprocess.run(["pdftotext", "-layout", path, "-"],
+                                      capture_output=True, text=True, errors="replace")
+                if proc.returncode == 0:
+                    texts.append(proc.stdout)
+    for name in ARTIFACT_JSON:
+        path = os.path.join(task_dir, name)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                texts.append(fh.read())
+    return texts
+
+
+def audit_claims(task_dir, verdict):
+    """Values this verdict quotes that no artifact contains."""
+    if HARNESS is None or not os.path.isdir(task_dir):
+        return []
+    texts = artifact_text(task_dir)
+    if not any(text.strip() for text in texts):
+        return []
+    index = HARNESS.artifact_value_index(texts)
+    return HARNESS.audit_verdict_claims(verdict, index)
 
 
 def die(msg, code=2):
@@ -114,6 +174,7 @@ def main(argv=None):
     stray = [t for t in verdicts if t not in run["task_ids"]]
 
     rows, malformed, contradictions = [], [], []
+    unsupported, adjudicate = [], []
     for tid in run["task_ids"]:
         v = verdicts.get(tid)
         if not v:
@@ -143,6 +204,14 @@ def main(argv=None):
         obs_path = os.path.join(d, "observations", f"{tid}.json")
         obs = load(obs_path) if os.path.isfile(obs_path) else {}
         task = load(os.path.join(d, "tasks", tid, "task.json"))
+
+        # Does every value this verdict quotes exist in the artifacts it read?
+        claims = audit_claims(os.path.join(d, "tasks", tid), v)
+        for item in claims:
+            unsupported.append({"task_id": tid, **item})
+        if any(item["blocking"] for item in claims):
+            adjudicate.append(tid)
+
         if derived == "ACCEPT":
             # Things the judge could not see, that an ACCEPT cannot survive.
             for label, ok in (("a required PDF is missing",
@@ -247,6 +316,19 @@ def main(argv=None):
                   "The judge was deliberately not shown these facts. An ACCEPT that",
                   "survives them means the artifacts were not actually inspected.", ""]
         lines += [f"- {c}" for c in contradictions] + [""]
+    if unsupported:
+        lines += ["## Claims not found in the artifacts", "",
+                  "Values a verdict quotes that appear nowhere in the extracted PDF",
+                  "text or the verification JSON. A finding that recites a number the",
+                  "artifact does not contain was not read off the artifact. Extraction",
+                  "is lossy, so adjudicate these rather than counting them as errors;",
+                  "the **blocking** ones are hard failures, where the recited value is",
+                  "the whole basis for a rejection.", "",
+                  "| Task | Field | Value | Blocking |", "| --- | --- | --- | --- |"]
+        for item in unsupported:
+            lines.append(f"| {item['task_id']} | {item['field']} | `{item['value']}` | "
+                         f"{'**yes**' if item['blocking'] else 'no'} |")
+        lines.append("")
     if stray:
         lines += ["## Stray verdicts", "",
                   "Verdicts for tasks that are not part of this run:", ""]
@@ -263,8 +345,14 @@ def main(argv=None):
         print(f"⚠️  {len(malformed)} verdict(s) did not survive recomputation")
     if contradictions:
         print(f"❌ {len(contradictions)} ACCEPT(s) contradicted by mechanical facts")
+    if unsupported:
+        print(f"⚠️  {len(unsupported)} quoted value(s) in "
+              f"{len({u['task_id'] for u in unsupported})} verdict(s) are not in the artifacts")
+    if adjudicate:
+        print(f"❌ {len(adjudicate)} verdict(s) rest on a hard failure citing a value the "
+              f"artifact does not contain: {', '.join(sorted(adjudicate))}")
     print(f"report: {os.path.relpath(out, ROOT)}")
-    return 1 if contradictions else 0
+    return 1 if contradictions or adjudicate else 0
 
 
 if __name__ == "__main__":

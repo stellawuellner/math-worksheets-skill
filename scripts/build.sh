@@ -50,6 +50,11 @@
 #    9 layout-ws       tests/check_layout.py (figure scope + work space +
 #                      answer location)
 #   10 answer-line-ws  tests/check_answer_line.py (answer_unit <-> \answerline)
+#   10b answer-slots-ws tests/check_answer_slots.py — every PRINTED response
+#                      slot, and every lettered sub-part the stem asks for,
+#                      needs its own verify entry. The per-problem-id rule this
+#                      supplements counts problems, not answers; 172 of 300
+#                      reviewed cases shipped an answer nobody checked.
 #   11 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two). Each
 #                      compile enforces a page budget read from the engine's
@@ -398,6 +403,13 @@ if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
   record answer-line-ws "PASS"
 else
   fail answer-line-ws
+fi
+
+banner "answer-slot coverage on $(basename "$WS_TEX")"
+if "$PYTHON3" "$TESTS_DIR/check_answer_slots.py" "$WS_TEX" "$WS_JSON"; then
+  record answer-slots-ws "PASS"
+else
+  fail answer-slots-ws
 fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared

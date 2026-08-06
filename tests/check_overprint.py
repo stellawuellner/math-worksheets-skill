@@ -34,6 +34,15 @@ brushing its base does not count while a title lying across a blank does. It was
 calibrated against 450 PDFs this repository had already produced and gated, and
 then confirmed against a document with a deliberate collision.
 
+That single threshold is calibrated for TEXT OVER TEXT IN PROSE, where the
+smaller box is a word and covering half of it is unmistakable. It is the wrong
+number for a FIGURE LABEL, which is one or two characters: a `?` dropped on top
+of a length digit hides the digit completely while covering only a fifth of the
+box area, because most of a word box is the font's ascent and descent, not ink.
+So there is a second, narrower rule for exactly that geometry — see
+`stacked_label`. It is not a lower global threshold; a lower global threshold
+would flag every subscript and radical in the corpus.
+
 Exit 0 clean · 1 overprinting found · 2 harness error (no pdftotext, bad file).
 """
 import argparse
@@ -69,6 +78,48 @@ OVERLAY_GLYPHS = {"\u221a", "\u203e", "\u0304", "\u00af", "\u2500", "\u2015"}
 # Punctuation-only words: a dot leader or an ellipsis kerns into its neighbour,
 # and a couple of points is a large fraction of a box that small.
 PUNCT_ONLY = re.compile(r"^[.,;:\u00b7\u2026\-\u2013\u2014_]+$")
+
+# ---------------------------------------------------------------- figure labels
+# A second rule, for the one geometry the area threshold above cannot see: a
+# short label printed on top of another short label inside a figure.
+#
+# Why the area threshold misses it. `pdftotext` reports a word's box as the
+# font's full ascent-to-descent span, not its ink. A `?` and a `9` set at the
+# same size, one dropped far enough onto the other that the `?`'s dot lands
+# inside the digit, still share only ~30% of the smaller box \u2014 the rest of each
+# box is empty leading. In prose that number means a graze; between two
+# single-character labels it means the digit is unreadable.
+#
+# Why the answer is not a lower global threshold. Measured across the 900 PDFs
+# in evals/runs, dropping the global number to 0.19 buries the page in
+# subscripts, radical indices and fraction parts. The four conditions below
+# separate the two populations instead, and each one is doing work:
+#
+#   LABEL_RE     Both words are short label tokens. Figure labels are a length,
+#                an angle, a variable or a `?`. Requiring both sides to be one
+#                is what keeps `\underbrace{..}_{lower bound}` out (poppler
+#                reads the brace as a word and its label sits right under it).
+#   STACK_HFRAC  They occupy the same column. This is the subscript test: a
+#                subscript, a superscript and a degree mark sit BESIDE their
+#                base and score ~0 here, because poppler starts the small
+#                glyph's box exactly where the base's box ends.
+#   STACK_VFRAC  Their boxes interpenetrate vertically by more than TeX's own
+#                stacking ever produces. \frac and \dfrac place numerator and
+#                denominator at fixed offsets from the maths axis, so the box
+#                overlap they leave is a constant 0.22 of the box height at
+#                every size in the corpus; the deepest innocent stack measured
+#                anywhere in the 900 PDFs is 0.26. Real collisions measured
+#                0.34 and 0.45. The threshold sits in the gap.
+#   STACK_SIZE   Both boxes are the same height, i.e. the same font size. Every
+#                mark TeX legitimately stacks over another is set SMALLER: the
+#                index of a cube root, an accent, a script. This is the
+#                condition that rejects the poppler radical artifact, where the
+#                surd is mis-decoded as a word and its index overlaps it by
+#                0.38 \u2014 the index is at script size, so the ratio is 0.69.
+LABEL_RE = re.compile(r"^[A-Za-z0-9?]{1,3}$")
+STACK_HFRAC = 0.55
+STACK_VFRAC = 0.30
+STACK_SIZE = 0.90
 
 
 def words_by_page(pdf):
@@ -139,6 +190,35 @@ def composed_glyph(a, b):
             and abs(a[2] - b[2]) < 0.25 * min(wa, wb))
 
 
+def _axis_fraction(lo_a, hi_a, lo_b, hi_b):
+    """Overlap along one axis as a fraction of the shorter extent."""
+    inter = min(hi_a, hi_b) - max(lo_a, lo_b)
+    shorter = min(hi_a - lo_a, hi_b - lo_b)
+    if inter <= 0 or shorter <= 0:
+        return 0.0
+    return inter / shorter
+
+
+def stacked_label(a, b):
+    """True when two short labels are printed one on top of the other.
+
+    The figure-label rule described at the top of this file. It is deliberately
+    narrow: same-size, short, both-alphanumeric-or-`?`, sharing a column, and
+    interpenetrating deeper than TeX's own stacking. It answers a different
+    question from `overlap_fraction` and is checked in addition to it, never
+    instead of it.
+    """
+    ta, tb = a[4].strip(), b[4].strip()
+    if not LABEL_RE.match(ta) or not LABEL_RE.match(tb):
+        return False
+    ha, hb = a[3] - a[1], b[3] - b[1]
+    if ha <= 0 or hb <= 0 or min(ha, hb) / max(ha, hb) < STACK_SIZE:
+        return False
+    if _axis_fraction(a[0], a[2], b[0], b[2]) < STACK_HFRAC:
+        return False
+    return _axis_fraction(a[1], a[3], b[1], b[3]) >= STACK_VFRAC
+
+
 def page_faults(page_w, page_h, words, threshold):
     """Overprinting pairs and off-page words on one page."""
     faults = []
@@ -166,6 +246,12 @@ def page_faults(page_w, page_h, words, threshold):
                 faults.append(("overprint",
                                f"{a[4]!r} and {b[4]!r} overlap by "
                                f"{f * 100:.0f}% of the smaller, at "
+                               f"({a[0]:.0f},{a[1]:.0f})"))
+            elif stacked_label(a, b):
+                faults.append(("overprint",
+                               f"{a[4]!r} is printed on top of {b[4]!r} — two "
+                               f"labels of the same size stacked in one column, "
+                               f"{f * 100:.0f}% of the smaller box, at "
                                f"({a[0]:.0f},{a[1]:.0f})"))
     return faults
 

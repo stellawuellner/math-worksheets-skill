@@ -155,9 +155,13 @@ def schema_error(problem):
 
 msg = schema_error({"id": 1, "type": "manual", "desc": "sketch",
                     "traps": [{"desc": "x", "expr": "1"}]})
-check("trap on manual → names the single-comparable-answer rule",
+# A manual review flag still has nothing to be distinguishable FROM, so it
+# still cannot carry traps. The wording changed with solution-set traps: the
+# rule is no longer "a single comparable answer" — solve/zeros/solve_interval
+# now take traps too, declaring the wrong ROOT SET via "exprs".
+check("trap on manual → names the comparable-answer rule and the allowed types",
       msg is not None and "cannot carry traps" in msg
-      and "single comparable answer" in msg)
+      and "comparable answer" in msg and "solve" in msg)
 msg = schema_error({"id": 1, "type": "approx", "expr": "2+2", "expected": 4,
                     "traps": [{"desc": "x", "expr": "5", "wrong": 5}]})
 check("unknown trap key → rejected with the trap shape",
@@ -243,6 +247,54 @@ check("nested trap desc numbers do NOT count as givens",
       3.0 not in nums and 4.0 not in nums)
 check("trap expr/value numbers DO count as givens",
       7.37 in nums and 9.0 in nums and 5.16 in nums)
+
+# ── Solution-set traps ────────────────────────────────────────────────────
+# solve/zeros/solve_interval were excluded from traps because "there is nothing
+# to be distinguishable from on a root LIST". That is backwards for the topics
+# where dropping a root IS the misconception. One reviewed case whose declared
+# focus was "diagnosing incomplete root sets" could declare none of its six
+# planted wrong answers, because every one of them was a set.
+print("Solution-set traps (solve / zeros / solve_interval):")
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "solve", "expr": "x**2 - 9", "var": "x",
+     "expected": [3, -3],
+     "traps": [{"desc": "took only the positive square root",
+                "exprs": ["3"], "value": [3]}]})
+check("a dropped root is a distinguishable trap",
+      ok and any("drops -3" in ln for ln in info))
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "solve", "expr": "x**2 - 9", "var": "x",
+     "expected": [3, -3],
+     "traps": [{"desc": "same set", "exprs": ["3", "-3"]}]})
+check("a trap set equal to the answer fails with change-the-givens",
+      not ok and "cannot distinguish" in info)
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "solve", "expr": "x**2 - 4", "var": "x",
+     "expected": [2, -2],
+     "traps": [{"desc": "extraneous root from squaring", "exprs": ["2", "-2", "5"]}]})
+check("an extraneous root is expressible too",
+      ok and any("adds 5" in ln for ln in info))
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "solve", "expr": "x**2 - 9", "var": "x",
+     "expected": [3, -3],
+     "traps": [{"desc": "drift", "exprs": ["3"], "value": [7]}]})
+check("a printed set drifting from its own exprs fails",
+      not ok and "does not match" in info)
+
+msg = schema_error({"id": 1, "type": "solve", "expr": "x - 1", "var": "x",
+                    "expected": [1],
+                    "traps": [{"desc": "d", "expr": "2"}]})
+check("a scalar expr on a solution-set type is rejected",
+      msg is not None and "exprs" in msg)
+
+msg = schema_error({"id": 1, "type": "eval", "expr": "2+2", "expected": 4,
+                    "traps": [{"desc": "d", "exprs": ["5"]}]})
+check("exprs on a scalar type is still rejected",
+      msg is not None)
 
 print()
 if FAILS:

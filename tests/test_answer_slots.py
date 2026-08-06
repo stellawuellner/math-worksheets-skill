@@ -112,6 +112,25 @@ def main():
     check("the auto-emitted answer line needs an entry",
           rc == 1, out.strip()[-160:])
 
+    # 9. One entry can pin several BLANKS: ordering three numbers into three
+    #    blanks is completely verified by a single compare entry.
+    rc, out = run(r"\problem{Write them in order: \ansblank\ \ansblank\ \ansblank}",
+                  [{"id": 1, "type": "compare", "values": [3, 5, 7],
+                    "order": "asc", "expected": [3, 5, 7]}])
+    check("a list-valued entry covers the blanks it fills",
+          rc == 0, out.strip()[-160:])
+
+    # 10. ...but arity must NOT satisfy a lettered sub-part. A two-root solve
+    #     covers two blanks and says nothing about the "explain why" beside it.
+    #     Letting arity count here would silence this gate's largest true-
+    #     positive class.
+    rc, out = run(r"\problem[5cm]{\textbf{(a)} Solve $x^2-5x+6=0$. "
+                  r"\textbf{(b)} Explain why a quadratic can have two roots.}",
+                  [{"id": 1, "type": "solve", "expr": "x**2-5*x+6",
+                    "var": "x", "expected": [2, 3]}])
+    check("arity does not excuse an unanswered sub-part",
+          rc == 1, out.strip()[-160:])
+
     print()
     if FAILS:
         print(f"❌ {len(FAILS)} answer-slot check(s) failed:")

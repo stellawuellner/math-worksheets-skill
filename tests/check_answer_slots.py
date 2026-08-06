@@ -78,6 +78,23 @@ def slots_in(segment):
     return 1 if m and positive_workspace(m.group(1)) else 0
 
 
+def values_pinned(entry):
+    r"""How many printed BLANKS one entry can legitimately account for.
+
+    A `compare` ordering three numbers pins three positions; a `system` pins the
+    pair; `solve`/`zeros` pin every root. Counting entries alone flagged those
+    as under-covered when they are exactly right — "write the three numbers in
+    order: __ __ __" against one compare entry is a complete verification.
+
+    Deliberately applied ONLY to printed slots, never to lettered sub-parts. A
+    two-root `solve` covers two blanks, but it says nothing about a "(b) explain
+    why" beside it, and letting arity satisfy sub-parts would turn this gate's
+    biggest true-positive class into silence.
+    """
+    v = entry.get("expected")
+    return len(v) if isinstance(v, list) and v else 1
+
+
 def subparts_in(segment):
     r"""How many lettered sub-parts the stem asks for.
 
@@ -197,10 +214,11 @@ def main():
         return 2
     segments = [tex[a:b] for a, b in spans]
 
-    entries = {}
+    entries, covered = {}, {}
     for e in data.get("problems", []):
         if isinstance(e, dict) and isinstance(e.get("id"), int):
             entries[e["id"]] = entries.get(e["id"], 0) + 1
+            covered[e["id"]] = covered.get(e["id"], 0) + values_pinned(e)
 
     total_slots = sum(slots_in(s) for s in segments)
     print(f"Answer-slot coverage: {sys.argv[1]} "
@@ -210,20 +228,27 @@ def main():
     faults = []
     for i, seg in enumerate(segments, 1):
         slots, parts = slots_in(seg), subparts_in(seg)
-        want = max(slots, parts)
-        have = entries.get(i, 0)
-        if want > have:
-            asked = (f"prints {slots} response slot(s)" if slots >= parts else
-                     f"asks {parts} lettered sub-part(s) ({slots} slot(s) "
-                     f"printed)")
-            faults.append(
-                f"problem {i} {asked} but the verify JSON has {have} "
-                f"entr{'y' if have == 1 else 'ies'} for id {i} — {want - have} "
-                f"response(s) would ship unchecked. Add one entry per response "
-                f"the problem asks for (use \"manual\" for a written "
-                f"explanation, a sketch or a named error), or, if a blank is "
-                f"working space rather than an answer, print it with "
-                f"\\scratchblank")
+        have, pinned = entries.get(i, 0), covered.get(i, 0)
+        # Blanks are measured against VALUES pinned, sub-parts against ENTRIES.
+        # A one-entry compare fills three ordering blanks; it does not answer a
+        # second lettered question.
+        short_slots, short_parts = slots - pinned, parts - have
+        if short_slots <= 0 and short_parts <= 0:
+            continue
+        if short_parts >= short_slots:
+            asked = (f"asks {parts} lettered sub-part(s) but has {have} "
+                     f"entr{'y' if have == 1 else 'ies'}")
+            missing = short_parts
+        else:
+            asked = (f"prints {slots} response slot(s) but its entries pin "
+                     f"{pinned} value(s)")
+            missing = short_slots
+        faults.append(
+            f"problem {i} {asked} — {missing} response(s) would ship "
+            f"unchecked. Add one entry per response the problem asks for (use "
+            f"\"manual\" for a written explanation, a sketch or a named "
+            f"error), or, if a blank is working space rather than an answer, "
+            f"print it with \\scratchblank")
 
     for note in given_as_answer_notes(segments, data):
         print(f"  ⚠ {note}.")

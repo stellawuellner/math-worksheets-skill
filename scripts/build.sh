@@ -139,8 +139,9 @@ fi
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
 GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
        coverage-ss facet-coverage render-figures render-meta quick-answers \
-       layout-ws answer-line-ws compile-ws compile-ak compile-ss \
-       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss overprint)
+       layout-ws answer-line-ws answer-slots-ws compile-ws compile-ak \
+       compile-ss answer-key-ak answer-key-ss ss-structure prose-ws prose-ss \
+       overprint)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""

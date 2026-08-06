@@ -274,6 +274,11 @@ For geometry, **state the givens and let the script compute**: pass raw coordina
 
 Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments, drawn or marked representations (circle it, shade it, plot it), a named misconception, and any explanation/reasoning answer — **per response**, so a problem whose (a) is a number and whose (b) is "explain why" gets one ordinary entry and one `manual` entry, not a choice between them.
 
+Two lints in `tests/check_answer_slots.py` enforce this per response, both measured on the 300-case corpus before shipping:
+
+- **Open-ask lint** (hard fail): a stem containing an open ask — explain, describe, justify, say why/whether/which, name the error, sketch, shade, circle the, prove, construct — must have a `manual` entry on that id. 471 problems in 184 of 300 reviewed cases violated this. Do **not** delete or weaken the ask to quiet the gate: the written reasoning is the pedagogy, and a sheet stripped of its explain-items to build green is a worse sheet. "Sketch it if it helps" is scaffolding and is exempt.
+- **Stale-rubric lint** (hard fail): a `manual` desc naming a person or thing that appears nowhere in its problem fails — that is a rubric left over from an earlier draft, and it grades the wrong problem while every other gate stays green. Fires on exactly 1 of the corpus's 299 manual entries: the real defect.
+
 A `manual` entry's `desc` is the rubric a human grader actually reads, so it must describe **the problem as printed**. Nothing binds it automatically: one reviewed case shipped a `desc` grading a scale-spacing argument about a student named "Priya" who appears nowhere in the worksheet — a rubric left over from an earlier draft, green through every gate. Re-read the `desc` against the stem before shipping.
 
 **Optional review aid for `manual` content:** proofs and explanations can't be CAS-verified, but an independent LLM-judge pass can flag likely errors before a human reviews them. See `references/manual-review-aid.md`. This is a review aid, NOT a gate — a `manual` problem stays `manual`; never mark it verified on a judge's say-so.

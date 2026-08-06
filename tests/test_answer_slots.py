@@ -161,6 +161,49 @@ def main():
     check("a solve root list does not cover a second answer line",
           rc == 1, out.strip()[-160:])
 
+    # 14. The 202-case class: an open ask with no manual entry must fail even
+    #     when the slot arithmetic is satisfied.
+    rc, out = run(r"\problem[5cm]{Solve the equation, then explain why the "
+                  r"rejected root cannot work.~\ansline}", [entry(1)])
+    check("an open ask with no manual entry fails",
+          rc == 1 and "manual" in out, out.strip()[-160:])
+
+    # 15. The same ask WITH a manual entry passes — one rubric covers it.
+    rc, out = run(r"\problem[5cm]{Solve the equation, then explain why the "
+                  r"rejected root cannot work.~\ansline}",
+                  [entry(1), {"id": 1, "type": "manual",
+                              "desc": "why the rejected root fails the domain"}])
+    check("the same ask with a manual entry passes", rc == 0,
+          out.strip()[-160:])
+
+    # 16. "Plot it if it helps" is scaffolding, not a demand.
+    rc, out = run(r"\problem[4cm]{Find the distance. Sketch the points on the "
+                  r"grid if it helps.}", [entry(1)])
+    check("optional draw-if-it-helps scaffolding does not fire", rc == 0,
+          out.strip()[-160:])
+
+    # 17. The Priya class: a manual desc naming someone absent from the
+    #     problem is a stale rubric and must fail.
+    #     The name must sit mid-sentence: sentence-initial capitals are
+    #     indistinguishable from sentence case ("Explain why…") and are a
+    #     documented boundary of the lint — the real corpus instance fired on
+    #     a mid-sentence recurrence.
+    rc, out = run(r"\problem[4cm]{Explain which part of the plot answers each "
+                  r"question.\noansline}",
+                  [{"id": 1, "type": "manual",
+                    "desc": "Grade whether Priya's respacing argument holds"}])
+    check("a stale desc naming an absent person fails",
+          rc == 1 and "Priya" in out, out.strip()[-160:])
+
+    # 18. A multi-word proper term is vocabulary, not a name — must not fire.
+    rc, out = run(r"\problem[4cm]{Explain why reversing the bounds flips the "
+                  r"sign of the integral.\noansline}",
+                  [{"id": 1, "type": "manual",
+                    "desc": "Uses the Fundamental Theorem to justify the "
+                            "sign flip when bounds reverse"}])
+    check("a theorem name in the desc does not fire", rc == 0,
+          out.strip()[-160:])
+
     print()
     if FAILS:
         print(f"❌ {len(FAILS)} answer-slot check(s) failed:")

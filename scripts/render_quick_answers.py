@@ -323,7 +323,7 @@ def _idlist(ids):
     return ", ".join(str(i) for i in ids)
 
 
-def coverage_note(n, unchecked_ids, manual_ids):
+def coverage_note(n, unchecked_ids, manual_ids, scratch=0):
     r"""The instructor's one-line answer to "what can I trust here?".
 
     The bank shows values; it never said what stands behind them. An instructor
@@ -335,7 +335,7 @@ def coverage_note(n, unchecked_ids, manual_ids):
     Silent when every response is machine-verified — a legend explaining marks
     that do not appear is noise, and noise is what makes real warnings invisible.
     """
-    if not unchecked_ids and not manual_ids:
+    if not unchecked_ids and not manual_ids and not scratch:
         return []
     verified = n - len(unchecked_ids) - len(manual_ids)
     out = ["\\medskip\\noindent{\\small\\textbf{What is verified}}"
@@ -358,6 +358,15 @@ def coverage_note(n, unchecked_ids, manual_ids):
             f"carries NO machine guarantee; check "
             f"{'those' if len(unchecked_ids) > 1 else 'it'} yourself before "
             "handing the sheet back.}\\par")
+    if scratch:
+        # \scratchblank is the author's CLAIM that a blank holds working
+        # space, not an answer. The claim is cheap to make and quiets the
+        # slot gate, so the one reader it affects gets told it was made.
+        out.append(
+            f"\\noindent{{\\small The author marked {scratch} blank"
+            f"{'s' if scratch != 1 else ''} as working space "
+            f"(\\emph{{not}} answers --- nothing checks what lands there).}}"
+            "\\par")
     out += ["\\noindent\\rule{\\linewidth}{0.4pt}\\medskip", ""]
     return out
 
@@ -480,7 +489,14 @@ def render(data, level="", ws_tex=""):
         "\\noindent\\rule{\\linewidth}{0.4pt}\\medskip",
         "",
     ]
-    lines += coverage_note(n, unchecked_ids, manual_ids)
+    scratch = 0
+    if ws_tex:
+        try:
+            from check_answer_slots import SCRATCH_RE, blank_comments as _bc
+            scratch = len(SCRATCH_RE.findall(_bc(ws_tex)))
+        except ImportError:
+            pass
+    lines += coverage_note(n, unchecked_ids, manual_ids, scratch)
     lines += curriculum_block(by_id, n, level)
     lines += common_errors(by_id, n)
     return "\n".join(lines)

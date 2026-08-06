@@ -460,3 +460,30 @@ could actually learn the skill from rather than a formula dump.
 - Do not edit anything outside `/tmp/evalbuild/$TASK` and the run folder.
 - Do not hand-roll the LaTeX preamble; `\input{worksheet-preamble}` always.
 - Do not re-record a task another agent already recorded.
+
+## New gates since the last run (2026-08-06) — build against them, don't discover them
+
+- **Answer-slot coverage (`answer-slots-ws`, hard fail).** Every printed
+  `\ansline`/`\ansblank`/`\answerline` — and every lettered `(a)`/`(b)` sub-part
+  in a stem — needs its own verify entry. One entry per problem id is no longer
+  enough. A `compare`/`midpoint`/`intersection`/`system` entry covers as many
+  blanks as its list fills; a `solve` root list is ONE answer on ONE line. A
+  blank that is genuinely working space (a transcribed given, a carried partial
+  product) is printed with `\scratchblank` — but the answer key TELLS the
+  instructor how many blanks you claimed as working space, so claiming a real
+  answer is visible, not free.
+- **Open-ask lint (hard fail).** "Explain / describe / justify / say why /
+  name the error / sketch / shade / circle the / prove" in a stem requires a
+  `manual` entry on that id. The fix is ALWAYS to add the manual entry with a
+  real rubric — never to delete the ask. 184 of the 300 previous cases would
+  fail this today; your sheet should not be case 185.
+- **Stale-rubric lint (hard fail).** A `manual` desc that names a person or
+  thing absent from its printed problem fails. Write the desc against the stem
+  you actually shipped, not the draft you started from.
+- **The Quick Answers bank now has three states** (value / `---` for
+  instructor-judged / `[unchecked]`), a "What is verified" tally, and it
+  preserves your written form (`9/12` stays `9/12`, factored stays factored).
+  Relations print as relations. If your bank row looks wrong, fix the JSON —
+  the bank is generated, and it now agrees with the slot gate by construction.
+- **Multi-entry ids: give each entry a `"slot"` label** ("AC", "the ones
+  digit", "(b)") so the bank can say which value answers which question.

@@ -190,6 +190,93 @@ def shortfall(segment, entries):
                          f"{pinned} value(s)")
 
 
+# ── Open-response lint ──────────────────────────────────────────────────────
+# The largest defect class of the 300-case review (202 cases): a stem demanding
+# a written explanation, a named error, or a drawn mark, recorded as machine-
+# verified because no `manual` entry exists. The slot/sub-part arithmetic above
+# cannot see it — "Explain why" behind one blank counts as one covered slot.
+# These verbs can. Measured on the corpus: 471 problems in 184 cases fire, and
+# a 7-case random read found 7 true positives. Two deliberate exemptions keep
+# it honest: "draw/plot ... if it helps" is optional scaffolding, not a demand;
+# and any problem already carrying a manual entry passes — one rubric routinely
+# covers several open asks (126-case measurement).
+OPEN_ASK_RE = re.compile(
+    r"\b(explain|describe|justify|say (?:why|whether|which|what|how)"
+    r"|tell (?:why|how)|in your own words|in (?:one|a) sentences? or two"
+    r"|in (?:one|two) sentences?|name the (?:error|mistake)|what went wrong"
+    r"|prove|show that|write the converse|circle (?:the|one|which|all)"
+    r"|shade|sketch|construct|two-column proof)\b", re.I)
+OPTIONAL_RE = re.compile(
+    r"\b(?:if it helps|if that helps|may help|can help|it helps to)\b", re.I)
+
+
+def open_response_gaps(segments, by_id):
+    """Problems demanding an open response with no manual entry to grade it."""
+    gaps = []
+    for i, seg in enumerate(segments, 1):
+        if any(e.get("type") == "manual" for e in by_id.get(i, [])):
+            continue
+        m = OPEN_ASK_RE.search(seg)
+        if not m:
+            continue
+        if OPTIONAL_RE.search(seg[max(0, m.start() - 40):m.end() + 60]):
+            continue
+        gaps.append((i, m.group(0)))
+    return gaps
+
+
+# ── Stale-rubric lint ───────────────────────────────────────────────────────
+# A manual entry's desc is the rubric a human grader reads. Nothing used to
+# bind it to the problem it grades: one shipped case's desc graded a scale-
+# spacing argument about a student named "Priya" who appears nowhere in the
+# worksheet — a leftover from an earlier draft, green through every gate.
+# The high-signal anchor is a STANDALONE capitalized word (a person or thing
+# the rubric names) absent from the problem. Standalone means both neighbours
+# lowercase: "Priya wants" flags, "Fundamental Theorem" does not — multi-word
+# proper terms are vocabulary, not names. Measured on all 299 corpus manual
+# entries: exactly one fire, and it is the true positive.
+_DESC_STOP = frozenset(
+    "The This That These Those Then There Answer Grade Step Part Open Full "
+    "Credit Student Students Accept Also Reasons Reason Solution Sum Rule "
+    "Graph Table Figure Law Segment".split())
+_CAPWORD_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
+
+
+def stale_desc_faults(segments, by_id):
+    """KNOWN BOUNDARY: a name appearing ONLY at a sentence start is invisible —
+    sentence case makes "Priya wants…" indistinguishable from "Explain why…"
+    without a dictionary. In the corpus's one real instance the name recurs
+    mid-sentence, which is where names in running prose almost always land.
+    """
+    faults = []
+    for i, seg in enumerate(segments, 1):
+        low = seg.lower()
+        for e in by_id.get(i, []):
+            if e.get("type") != "manual":
+                continue
+            desc = e.get("desc") or ""
+            # skip sentence-initial words: sentence case, not a name signal
+            body = re.sub(r"(?:^|[.!?]\s+)(\w+)", " ", desc)
+            toks = [m.group(0).rstrip("'s").rstrip("'")
+                    for m in re.finditer(r"[A-Za-z][A-Za-z']*", body)]
+            for k, w in enumerate(toks):
+                if not _CAPWORD_RE.fullmatch(w) or w in _DESC_STOP:
+                    continue
+                # A capitalized word within TWO words either side marks a
+                # multi-word proper term — "Fundamental Theorem" directly,
+                # "Division Property of Equality" across the "of". Vocabulary,
+                # not a person. (Boundary: two adjacent person names also
+                # skip; a rubric naming two people it invented is out of
+                # reach of this lint.)
+                near = toks[max(0, k - 2):k] + toks[k + 1:k + 3]
+                if any(t[:1].isupper() for t in near):
+                    continue
+                if w.lower() not in low:
+                    faults.append((i, w, desc[:80]))
+                    break
+    return faults
+
+
 def given_as_answer_notes(segments, data):
     r"""ADVISORY ONLY — never fails the build. Read the note, don't obey it.
 
@@ -280,6 +367,41 @@ def main():
             f"\"manual\" for a written explanation, a sketch or a named "
             f"error), or, if a blank is working space rather than an answer, "
             f"print it with \\scratchblank")
+
+    for i, verb in open_response_gaps(segments, by_id):
+        faults.append(
+            f"problem {i} asks for an open response (\"{verb}\") and no "
+            f"manual entry exists to grade it — the sheet would claim full "
+            f"machine verification while its reasoning ask goes unexamined. "
+            f"Add a manual entry whose desc states what a correct response "
+            f"must contain. Do NOT delete or weaken the ask to quiet this "
+            f"gate: the written reasoning is the pedagogy, and removing it "
+            f"trades the sheet's teaching value for a green build")
+
+    for i, name, desc in stale_desc_faults(segments, by_id):
+        faults.append(
+            f"problem {i}'s manual desc names \"{name}\", which appears "
+            f"nowhere in that problem — a rubric left over from an earlier "
+            f"draft grades the WRONG problem while every gate stays green "
+            f"(desc: \"{desc}…\"). Rewrite the desc against the printed stem")
+
+    # Footprints, not blocks: each of these is a legitimate author choice that
+    # must stay VISIBLE, because both are also the cheapest ways to quiet the
+    # gates above and neither leaves any other trace in the deliverable.
+    for i, seg in enumerate(segments, 1):
+        n_scratch = len(SCRATCH_RE.findall(seg))
+        if n_scratch:
+            print(f"  ℹ problem {i} marks {n_scratch} blank(s) as working "
+                  f"space (\\scratchblank) — the author's claim, unverified")
+        ents = by_id.get(i, [])
+        parts = subparts_in(seg)
+        manuals = sum(1 for e in ents if e.get("type") == "manual")
+        absorbed = parts - len(ents)
+        if manuals and parts >= 2 and absorbed >= 1:
+            print(f"  ℹ problem {i}: {manuals} manual entr"
+                  f"{'y' if manuals == 1 else 'ies'} credited with covering "
+                  f"{absorbed + manuals} of {parts} lettered sub-parts — "
+                  f"confirm the desc really covers each one")
 
     for note in given_as_answer_notes(segments, data):
         print(f"  ⚠ {note}.")

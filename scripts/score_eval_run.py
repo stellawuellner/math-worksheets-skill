@@ -852,7 +852,26 @@ def machine_artifact_index(machine):
 BANK_HEADING = "Quick Answers"
 BANK_END_HEADINGS = ("What is verified", "Curriculum", "Common wrong answers",
                      "Answer Key", "Worked Solutions")
-BANK_ANCHOR_RE = re.compile(r"(?:^|(?<=\s\s))(\d{1,3})\.(?=\s)")
+# Two spaces marks a -layout column gap. But a row wide enough to eat the gap
+# collapses to ONE space, and the `slot` labels added in 2026-08 do exactly
+# that: "2. first empty box = 47, second empty box = 49 6. first empty box..."
+# read as one row, convicting row 2 of printing row 6's values. So a
+# single-space anchor is allowed too, and _line_anchors() keeps only ascending
+# ids — multicol rows always ascend across a line, while a decimal or a stray
+# "3. " inside a value does not.
+BANK_ANCHOR_RE = re.compile(r"(?:^|(?<=\s))(\d{1,3})\.(?=\s)")
+
+
+def _line_anchors(line):
+    """Row anchors on one -layout line, left to right, ids strictly ascending."""
+    kept, last = [], 0
+    for m in BANK_ANCHOR_RE.finditer(line):
+        pid = int(m.group(1))
+        if pid <= last:
+            continue
+        kept.append(m)
+        last = pid
+    return kept
 # The manual dash. LaTeX "---" always prints an em dash; pdftotext may emit an
 # em/en/figure dash. A minus sign attached to a digit is NOT a manual dash.
 BANK_DASH_RE = re.compile(r"(?<![\w∞.])(?:—|–|‒|-{2,3})(?![\w∞])")
@@ -905,7 +924,7 @@ def shipped_quick_answers(key_text):
         stripped = line.strip()
         if "\f" in line or any(stripped.startswith(h) for h in BANK_END_HEADINGS):
             break
-        anchors = list(BANK_ANCHOR_RE.finditer(line))
+        anchors = _line_anchors(line)
         if not anchors:
             if stripped:
                 meta["unanchored"].append(stripped)

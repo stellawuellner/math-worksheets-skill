@@ -4,6 +4,7 @@ Answers" bank FROM the verify JSON, so the at-a-glance grading column can
 never disagree with the verified values.
 
 Usage: render_quick_answers.py <verify_<stem>.json> <ak_<stem>.tex> [out.tex]
+       [--ws=<ws_<stem>.tex>]
 Default output: qa_<stem>.tex next to the JSON (verify_ prefix -> qa_,
 mirroring figs_/meta_ naming). build.sh re-runs this EVERY build — the
 render-figures pattern — so the gated path cannot go stale and no staleness
@@ -42,7 +43,12 @@ Rendering rules (nothing raw is ever injected into LaTeX):
     schema does not yet accept — add it to _UNIVERSAL_FIELDS there (a label,
     like "note", never touched by any check) before authors can declare it;
     until then a multi-slot id renders as it always did, unlabelled;
-  * a declared answer_unit is printed with the value.
+  * a declared answer_unit is printed with the value;
+  * with --ws, a problem printing MORE responses than the verification covers
+    is marked \unchecked, and a "What is verified" note names those problems
+    and the manual ones. Without --ws the bank cannot know this and stays
+    silent about it — the marks appear only when coverage was actually
+    measured, never as decoration.
 Column count adapts to the widest rendered entry (4 / 3 / 2) so factored and
 interval answers don't wreck the layout.
 
@@ -86,6 +92,17 @@ _LOCALS = getattr(verify, "_SYMPY_LOCALS", {})
 # swallow, which made a VERIFIED relation ("<") and an unchecked proof print the
 # SAME glyph — the one distinction the bank exists to draw.
 MANUAL = "---"
+
+# An answer nobody checked must not look like an answer somebody checked. The
+# bank had exactly two states — a value, or "---" — so a printed response with
+# no verify entry at all simply did not appear, and the row looked complete. A
+# grader reading "3. 27" cannot tell whether the sheet also asked for a second
+# thing that nothing verified. 172 of 300 reviewed cases shipped such an answer.
+# The gate (tests/check_answer_slots.py) now blocks the cases it can prove, but
+# it cannot read a stem that asks for two things behind one blank, and
+# \scratchblank is an author's claim rather than a proof — so the key says so
+# wherever coverage is not established.
+UNCHECKED = r"\unchecked"
 # A verified empty solution set is a RESULT, not a missing check.
 EMPTY_SET = r"$\emptyset$"
 
@@ -246,8 +263,14 @@ def _render_expected(entry):
     return text
 
 
-def render_entry(entries):
-    """All of one problem id's entries -> its single bank line text."""
+def render_entry(entries, uncovered=0):
+    """All of one problem id's entries -> its single bank line text.
+
+    `uncovered` is how many printed responses this problem has that NO entry
+    covers. It cannot be derived from the JSON — the JSON is exactly the thing
+    that is missing an entry — so it comes from counting the worksheet's own
+    answer slots (see slot_gap).
+    """
     vals, has_manual = [], False
     for e in entries:
         if not isinstance(e, dict):
@@ -256,14 +279,86 @@ def render_entry(entries):
             vals.append(_render_expected(e))
         else:                     # manual: the worked solution is the answer
             has_manual = True
-    if not vals:
-        return MANUAL
     text = ", ".join(vals)
     if not text:
-        return MANUAL
-    # A PARTIALLY manual id used to hide its manual half completely, because the
-    # marker was guarded by "no machine values at all".
-    return f"{text}, {MANUAL}" if has_manual else text
+        text = MANUAL if (entries or not uncovered) else ""
+    elif has_manual:
+        # A PARTIALLY manual id used to hide its manual half completely,
+        # because the marker was guarded by "no machine values at all".
+        text = f"{text}, {MANUAL}"
+    if uncovered:
+        mark = UNCHECKED if not text else f"{text}~{UNCHECKED}"
+        return mark
+    return text
+
+
+def slot_gap(ws_tex, n):
+    """{problem id: printed responses no verify entry covers}.
+
+    Delegates to the gate (tests/check_answer_slots.py) rather than counting
+    again here. Two implementations of "how many answers does this problem
+    ask for" WOULD drift, and a key that disagrees with the gate about what is
+    verified is worse than one that says nothing.
+    """
+    try:
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests"))
+        from check_answer_slots import (blank_comments, segment_spans,
+                                        slots_in, subparts_in)
+    except ImportError:
+        return {}
+    tex = blank_comments(ws_tex)
+    spans = segment_spans(tex)
+    if spans is None:
+        return {}
+    out = {}
+    for i, (a, b) in enumerate(spans[:n], 1):
+        seg = tex[a:b]
+        out[i] = max(slots_in(seg), subparts_in(seg))
+    return out
+
+
+def _idlist(ids):
+    return ", ".join(str(i) for i in ids)
+
+
+def coverage_note(n, unchecked_ids, manual_ids):
+    r"""The instructor's one-line answer to "what can I trust here?".
+
+    The bank shows values; it never said what stands behind them. An instructor
+    reading a complete-looking column has no way to tell a SymPy-proved answer
+    from one the author typed and nothing checked. This states the split
+    explicitly and names the problems, so acting on it takes no archaeology:
+    mark the verified ones fast, read the flagged ones properly.
+
+    Silent when every response is machine-verified — a legend explaining marks
+    that do not appear is noise, and noise is what makes real warnings invisible.
+    """
+    if not unchecked_ids and not manual_ids:
+        return []
+    verified = n - len(unchecked_ids) - len(manual_ids)
+    out = ["\\medskip\\noindent{\\small\\textbf{What is verified}}"
+           "\\par\\nopagebreak",
+           "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak",
+           f"\\noindent{{\\small {verified} of {n} problem"
+           f"{'s' if n != 1 else ''} fully machine-checked against SymPy.}}\\par"]
+    if manual_ids:
+        out.append(
+            f"\\noindent{{\\small {MANUAL} marks an answer only you can "
+            f"judge --- problem{'s' if len(manual_ids) > 1 else ''} "
+            f"{_idlist(manual_ids)}. The worked solution states what a correct "
+            "response must contain.}\\par")
+    if unchecked_ids:
+        out.append(
+            f"\\noindent{{\\small \\unchecked\\ marks a problem that "
+            f"prints more responses than the verification covers --- "
+            f"problem{'s' if len(unchecked_ids) > 1 else ''} "
+            f"{_idlist(unchecked_ids)}. At least one printed answer there "
+            f"carries NO machine guarantee; check "
+            f"{'those' if len(unchecked_ids) > 1 else 'it'} yourself before "
+            "handing the sheet back.}\\par")
+    out += ["\\noindent\\rule{\\linewidth}{0.4pt}\\medskip", ""]
+    return out
 
 
 def column_count(entries_text):
@@ -330,7 +425,7 @@ def curriculum_block(by_id, n, level):
     return out
 
 
-def render(data, level=""):
+def render(data, level="", ws_tex=""):
     by_id = {}
     for p in data.get("problems", []):
         if isinstance(p, dict) and isinstance(p.get("id"), int):
@@ -339,7 +434,16 @@ def render(data, level=""):
     n = pc if isinstance(pc, int) and pc > 0 else (max(by_id) if by_id else 0)
     if n == 0:
         raise ValueError("no problems in the verify JSON — nothing to bank")
-    entries = [render_entry(by_id.get(i, [])) for i in range(1, n + 1)]
+    gap = slot_gap(ws_tex, n) if ws_tex else {}
+    entries, unchecked_ids, manual_ids = [], [], []
+    for i in range(1, n + 1):
+        ents = by_id.get(i, [])
+        short = max(0, gap.get(i, 0) - len(ents))
+        entries.append(render_entry(ents, short))
+        if short:
+            unchecked_ids.append(i)
+        elif any(isinstance(e, dict) and "expected" not in e for e in ents):
+            manual_ids.append(i)
     # A bank of identical answers is a useless bank. Verifying "find the
     # inverse" by equiv on the composition passes every gate and makes every
     # expected value literally "x", so the grader's quick-reference reads
@@ -373,6 +477,7 @@ def render(data, level=""):
         "\\noindent\\rule{\\linewidth}{0.4pt}\\medskip",
         "",
     ]
+    lines += coverage_note(n, unchecked_ids, manual_ids)
     lines += curriculum_block(by_id, n, level)
     lines += common_errors(by_id, n)
     return "\n".join(lines)
@@ -461,15 +566,19 @@ def preflight(ak_tex, out_base):
 
 
 def main(argv):
-    if len(argv) not in (3, 4):
+    args = [a for a in argv[1:] if not a.startswith("--ws=")]
+    ws_path = next((a[len("--ws="):] for a in argv[1:]
+                    if a.startswith("--ws=")), None)
+    if len(args) not in (2, 3):
         print("Usage: render_quick_answers.py <verify_TOPIC_DATE.json> "
-              "<ak_TOPIC_DATE.tex> [out.tex]", file=sys.stderr)
+              "<ak_TOPIC_DATE.tex> [out.tex] [--ws=ws_TOPIC_DATE.tex]",
+              file=sys.stderr)
         return 1
-    json_path, ak_path = argv[1], argv[2]
+    json_path, ak_path = args[0], args[1]
     base = os.path.basename(json_path)
     stem = base[len("verify_"):] if base.startswith("verify_") else base
     stem = stem[:-len(".json")] if stem.endswith(".json") else stem
-    out_path = argv[3] if len(argv) == 4 else \
+    out_path = args[2] if len(args) == 3 else \
         os.path.join(os.path.dirname(os.path.abspath(json_path)),
                      f"qa_{stem}.tex")
     try:
@@ -477,6 +586,9 @@ def main(argv):
         # 6.30 must print 6.30 in the bank, not 6.3
         data = json.load(open(json_path), parse_float=Decimal)
         ak_tex = open(ak_path).read()
+        # Optional: without it the bank still renders, it just cannot report
+        # which printed responses nothing covers.
+        ws_tex = open(ws_path).read() if ws_path else ""
     except (OSError, json.JSONDecodeError) as e:
         print(f"Error reading input: {e}", file=sys.stderr)
         return 1
@@ -488,7 +600,7 @@ def main(argv):
             print(f"render_quick_answers.py: {f}", file=sys.stderr)
         return 1
     try:
-        text = render(data, level)
+        text = render(data, level, ws_tex)
     except ValueError as e:
         print(f"render_quick_answers.py: {e}", file=sys.stderr)
         return 1

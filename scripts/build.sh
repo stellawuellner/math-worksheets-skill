@@ -384,7 +384,11 @@ else
   # never serve a stale bank, so no staleness lint exists to drift. The
   # generator also preflights the ak_ source — a generated bank the key never
   # \inputs, or a hand-rolled preamble, is a loud teaching failure here.
-  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX"; then
+  # --ws lets the bank report which printed responses NOTHING verifies. Without
+  # it the key still renders, it just cannot tell the instructor what is
+  # unchecked — so pass it whenever the worksheet source is known.
+  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX" \
+       ${WS_TEX:+--ws="$WS_TEX"}; then
     record quick-answers "PASS"
   else
     fail quick-answers

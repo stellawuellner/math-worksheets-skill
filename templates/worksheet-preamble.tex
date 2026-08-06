@@ -184,6 +184,13 @@
 % compile-ak. Found by an eval-run agent, not by a test: the feature shipped
 % with no fixture that declared a trap and compiled the key.
 \newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}\par}
+% ANSWER KEY ONLY. Marks a printed response that no verification entry covers,
+% so the instructor can see at a glance which answers carry a machine guarantee
+% and which are theirs to check. Bold, because the failure this exists to
+% prevent is a grader assuming a complete-looking row was verified. Emitted by
+% scripts/render_quick_answers.py, never hand-typed — and never \ans/\boxed, so
+% check_answer_key.py's per-problem binding of CORRECT answers stays strict.
+\newcommand{\unchecked}{\textbf{[unchecked]}}
 
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox

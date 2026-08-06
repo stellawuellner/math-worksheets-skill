@@ -348,6 +348,66 @@ check("every id still gets exactly one numbered line",
 check("only the manual id prints ---",
       "5.~---" in _mtext and "1.~$<$" in _mtext and "6.~20-29" in _mtext)
 
+# ── Unchecked answers must be visible to the instructor ────────────────────
+# The bank had two states: a value, or "---" for a manual item. A printed
+# response with NO verify entry produced neither — the row just looked
+# complete. 172 of 300 reviewed cases shipped an answer nothing verified, and a
+# grader reading "2. 18" had no way to know the sheet also asked for a number
+# word that nobody checked. Marks appear ONLY when a worksheet was supplied and
+# coverage was actually measured; they are evidence, not decoration.
+print("Unchecked-answer marking (three states: verified / judgement / unchecked):")
+
+_WS = r"""\input{worksheet-preamble}
+\begin{document}
+\problem{Find AC~\ansblank\ and BD~\ansblank}
+\problem[4cm]{Write the number word~\ansblank\ and the ones digit~\ansblank}
+\problem[3cm]{Prove the triangles are congruent.\noansline}
+\end{document}
+"""
+_cov = {"topic": "t", "problem_count": 3, "problems": [
+    {"id": 1, "type": "distance", "points": [[0, 0], [2, 2]],
+     "expected": "2*sqrt(2)", "slot": "AC"},
+    {"id": 1, "type": "distance", "points": [[0, 0], [6, 6]],
+     "expected": "6*sqrt(2)", "slot": "BD"},
+    {"id": 2, "type": "eval", "expr": "10+8", "expected": 18},
+    {"id": 3, "type": "manual", "desc": "two-column proof"}]}
+
+_with = rqa.render(_cov, ws_tex=_WS)
+_without = rqa.render(_cov)
+
+check("a problem with an uncovered printed slot is marked unchecked",
+      "2.~18~\\unchecked" in _with)
+check("a fully covered problem carries NO mark",
+      "1.~AC = " in _with and "\\unchecked" not in _with.split("2.~")[0])
+check("a manual id still prints --- and is not called unchecked",
+      "3.~---" in _with)
+check("the note tallies what is machine-checked",
+      "1 of 3 problem" in _with and "machine-checked" in _with)
+check("the note names the unchecked problem so acting on it needs no digging",
+      "problem 2" in _with and "NO machine guarantee" in _with)
+check("the note names the judgement problem separately",
+      "only you can judge" in _with and "problem 3" in _with)
+# Without a worksheet the renderer cannot know how many responses are printed,
+# so it must not claim anything is unchecked. It CAN still see which ids are
+# manual — that is in the JSON — and saying so costs nothing.
+check("without a worksheet nothing is claimed to be unchecked",
+      "\\unchecked" not in _without)
+check("manual items are still reported without a worksheet",
+      "only you can judge" in _without and "problem 3" in _without)
+# Comments are stripped first, as elsewhere in this file: the generated header
+# TALKS about \ans/\boxed to explain why the bank must not use them.
+_wbody = "\n".join(l for l in _with.split("\n") if not l.startswith("%"))
+check("marking still emits no \\ans/\\boxed",
+      "\\ans" not in _wbody and "\\boxed" not in _wbody)
+
+_clean = {"topic": "t", "problem_count": 1, "problems": [
+    {"id": 1, "type": "eval", "expr": "1+1", "expected": 2}]}
+_cws = ("\\input{worksheet-preamble}\n\\begin{document}\n"
+        "\\problem[3cm]{Add.}\n\\end{document}\n")
+check("a fully verified sheet prints no legend at all (no warning fatigue)",
+      "What is verified" not in rqa.render(_clean, ws_tex=_cws))
+
+
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")
     sys.exit(1)

@@ -53,6 +53,11 @@ NOANS_RE = re.compile(r"\\noansline(?![A-Za-z])")
 SCRATCH_RE = re.compile(r"\\scratchblank(?![A-Za-z])")
 PROBLEM_WS_RE = re.compile(r"\\problem(?:\[([^\]]*)\])?\{")
 SUBPART_RE = re.compile(r"(?:^|[\s~{])\((a|b|c|d|e|f|g|h)\)", re.M)
+
+# Types whose expected list lands in SEPARATE printed blanks. Measured against
+# the corpus: crediting any list-valued expected also credits solve/zeros, whose
+# root list is one answer on one line, and that silences real gaps.
+_MULTI_SLOT_TYPES = frozenset({"compare", "midpoint", "intersection", "system"})
 LEN_RE = re.compile(r"^\s*([-+]?[0-9]*\.?[0-9]+)\s*[a-z]*\s*$")
 
 
@@ -90,9 +95,23 @@ def values_pinned(entry):
     two-root `solve` covers two blanks, but it says nothing about a "(b) explain
     why" beside it, and letting arity satisfy sub-parts would turn this gate's
     biggest true-positive class into silence.
+
+    RESTRICTED BY TYPE, and the restriction is the load-bearing part. Crediting
+    every list-valued `expected` looks equivalent and is not: a `solve` returning
+    [9, 21] is ONE answer written on ONE line, so crediting it with two blanks
+    silenced curr-295 problem 12, where "(a) Solve … \ansline" is verified and
+    "(b) … say whether she is right … \ansline" is not. The types below are the
+    ones whose list elements really do land in separate printed blanks —
+    an ordering fills its blanks one number each, a point fills (x, y).
     """
+    if entry.get("type") not in _MULTI_SLOT_TYPES:
+        return 1
     v = entry.get("expected")
-    return len(v) if isinstance(v, list) and v else 1
+    n = len(v) if isinstance(v, list) and v else 1
+    # A relation compare prints the two operands AND the symbol between them.
+    if entry.get("type") == "compare" and entry.get("order") == "relation":
+        n = len(entry.get("values") or []) + 1
+    return n
 
 
 def subparts_in(segment):
@@ -143,6 +162,32 @@ def _numbers(x, out=None):
         for y in x.values():
             _numbers(y, out)
     return out
+
+
+def shortfall(segment, entries):
+    r"""Responses this problem prints that its entries do not account for.
+
+    THE single definition of "under-covered". It was briefly two — this gate
+    decided one way and the answer key's \unchecked marking decided another, so
+    a rule change moved the gate to 66 cases while the key still marked 86. They
+    share the primitives; sharing those is not enough, because the DECISION is
+    where the rules live. Both callers use this now.
+
+    Returns (missing_count, description) with missing_count 0 when covered.
+    """
+    slots, parts = slots_in(segment), subparts_in(segment)
+    have = len(entries)
+    pinned = sum(values_pinned(e) for e in entries)
+    open_graded = any(e.get("type") == "manual" for e in entries)
+    short_slots = slots - pinned
+    short_parts = 0 if open_graded else parts - have
+    if short_slots <= 0 and short_parts <= 0:
+        return 0, ""
+    if short_parts >= short_slots:
+        return short_parts, (f"asks {parts} lettered sub-part(s) but has {have} "
+                             f"entr{'y' if have == 1 else 'ies'}")
+    return short_slots, (f"prints {slots} response slot(s) but its entries pin "
+                         f"{pinned} value(s)")
 
 
 def given_as_answer_notes(segments, data):
@@ -214,35 +259,21 @@ def main():
         return 2
     segments = [tex[a:b] for a, b in spans]
 
-    entries, covered = {}, {}
+    by_id = {}
     for e in data.get("problems", []):
         if isinstance(e, dict) and isinstance(e.get("id"), int):
-            entries[e["id"]] = entries.get(e["id"], 0) + 1
-            covered[e["id"]] = covered.get(e["id"], 0) + values_pinned(e)
+            by_id.setdefault(e["id"], []).append(e)
 
     total_slots = sum(slots_in(s) for s in segments)
     print(f"Answer-slot coverage: {sys.argv[1]} "
           f"({len(segments)} problem segments, {total_slots} printed slot(s), "
-          f"{sum(entries.values())} verify entr(y/ies))")
+          f"{sum(len(v) for v in by_id.values())} verify entr(y/ies))")
 
     faults = []
     for i, seg in enumerate(segments, 1):
-        slots, parts = slots_in(seg), subparts_in(seg)
-        have, pinned = entries.get(i, 0), covered.get(i, 0)
-        # Blanks are measured against VALUES pinned, sub-parts against ENTRIES.
-        # A one-entry compare fills three ordering blanks; it does not answer a
-        # second lettered question.
-        short_slots, short_parts = slots - pinned, parts - have
-        if short_slots <= 0 and short_parts <= 0:
+        missing, asked = shortfall(seg, by_id.get(i, []))
+        if not missing:
             continue
-        if short_parts >= short_slots:
-            asked = (f"asks {parts} lettered sub-part(s) but has {have} "
-                     f"entr{'y' if have == 1 else 'ies'}")
-            missing = short_parts
-        else:
-            asked = (f"prints {slots} response slot(s) but its entries pin "
-                     f"{pinned} value(s)")
-            missing = short_slots
         faults.append(
             f"problem {i} {asked} — {missing} response(s) would ship "
             f"unchecked. Add one entry per response the problem asks for (use "

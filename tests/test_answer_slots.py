@@ -131,6 +131,36 @@ def main():
     check("arity does not excuse an unanswered sub-part",
           rc == 1, out.strip()[-160:])
 
+    # 11. A manual rubric routinely covers every open sub-part of a problem, and
+    #     counting entries against letters called that under-covered. Measured
+    #     over the corpus this was 5 of 9 sampled false positives.
+    rc, out = run(r"\problem[6cm]{\textbf{(a)} Explain why circumference doubles. "
+                  r"\textbf{(b)} Explain why area quadruples. "
+                  r"\textbf{(c)} Compute the area of B.\noansline}",
+                  [entry(1), {"id": 1, "type": "manual",
+                              "desc": "Open explanation, parts (a) and (b)"}])
+    check("a manual entry covers the open sub-parts beside it",
+          rc == 0, out.strip()[-160:])
+
+    # 12. ...but a manual must NOT silence a printed blank. This is curr-213 p8:
+    #     three blanks, one of which holds a value nothing verifies.
+    rc, out = run(r"\problem{Expand~\ansblank\ then find $a$~\ansblank\ "
+                  r"then explain~\ansblank}",
+                  [entry(1), {"id": 1, "type": "manual", "desc": "explanation"}])
+    check("a manual does not excuse an unverified printed blank",
+          rc == 1, out.strip()[-160:])
+
+    # 13. THE FALSE NEGATIVE I SHIPPED. Crediting every list-valued expected
+    #     looks equivalent to crediting the multi-slot types and is not: a solve
+    #     returning [9, 21] is one answer on one line. This is curr-295 p12,
+    #     where (a) is solved and (b) is an open question on its own \ansline.
+    rc, out = run(r"\problem{\textbf{(a)} Solve.~\ansline\ "
+                  r"\textbf{(b)} Say whether she is right.~\ansline}",
+                  [{"id": 1, "type": "solve", "expr": "x**2-30*x+189",
+                    "var": "x", "expected": [9, 21]}])
+    check("a solve root list does not cover a second answer line",
+          rc == 1, out.strip()[-160:])
+
     print()
     if FAILS:
         print(f"❌ {len(FAILS)} answer-slot check(s) failed:")

@@ -292,19 +292,21 @@ def render_entry(entries, uncovered=0):
     return text
 
 
-def slot_gap(ws_tex, n):
+def slot_gap(ws_tex, n, by_id):
     """{problem id: printed responses no verify entry covers}.
 
-    Delegates to the gate (tests/check_answer_slots.py) rather than counting
-    again here. Two implementations of "how many answers does this problem
-    ask for" WOULD drift, and a key that disagrees with the gate about what is
-    verified is worse than one that says nothing.
+    Calls the GATE'S OWN decision function (check_answer_slots.shortfall), not
+    just its primitives. Sharing the primitives was not enough: this once
+    recomputed the comparison itself, and when the gate's rules were refined it
+    dropped to 66 flagged cases while the key went on marking 86. A key that
+    disagrees with the gate about what is verified is worse than one that says
+    nothing, so there is exactly one definition and both callers use it.
     """
     try:
         sys.path.insert(0, os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests"))
         from check_answer_slots import (blank_comments, segment_spans,
-                                        slots_in, subparts_in)
+                                        shortfall)
     except ImportError:
         return {}
     tex = blank_comments(ws_tex)
@@ -313,8 +315,7 @@ def slot_gap(ws_tex, n):
         return {}
     out = {}
     for i, (a, b) in enumerate(spans[:n], 1):
-        seg = tex[a:b]
-        out[i] = max(slots_in(seg), subparts_in(seg))
+        out[i], _ = shortfall(tex[a:b], by_id.get(i, []))
     return out
 
 
@@ -434,11 +435,13 @@ def render(data, level="", ws_tex=""):
     n = pc if isinstance(pc, int) and pc > 0 else (max(by_id) if by_id else 0)
     if n == 0:
         raise ValueError("no problems in the verify JSON — nothing to bank")
-    gap = slot_gap(ws_tex, n) if ws_tex else {}
+    # shortfall() already nets entries against what the problem prints, so the
+    # value here IS the number of uncovered responses — do not subtract again.
+    gap = slot_gap(ws_tex, n, by_id) if ws_tex else {}
     entries, unchecked_ids, manual_ids = [], [], []
     for i in range(1, n + 1):
         ents = by_id.get(i, [])
-        short = max(0, gap.get(i, 0) - len(ents))
+        short = gap.get(i, 0)
         entries.append(render_entry(ents, short))
         if short:
             unchecked_ids.append(i)

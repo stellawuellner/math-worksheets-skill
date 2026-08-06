@@ -723,6 +723,294 @@ else:
     check("nothing extractable means nothing to flag",
           audit({"hard_failures": ["The key prints 36."]}, build_index([])) == [])
 
+# --------------------------------------------------------------------------
+# Regression: judge-never-opened-the-quick-answers-bank
+#
+# The 300-case author review found answer_key_quality scored 4/4 in 107 of 124
+# cases whose Quick Answers bank was defective. The bank is deterministic, so
+# the harness now regenerates it from verify.json (render_quick_answers.render,
+# imported, not reimplemented) and diffs it against the bank the shipped key
+# prints. Pre-change, none of this machinery existed: every check below fails
+# against the old code with an AttributeError, which is the fail-before
+# evidence for this block.
+print("Bank-diff contradiction machinery:")
+bank_fns = all(hasattr(score, name) for name in (
+    "shipped_quick_answers", "audit_shipped_bank", "regenerate_bank",
+    "run_slot_gate", "slot_gate_version", "standards_map_flags",
+    "printed_curriculum_codes", "load_standards_map"))
+check("harness exposes the bank/slot/standards machinery", bank_fns)
+if bank_fns:
+    # -- extraction: anchors, columns, wraps, bleed ------------------------
+    key_text = (
+        "Answer Key title\n"
+        "Quick Answers\n"
+        "\n"
+        "1. 5                             4. -1,\n"
+        "                                     1                7. 4, 1, 5\n"
+        "2. 5, 2                          5. 6 2               8. —\n"
+        "3. 13                            6. 3, 5\n"
+        "\n"
+        "Curriculum\n"
+        "Level: High School Geometry\n"
+        "HSG-GPE.B.4–B.7 – problems 1, 2, 3\n"
+        "10. wrapped problems list line\n"
+    )
+    rows_, meta_ = score.shipped_quick_answers(key_text)
+    check("bank rows anchor on their N. markers",
+          rows_.get(1) == "5" and rows_.get(6) == "3, 5" and rows_.get(7) == "4, 1, 5",
+          repr(rows_))
+    check("a wrapped continuation line is unanchored, never misattributed",
+          4 in rows_ and rows_[4] == "-1," and meta_["unanchored"],
+          repr((rows_, meta_)))
+    check("bank section stops at the next heading",
+          10 not in rows_, repr(rows_))
+    bleed_rows, bleed_meta = score.shipped_quick_answers(
+        "Quick Answers\n1. -12, 12                                            x = -4, y = -3\n")
+    check("text after a wide column gap is not convicted with the row",
+          bleed_rows.get(1) == "-12, 12", repr(bleed_rows))
+    check("a key with no bank section reports found=False",
+          score.shipped_quick_answers("1. problem\n2. problem\n")[1]["found"] is False)
+    check("printed Curriculum codes are parsed, wraps and lists excluded",
+          score.printed_curriculum_codes(key_text) == ["HSG-GPE.B.4-B.7"],
+          repr(score.printed_curriculum_codes(key_text)))
+
+    # -- (a) curr-053-shaped: verified relations printed as the manual dash
+    dash_verify = {
+        "topic": "compare", "problem_count": 2,
+        "problems": [
+            {"id": 1, "type": "compare", "values": ["352", "328"], "expected": ">"},
+            {"id": 2, "type": "manual", "desc": "grade the sketch"},
+        ],
+    }
+    dash_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. —\n2. —\n", dash_verify)
+    dash_types = {(f["type"], f["blocking"], f["problem_id"])
+                  for f in dash_bank["findings"]}
+    check("a dash on a machine-checked id is a blocking contradiction",
+          ("bank_dash_hides_verified", True, 1) in dash_types, repr(dash_types))
+    check("a dash on a manual id is the legitimate meaning of the dash",
+          not any(f["problem_id"] == 2 for f in dash_bank["findings"]),
+          repr(dash_types))
+
+    # -- (b) wrong numeric value delivered to the grader -------------------
+    wrong_verify = {
+        "topic": "arith", "problem_count": 2,
+        "problems": [{"id": 1, "type": "eval", "expr": "20+7", "expected": 27},
+                     {"id": 2, "type": "eval", "expr": "6+6", "expected": 12}],
+    }
+    wrong_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. 36\n2. 12\n", wrong_verify)
+    wrong_types = {(f["type"], f["blocking"], f["problem_id"])
+                   for f in wrong_bank["findings"]}
+    check("a bank value matching no expected value blocks",
+          ("bank_value_unbacked", True, 1) in wrong_types, repr(wrong_types))
+    check("a bank value the verification backs is silent",
+          not any(f["problem_id"] == 2 for f in wrong_bank["findings"]))
+
+    # curr-132-shaped: pdftotext flattens \frac{2}{5} to "25" (and column flow
+    # can reverse it) — a flattened fraction is a match, never a finding.
+    frac_verify = {
+        "topic": "fractions", "problem_count": 2,
+        "problems": [{"id": 1, "type": "eval", "expr": "1/5+1/5", "expected": "2/5"},
+                     {"id": 2, "type": "eval", "expr": "1/8+1/8", "expected": "1/4"}],
+    }
+    frac_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. 25\n2. 41\n", frac_verify)
+    check("flattened and reversed fractions do not fire",
+          frac_bank["findings"] == [], repr(frac_bank["findings"]))
+
+    # -- (b) curr-326-shaped: the bank prints a given as the answer --------
+    inverse_ws = (
+        "\\problem[2.5cm]{$M(3, 5)$ is the midpoint of $\\overline{AB}$, and "
+        "one endpoint is $A(-1, 2)$. Find the coordinates of $B$.}\n"
+    )
+    inverse_verify = {
+        "topic": "midpoint", "problem_count": 1,
+        "problems": [{"id": 1, "type": "midpoint",
+                      "points": [[-1, 2], [7, 8]], "expected": [3, 5]}],
+    }
+    given_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. 3, 5\n", inverse_verify, "", inverse_ws)
+    given_types = {(f["type"], f["blocking"]) for f in given_bank["findings"]}
+    check("a bank row delivering a stem given as the answer blocks",
+          ("bank_prints_given", True) in given_types, repr(given_bank["findings"]))
+    forward_verify = {
+        "topic": "midpoint", "problem_count": 1,
+        "problems": [{"id": 1, "type": "midpoint",
+                      "points": [[-1, 2], [7, 8]], "expected": [3, 5]}],
+    }
+    forward_ws = ("\\problem[2.5cm]{Find the midpoint of $A(-1, 2)$ and "
+                  "$B(7, 8)$.}\n")
+    forward_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. (3, 5)\n", forward_verify, "", forward_ws)
+    check("a forward midpoint printing its computed answer is silent",
+          forward_bank["findings"] == [], repr(forward_bank["findings"]))
+
+    # -- (c) curr-184-shaped: a Python repr in a delivered key -------------
+    repr_verify = {
+        "topic": "inequalities", "problem_count": 1,
+        "problems": [{"id": 1, "type": "inequality", "expected": ["-oo", -3, "open"]}],
+    }
+    repr_bank = score.audit_shipped_bank(
+        "Quick Answers\n1. −∞, -3, ¡built-in function open¿\n", repr_verify)
+    check("a builtin repr in the bank blocks",
+          any(f["type"] == "bank_builtin_repr" and f["blocking"]
+              for f in repr_bank["findings"]), repr(repr_bank["findings"]))
+
+    # -- slot-gate observation ---------------------------------------------
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        (temp / "ws.tex").write_text(
+            "\\problem[2cm]{Find the sum and name the property you used.\\ansline\\ansline}\n",
+            encoding="utf-8")
+        dump(temp / "verify.json", {
+            "topic": "t", "problem_count": 1,
+            "problems": [{"id": 1, "type": "eval", "expr": "1+1", "expected": 2}],
+        })
+        gate = score.run_slot_gate(temp / "ws.tex", temp / "verify.json")
+        check("an under-covered worksheet fails the recorded slot gate",
+              gate["checked"] and gate["exit_code"] == 1 and gate["faults"],
+              repr(gate))
+        check("the observation names its gate version",
+              gate["gate_version"].startswith("check_answer_slots@")
+              and "open-ask-lint" in gate["gate_version"], gate["gate_version"])
+        (temp / "ws_ok.tex").write_text(
+            "\\problem[2cm]{Add 1 + 1.\\ansline}\n", encoding="utf-8")
+        gate_ok = score.run_slot_gate(temp / "ws_ok.tex", temp / "verify.json")
+        check("a covered worksheet passes the recorded slot gate",
+              gate_ok["checked"] and gate_ok["exit_code"] == 0, repr(gate_ok))
+        skipped = score.run_slot_gate(None, temp / "verify.json")
+        check("a case with no worksheet source records skipped, not a verdict",
+              not skipped["checked"] and "skipped" in skipped)
+
+    # -- standards-map cross-check -----------------------------------------
+    smap = score.load_standards_map()
+    check("standards map loads codes and range prefixes",
+          smap["loaded"] and "3.NBT.A.1" in smap["tokens"]
+          and score.code_in_standards_map("HSG-GPE.B.5", smap))
+    below = score.standards_map_flags(
+        {"2.NBT.A": "verify.json standard tag"}, "upper-elementary-4-5", smap)
+    check("a grade-2 code on a grades-4-5 task flags (curr-101 class)",
+          [f["type"] for f in below] == ["standard_code_below_band"], repr(below))
+    check("standards findings never block",
+          all(not f["blocking"] for f in below))
+    check("an invented code flags as absent from the map",
+          [f["type"] for f in score.standards_map_flags(
+              {"9.ZZZ.Q.9": "printed Curriculum block"}, "geometry", smap)]
+          == ["standard_code_not_in_map"])
+    check("a compound in-map tag on its own band stays silent",
+          score.standards_map_flags(
+              {"4.NBT.A / 5.NBT.A": "verify.json standard tag"},
+              "upper-elementary-4-5", smap) == [])
+    check("an in-band high-school code stays silent",
+          score.standards_map_flags(
+              {"HSG-GPE.B.4–B.7": "printed Curriculum block"}, "geometry",
+              smap) == [])
+
+    # -- prepare integrates the checks into machine.json -------------------
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        suite_path = temp / "suite.json"
+        tiny_suite(suite_path)
+        run_dir = temp / "run"
+        case = create_case(run_dir)
+        (case / "worksheet.tex").write_text(
+            "".join("\\problem[1cm]{Compare the numbers.\\ansline}\n"
+                    for _ in range(8)),
+            encoding="utf-8")
+        bad_verify = {
+            "topic": "counting", "problem_count": 8,
+            "problems": [{"id": index, "type": "eval", "expr": "1", "expected": 1}
+                         for index in range(1, 8)]
+            + [{"id": 8, "type": "compare", "values": ["3", "5"], "expected": "<"}],
+        }
+        dump(case / "verify_worksheet.json", bad_verify)
+
+        def bank_inspector(path, role, rendered_dir, render_dpi):
+            meta, findings = fake_pdf_inspector(path, role, rendered_dir, render_dpi)
+            if role == "step_by_step_answer_key":
+                meta["extracted_text"] = (
+                    "Quick Answers\n"
+                    + "\n".join(f"{index}. 1" for index in range(1, 8))
+                    + "\n8. —\n")
+            return meta, findings
+
+        grading = temp / "grading"
+        score.prepare_run(suite_path, run_dir, grading, rerun=False,
+                          pdf_inspector=bank_inspector)
+        machine = json.loads(
+            (grading / "tasks" / "curr-001" / "machine.json").read_text(encoding="utf-8"))
+        check("prepare records the slot-gate observation with its version",
+              machine.get("slot_gate", {}).get("checked")
+              and "gate_version" in machine["slot_gate"],
+              repr(machine.get("slot_gate")))
+        check("prepare turns a dash-hidden verified answer into a hard failure",
+              any("bank row 8" in item and "manual dash" in item
+                  for item in machine["machine_hard_failures"]),
+              repr(machine["machine_hard_failures"]))
+        check("prepare retains the structured bank findings",
+              any(f["type"] == "bank_dash_hides_verified"
+                  for f in machine.get("quick_answers_bank", {}).get("findings", [])))
+
+# --------------------------------------------------------------------------
+# The frozen corpus is the calibration set: the check must fire on the three
+# author-review exemplars and stay silent on the two clean cases. Synthetic
+# equivalents above keep the contract alive if the corpus is ever pruned.
+print("Frozen-corpus calibration (bank diff / standards):")
+CAL = {
+    "curr-326": "bank_prints_given",
+    "curr-184": "bank_builtin_repr",
+    "curr-053": "bank_dash_hides_verified",
+    "curr-132": None,
+    "curr-374": None,
+}
+cal_dirs = {}
+for task_id in list(CAL) + ["curr-101"]:
+    hits = [p for p in sorted(RUNS.glob(f"*/tasks/{task_id}"))
+            if (p / "answer_key.pdf").is_file()]
+    if hits:
+        cal_dirs[task_id] = hits[0]
+if bank_fns and len(cal_dirs) == len(CAL) + 1 and shutil.which("pdftotext"):
+    import re as _re
+    import subprocess as _subprocess
+
+    def _corpus_bank(task_dir):
+        key_text = _subprocess.run(
+            ["pdftotext", "-layout", str(task_dir / "answer_key.pdf"), "-"],
+            capture_output=True, text=True, errors="replace").stdout
+        verify_data = json.loads((task_dir / "verify.json").read_text(encoding="utf-8"))
+        ws_tex = ""
+        if (task_dir / "worksheet.tex").is_file():
+            ws_tex = (task_dir / "worksheet.tex").read_text(encoding="utf-8",
+                                                            errors="replace")
+        level = ""
+        ak_tex_path = task_dir / "answer_key.tex"
+        if ak_tex_path.is_file():
+            match = _re.search(r"\\aktitleblock\{[^{}]*\}\{([^{}]*)\}",
+                               ak_tex_path.read_text(encoding="utf-8", errors="replace"))
+            level = match.group(1).strip() if match else ""
+        return score.audit_shipped_bank(key_text, verify_data, level, ws_tex)
+
+    for task_id, expected_type in CAL.items():
+        bank = _corpus_bank(cal_dirs[task_id])
+        types = {f["type"] for f in bank["findings"] if f["blocking"]}
+        if expected_type:
+            check(f"{task_id} fires {expected_type}", expected_type in types,
+                  repr(bank["findings"]))
+        else:
+            check(f"{task_id} stays completely silent",
+                  bank["findings"] == [], repr(bank["findings"]))
+    task_101 = json.loads((cal_dirs["curr-101"] / "task.json").read_text(encoding="utf-8"))
+    verify_101 = json.loads((cal_dirs["curr-101"] / "verify.json").read_text(encoding="utf-8"))
+    codes_101 = {str(entry["standard"]): "verify.json standard tag"
+                 for entry in verify_101["problems"] if entry.get("standard")}
+    flags_101 = score.standards_map_flags(codes_101, task_101.get("band"))
+    check("curr-101's grade-2 code flags against its Grades 4-5 band",
+          any(f["type"] == "standard_code_below_band" and f["code"] == "2.NBT.A"
+              for f in flags_101), repr(flags_101))
+else:
+    print("  skip  frozen eval run corpus is not present")
+
 rows = [
     {"band": "a", "domain": "x", "status": "ACCEPT", "metrics": {"cost": 1.0}},
     {"band": "a", "domain": "y", "status": "REJECT", "metrics": {"cost": 3.0}},
@@ -739,6 +1027,185 @@ score.doctor = original_doctor
 check("main rejects unsafe render DPI", score.main([
     "prepare", "--run-dir", "/tmp", "--output-dir", "/tmp/x", "--render-dpi", "20",
 ]) == 2)
+
+# --------------------------------------------------------------------------
+# evals/score_eval.py: aggregate-time machine cross-checks and shadow v2.
+#
+# Pre-change fail evidence: score_eval had no machine_cross_checks and no
+# shadow_v2_verdict (AttributeError below), an ACCEPT over a bank printing a
+# wrong value produced exit 0 with no contradiction, and a scores_v2 block was
+# silently ignored rather than reported beside v1.
+print("score_eval.py machine cross-checks and shadow v2:")
+se_spec = importlib.util.spec_from_file_location(
+    "score_eval_under_test", ROOT / "evals" / "score_eval.py")
+se = importlib.util.module_from_spec(se_spec)
+se_spec.loader.exec_module(se)
+check("score_eval exposes the cross-check and shadow-v2 seams",
+      hasattr(se, "machine_cross_checks") and hasattr(se, "shadow_v2_verdict"))
+
+SE_DIMS = json.loads(SUITE.read_text(encoding="utf-8"))["judge_protocol"]
+SE_DIM_NAMES = list(SE_DIMS["quality_dimensions"])
+shadow, note = se.shadow_v2_verdict({"scores_v2": None}, SE_DIM_NAMES)
+check("a verdict without scores_v2 is complete (no shadow, no note)",
+      shadow is None and note is None)
+shadow, note = se.shadow_v2_verdict({"scores_v2": {"bogus": 9}}, SE_DIM_NAMES)
+check("a malformed scores_v2 yields a note, never an invalid verdict",
+      shadow is None and isinstance(note, str) and note)
+good_v2 = {name: 4 for name in SE_DIM_NAMES}
+shadow, note = se.shadow_v2_verdict({"scores_v2": good_v2}, SE_DIM_NAMES)
+check("well-formed scores_v2 derives a shadow ACCEPT",
+      note is None and shadow["verdict"] == "ACCEPT" and shadow["total"] == 32)
+shadow, _ = se.shadow_v2_verdict(
+    {"scores_v2": good_v2, "hard_failures_v2": ["bank row 6 prints a given"]},
+    SE_DIM_NAMES)
+check("a v2 hard failure rejects the shadow verdict only",
+      shadow["verdict"] == "REJECT")
+low_v2 = dict(good_v2)
+low_v2[SE_DIM_NAMES[0]] = 2
+shadow, _ = se.shadow_v2_verdict({"scores_v2": low_v2}, SE_DIM_NAMES)
+check("the v2 dimension floor applies to the shadow verdict",
+      shadow["verdict"] == "REJECT")
+
+
+def mk_pdf(path, lines):
+    """A minimal one-page PDF whose pdftotext -layout output is `lines`."""
+    stream = "BT /F1 10 Tf 50 700 Td 12 TL\n"
+    for line in lines:
+        safe = line.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+        stream += f"({safe}) Tj T*\n"
+    stream += "ET"
+    body = stream.encode("latin-1", "replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(body)).encode() + b" >>\nstream\n" + body
+        + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica "
+        b"/Encoding /WinAnsiEncoding >>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for index, obj in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{index} 0 obj\n".encode() + obj + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 " + str(len(objects) + 1).encode() + b"\n0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += (b"trailer\n<< /Size " + str(len(objects) + 1).encode()
+            + b" /Root 1 0 R >>\nstartxref\n" + str(xref).encode() + b"\n%%EOF")
+    Path(path).write_bytes(out)
+
+
+def se_verdict(task_id, **extra):
+    data = {
+        "task_id": task_id,
+        "judge": {"agent": "test-judge", "model": "judge-model"},
+        "verdict": "ACCEPT", "hard_failures": [],
+        "dimension_scores": {name: 4 for name in SE_DIM_NAMES},
+        "total_score": 32, "manual_items_reviewed": 0,
+        "incorrect_or_ambiguous_items": [], "errors": [],
+        "critical_observations": [], "artifact_findings": [],
+        "rationale": "Looks good.",
+    }
+    data.update(extra)
+    return data
+
+
+if shutil.which("pdftotext"):
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        dump(temp / "suite.json", {"suite": {"name": "t"},
+                                   "judge_protocol": SE_DIMS})
+        run_dir = temp / "runs" / "run-t"
+        for tid, bank_line, ws in (
+            # wrong bank value AND an under-covered worksheet, judged ACCEPT
+            ("t-001", "1. 36",
+             "\\problem[2cm]{Add 20 + 7 and explain your grouping."
+             "\\ansline\\ansline}\n"),
+            # clean
+            ("t-002", "1. 27", "\\problem[2cm]{Add 20 + 7.\\ansline}\n"),
+            # clean, carries scores_v2
+            ("t-003", "1. 27", "\\problem[2cm]{Add 20 + 7.\\ansline}\n"),
+        ):
+            task_dir = run_dir / "tasks" / tid
+            task_dir.mkdir(parents=True)
+            dump(task_dir / "task.json", {"id": tid, "band": "elementary-2-3",
+                                          "domain": "arithmetic"})
+            dump(task_dir / "verify.json", {
+                "topic": "sums", "problem_count": 1,
+                "problems": [{"id": 1, "type": "eval", "expr": "20+7",
+                              "expected": 27}],
+            })
+            (task_dir / "worksheet.tex").write_text(ws, encoding="utf-8")
+            mk_pdf(task_dir / "answer_key.pdf",
+                   ["Quick Answers", "", bank_line, "", "Worked Solutions"])
+        dump(run_dir / "run.json", {
+            "run_id": "run-t", "suite": "t", "suite_file": "suite.json",
+            "shard": "t", "repo_commit": "deadbeef",
+            "generator": {"agent": "gen", "model": "gen-model"},
+            "task_ids": ["t-001", "t-002", "t-003"],
+        })
+        (run_dir / "verdicts").mkdir()
+        dump(run_dir / "verdicts" / "t-001.json", se_verdict("t-001"))
+        dump(run_dir / "verdicts" / "t-002.json",
+             se_verdict("t-002", scores_v2={"nonsense": True}))
+        v2_scores = {name: 4 for name in SE_DIM_NAMES}
+        v2_scores["answer_key_quality"] = 2
+        dump(run_dir / "verdicts" / "t-003.json",
+             se_verdict("t-003", scores_v2=v2_scores, hard_failures_v2=[]))
+
+        original_root, original_runs = se.ROOT, se.RUNS
+        se.ROOT, se.RUNS = str(temp), str(temp / "runs")
+        try:
+            rc = se.main(["--run", "run-t"])
+            report = (run_dir / "report.md").read_text(encoding="utf-8")
+        finally:
+            se.ROOT, se.RUNS = original_root, original_runs
+        check("an ACCEPT over a wrong bank value fails the scoring run", rc == 1)
+        check("the bank contradiction names its mechanism",
+              "t-001" in report and "Quick Answers bank contradicts" in report
+              and "bank_value_unbacked" in report, report[:2000])
+        check("the slot-gate contradiction is version-stamped in the report",
+              "answer-slot gate" in report and "check_answer_slots@" in report)
+        check("machine cross-check fire counts decompose by type",
+              "## Machine cross-checks" in report
+              and "| bank_value_unbacked | 1 |" in report
+              and "| answer_slot_gate_failed | 1 |" in report, report)
+        check("clean tasks contribute no contradictions",
+              "t-002: judged ACCEPT, but" not in report
+              and "t-003: judged ACCEPT, but" not in report)
+        check("the shadow v2 column reports beside v1",
+              "## Shadow verdicts under rubric v2" in report
+              and "t-003: v1 ACCEPT (32/32) → v2 REJECT (30/32)" in report,
+              report)
+        check("a malformed scores_v2 is a non-invalidating note",
+              "scores_v2 notes (non-invalidating)" in report
+              and "t-002" in report.split("scores_v2 notes")[1][:400])
+
+        # The identical run with a correct bank and covered slots scores 0.
+        fixed_dir = temp / "runs" / "run-ok"
+        shutil.copytree(run_dir, fixed_dir)
+        dump(fixed_dir / "run.json", {
+            "run_id": "run-ok", "suite": "t", "suite_file": "suite.json",
+            "shard": "t", "repo_commit": "deadbeef",
+            "generator": {"agent": "gen", "model": "gen-model"},
+            "task_ids": ["t-001", "t-002", "t-003"],
+        })
+        mk_pdf(fixed_dir / "tasks" / "t-001" / "answer_key.pdf",
+               ["Quick Answers", "", "1. 27", "", "Worked Solutions"])
+        (fixed_dir / "tasks" / "t-001" / "worksheet.tex").write_text(
+            "\\problem[2cm]{Add 20 + 7.\\ansline}\n", encoding="utf-8")
+        se.ROOT, se.RUNS = str(temp), str(temp / "runs")
+        try:
+            rc_ok = se.main(["--run", "run-ok"])
+        finally:
+            se.ROOT, se.RUNS = original_root, original_runs
+        check("the corrected run scores clean", rc_ok == 0)
+else:
+    print("  skip  pdftotext is not available")
 
 if FAILS:
     print(f"\nFAIL: {len(FAILS)} scoring-harness check(s)")

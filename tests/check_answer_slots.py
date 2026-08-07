@@ -214,7 +214,15 @@ def shortfall(segment, entries):
 # it honest: "draw/plot ... if it helps" is optional scaffolding, not a demand;
 # and any problem already carrying a manual entry passes — one rubric routinely
 # covers several open asks (126-case measurement).
+# The verb must be in IMPERATIVE POSITION — starting the segment, a sentence,
+# a clause, or a lettered/bulleted sub-part. Matching anywhere in the segment
+# fired on "the two methods describe the same tangent line", a declarative
+# statement ABOUT the mathematics that asks the student for nothing; the author
+# had to reword correct prose to clear a gate. Nothing is being asked there, so
+# adding a manual entry would have invented a rubric for a non-question.
 OPEN_ASK_RE = re.compile(
+    r"(?:^|(?<=[.!?:;])|(?<=\\item)|(?<=\})|(?<=\bthen)|(?<=\band)|(?<=,))"
+    r"\s*(?:\\textbf\{)?\s*"
     r"\b(explain|describe|justify|say (?:why|whether|which|what|how)"
     r"|tell (?:why|how)|in your own words|in (?:one|a) sentences? or two"
     r"|in (?:one|two) sentences?|name the (?:error|mistake)|what went wrong"
@@ -261,6 +269,15 @@ _DESC_STOP = frozenset(
     "Listen Watch Expect Require Required Correct Incorrect Note Notes "
     "Marks Mark Points Point Score Scoring Criteria Criterion".split())
 _CAPWORD_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
+_MATH_NOUNS = frozenset(
+    "form theorem series bound test identity rule method property formula "
+    "notation triple conjecture lemma postulate axiom principle law "
+    "inequality expansion sum product ratio number numbers sequence "
+    "polynomial function transform substitution triangle curve spiral "
+    "distribution constant criterion algorithm matrix array plane cycle "
+    "pair section decomposition factorisation factorization approximation "
+    "remainder error bounds estimate interval solid sums rules tests "
+    "identities forms theorems bounds methods properties formulas".split())
 
 
 def stale_desc_faults(segments, by_id):
@@ -291,6 +308,16 @@ def stale_desc_faults(segments, by_id):
                 # reach of this lint.)
                 near = toks[max(0, k - 2):k] + toks[k + 1:k + 3]
                 if any(t[:1].isupper() for t in near):
+                    continue
+                # An EPONYM followed by a mathematical noun is vocabulary, not
+                # a name from an earlier draft: "the Pythagorean form", "the
+                # Lagrange bound". The neighbour rule above exempts
+                # "Fundamental Theorem" only because the next word happens to
+                # be capitalised, so the exemption was decided by typography.
+                # Two correct rubrics were rewritten into worse prose to clear
+                # this gate before it was narrowed.
+                if (k + 1 < len(toks)
+                        and toks[k + 1].lower() in _MATH_NOUNS):
                     continue
                 if w.lower() not in low:
                     faults.append((i, w, desc[:80]))

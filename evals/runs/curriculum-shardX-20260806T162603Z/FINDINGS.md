@@ -319,3 +319,35 @@ This is the run's most valuable output. No single case could have shown it; it
 took 300 sheets across ten bands, and the pattern is the argument for
 prioritising the queued numeric/symbolic work as ONE project rather than eight
 tickets.
+
+## Lint false positives in MY OWN new gates (narrowed, measured)
+
+Three batches hit false positives in the two lints shipped this week, and in
+every case the author fixed correct work to clear the gate — the exact harm the
+lints exist to prevent.
+
+- **Eponym false positive** (R15, R21 ×2). "Pascal's triangle", "the
+  Pythagorean form", "the Lagrange bound" read as leftover NAMES. The original
+  exemption checked whether a neighbouring token was capitalised, so
+  "Fundamental Theorem" passed and "the Lagrange form" did not — the exemption
+  was decided by typography. One author rewrote a correct rubric into worse
+  prose; another added a sentence to a stem purely to satisfy it (that one was
+  an improvement, but it was not the author's choice to make).
+  NARROWED: a capitalised word followed by a mathematical noun is vocabulary.
+- **Open-ask false positive** (R19). "the two methods **describe** the same
+  tangent line" is a declarative statement ABOUT the mathematics; nothing is
+  asked, so a manual entry would have been a rubric for a non-question. The
+  verb now has to sit in IMPERATIVE POSITION — segment start, after sentence
+  punctuation, after `\item`, `}`, `and`, `then` or a comma.
+
+Measured across BOTH runs (600 sheets) after narrowing:
+    stale-desc lint: 1 fire  (the real Priya defect in run 1, still caught)
+    open-ask lint:   run 1 — 343 gaps in 158 cases
+                     run 2 — 0
+
+## PAIRED RESULT (all figures under identical, current gate versions)
+
+                              run 1 (old)      run 2 (new)
+    slot-gate clean            99 / 300         291 / 291
+    open-ask gaps             343 in 158 cases  0
+    stale rubrics               1                0

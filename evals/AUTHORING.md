@@ -139,14 +139,33 @@ now degrades the artifact.
   Above that gap nothing changes, so every already-clean figure is identical.
   12 → 6, and the `A`/`B_2` collision is gone from the rendered page.
 
-  **Still open, and it needs a box model, not a better distance.** The six
-  survivors are the angle label against a side label (`35` on `a`, `50°` on
-  `a`) and the arc-on-swing-label case at A = 44. And `check_overprint`
-  UNDER-reports: at A = 15 the page still reads `b = 26C`, because the two
-  boxes are *adjacent*, not overlapping, so a 45%-overlap rule sees nothing.
-  Every placement rule here compares anchor POINTS; the remaining faults are
-  all box WIDTH running into a neighbour. Until label extents are modelled,
-  render an SSA page and look at it — the gate's silence is not evidence.
+  **Still open, and an ESTIMATED box model does not close it — measured.**
+  The six survivors are the angle label against a side label (`35` on `a`,
+  `50°` on `a`) and the arc-on-swing-label case at A = 44. And
+  `check_overprint` UNDER-reports: at A = 15 the page reads `b = 26C` while
+  the gate is silent, because `26` ends at 301.85pt and `C` starts at
+  301.23pt — a 0.6pt overlap, 8% of the `C`, far below the 45% rule.
+
+  The obvious next step is to give every label a WIDTH instead of treating it
+  as a point. That was built and measured, and it is recorded here as a
+  NEGATIVE result so the fourth attempt is not the same as the third:
+
+  - Scoring the fixed side against estimated label boxes instead of anchor
+    points: **6 of 33, unchanged**, and the rendered page is byte-identical.
+  - Extending the same search to the two swing labels: **7 of 33 — worse.**
+    That is the fourth time moving the swing labels has made things worse.
+  - Why it cannot work from an estimate: character-count widths are far too
+    coarse at this scale. Against `pdftotext -bbox` on a rendered page,
+    `$b = 26$` estimates 0.930cm and measures 1.063cm (12% under), but `$C$`
+    estimates 0.155cm and measures 0.275cm — **44% under.** The model then
+    computes 0.44cm of clear paper exactly where the page has none, so it
+    keeps a position it should reject.
+
+  Real extents are only knowable after typesetting, so closing this properly
+  means a two-pass render — place, measure the PDF, re-place — or shipping
+  per-glyph metrics. Either is a larger piece of work than it looks, and
+  neither should be started by re-deriving the above. Until then: render an
+  SSA page and look at it. The gate's silence is not evidence.
 
   A measurement warning, learned twice while producing the numbers above: a
   geometric "label is within N cm of a drawn segment" proxy does NOT track

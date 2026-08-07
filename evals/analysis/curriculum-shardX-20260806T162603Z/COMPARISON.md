@@ -49,3 +49,39 @@ complete.
 `FINDINGS.md` records 20+ system defects the run surfaced, what was fixed
 during it (presentation and measuring-instrument only) and what was
 deliberately queued (anything that would move a pass/fail boundary mid-run).
+
+## CORRECTION — the two runs are not judged under identical rubric text
+
+I stated when packaging that run 2's rubric is "byte-identical to run 1's, so
+scores stay comparable." That is wrong, and the error is worth stating exactly.
+
+Run 2's `rubric.md` is byte-identical to the CURRENT canonical
+`evals/curriculum-judge-rubric.md`. Run 1's `rubric.md` differs from it by 39
+lines, because the canonical file was improved during this session — after run 1
+had been judged.
+
+The drift is entirely ADDITIVE, and the additions are this session's own fixes:
+
+- a **"Quoting values"** section requiring every quoted number to be one the
+  artifact actually prints — added precisely BECAUSE run 1's judge cited values
+  that appear nowhere in the artifacts (curr-131's "4/5", curr-369's inverted
+  hole, curr-005's "12<16");
+- a definition of what **"surfaced"** means, after the surfacing check was found
+  to test vocabulary rather than filenames;
+- an instruction **not to copy a supplied total or ACCEPT label**, since the
+  harness recomputes both.
+
+The eight dimensions, the 0–4 scale, the hard-failure list and the ACCEPT rule
+(no hard failures, all dimensions ≥ 3, total ≥ 27) are UNCHANGED.
+
+**Decision: keep the improved text and disclose the confound.** Reverting to
+run 1's wording to buy strict textual comparability would knowingly reinstate
+the instructions whose absence produced fabricated citations — trading real
+judging quality for a cleaner-looking comparison. That is the wrong trade.
+
+**What this means for reading the results.** Dimension scores remain comparable
+in scale. Differences in the QUALITY and honesty of findings between the runs
+may partly reflect the better instructions rather than better artifacts. So the
+run-to-run claim that carries weight is the machine layer — deterministic
+checkers run over finished artifacts, identical code on both corpora — not the
+rubric scores. That was already the stated position; this drift strengthens it.

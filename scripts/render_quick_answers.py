@@ -148,20 +148,34 @@ def _drop_unit_factors(expr):
     ("2 + 1/4") without walking the whole tree and risking a rewrite of the
     form this function exists to protect.
     """
+    ONE, NEG = sympy.Integer(1), sympy.Integer(-1)
+
     def strip(e):
-        if isinstance(e, sympy.Mul):
-            kept = [a for a in e.args if a != sympy.Integer(1)]
-            if len(kept) != len(e.args) and kept:
-                return (kept[0] if len(kept) == 1
-                        else sympy.Mul(*kept, evaluate=False))
+        # Recurse through Mul/Add only. Pow, functions and everything else are
+        # returned untouched: the artifact lives in the product structure, and
+        # walking further would risk rewriting the form this exists to protect.
+        # "-x**2/2" parses as Mul(Mul(-1, x**2), 1/2) — the -1 sits one level
+        # below the top, which a single-level pass misses.
+        if isinstance(e, (sympy.Mul, sympy.Add)):
+            args = [strip(a) for a in e.args]
+            if isinstance(e, sympy.Add):
+                return (sympy.Add(*args, evaluate=False)
+                        if any(n is not o for n, o in zip(args, e.args)) else e)
+            kept = [a for a in args if a != ONE]
+            neg = NEG in kept
+            if neg:
+                kept = [a for a in kept if a != NEG]
+            if not kept:
+                return NEG if neg else ONE
+            inner = (kept[0] if len(kept) == 1
+                     else sympy.Mul(*kept, evaluate=False))
+            # evaluate=True on the negation gives sympy's own unary minus
+            # ("- \frac{x^{2}}{2}") instead of a literal (-1) factor, without
+            # reordering or distributing anything.
+            return sympy.Mul(NEG, inner) if neg else inner
         return e
 
-    expr = strip(expr)
-    if isinstance(expr, sympy.Add):
-        terms = [strip(a) for a in expr.args]
-        if any(t is not a for t, a in zip(terms, expr.args)):
-            return sympy.Add(*terms, evaluate=False)
-    return expr
+    return strip(expr)
 
 
 def _math(s):
@@ -183,6 +197,12 @@ def _math(s):
     # order='none' keeps the author's term order, so "2 + 3/4" prints as the
     # mixed number it is instead of being reordered to 3/4 + 2.
     tex = sympy.latex(expr, order="none")
+    # evaluate=False can leave a literal (-1) coefficient nested inside a
+    # product — "-x**2/2" prints \frac{\left(-1\right) x^{2}}{2}. Rewriting
+    # the TREE risks the form preservation this function exists for (a deeper
+    # pass reorders or distributes), so the sign is normalised at the render
+    # level, where it can only touch a coefficient sympy itself calls -1.
+    tex = re.sub(r"\\left\(-1\\right\)\s*", "- ", tex)
     # sympy has one natural logarithm and prints it \log. An author who wrote
     # ln means ln — on the sheets where both appear, printing \log for ln is
     # a different function to the student.

@@ -219,3 +219,33 @@ piece of work rather than three.
 - INFERRED (not observed): `check_layout`'s work-space floor counts glue only,
   so a problem whose height comes from an 8 cm tikzpicture needs an artificial
   `\problem[Ncm]` that adds blank space the problem does not need.
+
+## R16 — `eval` exactness, THIRD independent report
+
+`{"type":"eval","expr":"sqrt(d/4.9)","at":{"d":78.4},"expected":4}` — 78.4/4.9
+is EXACTLY 16 and the answer is exactly 4 — reported as
+`→ 1.26491106406735*sqrt(10) (expected 4)`. The agent rewrote the free-fall
+model from 4.9t² to 5t² to get a green build.
+
+That is three independent reports (R07, R08, R16) and three separate occasions
+where an author changed correct mathematics to satisfy a float-comparison
+defect. Together with the trend line (9.4−0.4x → 9.5−0.5x) and the JSON-shape
+workaround in R05, this run has produced FIVE documented instances of an
+artifact bent to fit a tool. That is the single strongest finding of the run and
+the first item for the post-run iteration.
+
+Fixed mid-run (render level only, cannot change any verdict):
+- A literal `(-1)` coefficient could survive `evaluate=False` nested inside a
+  product: `-x**2/2` printed `\frac{\left(-1\right) x^{2}}{2}`. Normalised at
+  the RENDER level rather than in the tree — a deeper tree pass reorders or
+  distributes, which would break the form preservation the function exists for.
+  Now `\frac{- x^{2}}{2}`; 9/12 still unreduced, factored products still
+  factored.
+
+Queued from R16:
+- The study-guide unit rule is met for the first time as an answer-key BINDING
+  failure two gates later, because `check_answer_line.py` (whose message
+  teaches the answer_unit contract) runs only on the worksheet.
+- `--schema` says solution-set traps take "the roots the wrong method yields",
+  which reads as numeric; `[5, -2]` is rejected, `["5", "-2"]` accepted. Fourth
+  independent report of the trap-shape doc gap.

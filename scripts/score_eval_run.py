@@ -1121,12 +1121,21 @@ def audit_shipped_bank(key_text, verify_data, level="", ws_tex=""):
         if pid in flagged_givens and all(
                 _float_in(v, flagged_givens[pid]) for v in shipped_values):
             findings.append(_bank_finding(
-                "bank_prints_given", True, pid,
+                # NON-BLOCKING, and the precision is why. This signature was
+                # measured at roughly one true positive in seven over 300 cases
+                # (see check_answer_slots.given_as_answer_notes, where the same
+                # rule is advisory for the same reason). Blocking an ACCEPT on a
+                # 14%-precision signal trains a reviewer to overrule it by
+                # reflex, which is worse than not raising it — and it was
+                # blocking here only because the spec that commissioned this
+                # check said so, against the evidence already in the repo.
+                "bank_prints_given", False, pid,
                 f"bank row {pid} prints {text!r}, and the id's check carries "
                 "the given-as-answer signature (every expected value is a "
-                "printed stem value while a check input is not) — the bank "
-                "delivers a given to the grader as the answer. If the answer "
-                "genuinely equals the printed value, adjudicate and overrule."))
+                "printed stem value while a check input is not) — the bank may "
+                "deliver a given to the grader as the answer. ADJUDICATE: this "
+                "signature is right about 1 time in 7; confirm against the "
+                "stem before acting on it."))
             continue
         allowed = []
         for entry in machine_entries:

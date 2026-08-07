@@ -832,8 +832,16 @@ if bank_fns:
     given_bank = score.audit_shipped_bank(
         "Quick Answers\n1. 3, 5\n", inverse_verify, "", inverse_ws)
     given_types = {(f["type"], f["blocking"]) for f in given_bank["findings"]}
-    check("a bank row delivering a stem given as the answer blocks",
-          ("bank_prints_given", True) in given_types, repr(given_bank["findings"]))
+    # RAISED BUT NOT BLOCKING. The signature is right about one time in seven
+    # (measured over 300 cases; the same rule is advisory in
+    # check_answer_slots for the same reason). Blocking an ACCEPT on a
+    # 14%-precision signal teaches a reviewer to overrule it by reflex.
+    check("a bank row delivering a stem given as the answer is RAISED",
+          ("bank_prints_given", False) in given_types,
+          repr(given_bank["findings"]))
+    check("...and does NOT block, given its measured precision",
+          ("bank_prints_given", True) not in given_types,
+          repr(given_bank["findings"]))
     forward_verify = {
         "topic": "midpoint", "problem_count": 1,
         "problems": [{"id": 1, "type": "midpoint",
@@ -993,7 +1001,10 @@ if bank_fns and len(cal_dirs) == len(CAL) + 1 and shutil.which("pdftotext"):
 
     for task_id, expected_type in CAL.items():
         bank = _corpus_bank(cal_dirs[task_id])
-        types = {f["type"] for f in bank["findings"] if f["blocking"]}
+        # All findings, not just blocking ones: bank_prints_given is raised
+        # for adjudication rather than blocking (1-in-7 precision), and the
+        # calibration is about whether the signal FIRES on the exemplar.
+        types = {f["type"] for f in bank["findings"]}
         if expected_type:
             check(f"{task_id} fires {expected_type}", expected_type in types,
                   repr(bank["findings"]))

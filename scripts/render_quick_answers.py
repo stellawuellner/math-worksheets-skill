@@ -310,11 +310,18 @@ def _fmt_unit(unit):
 
 
 def _render_expected(entry):
-    """One JSON entry -> its text, with its declared slot label and unit."""
-    text = _fmt(entry["expected"], entry.get("type"))
-    unit = entry.get("answer_unit")
-    if isinstance(unit, str) and unit.strip():
-        text = f"{text} {_fmt_unit(unit.strip())}"
+    """One JSON entry -> its text, with its declared slot label and unit.
+
+    A manual entry has no `expected`; it renders as the MANUAL marker under its
+    own slot label, so an id with three unscored parts shows three of them.
+    """
+    if "expected" not in entry:
+        text = MANUAL
+    else:
+        text = _fmt(entry["expected"], entry.get("type"))
+        unit = entry.get("answer_unit")
+        if isinstance(unit, str) and unit.strip():
+            text = f"{text} {_fmt_unit(unit.strip())}"
     slot = entry.get("slot")
     if isinstance(slot, str) and slot.strip():
         # Which value is which. Unlabelled, a two-entry id printed in verify.json
@@ -333,21 +340,18 @@ def render_entry(entries, uncovered=0):
     that is missing an entry — so it comes from counting the worksheet's own
     answer slots (see slot_gap).
     """
-    vals, has_manual = [], False
-    for e in entries:
-        if not isinstance(e, dict):
-            continue
-        if "expected" in e:
-            vals.append(_render_expected(e))
-        else:                     # manual: the worked solution is the answer
-            has_manual = True
-    text = ", ".join(vals)
+    # ONE rendering pass in DECLARATION ORDER, machine values and manual
+    # markers alike. Manual entries used to be reduced to a single trailing
+    # bool, so an id with three unscored parts printed one "---" and dropped
+    # all three slot labels: 30 ids across 21 sheets, one of them a
+    # three-part always/sometimes/never item whose row read "---". A grader
+    # cannot see how many judgements are owed, or which. Rendering each in
+    # place also puts the parts in the order the sheet asks them, which is
+    # what makes the labels usable at a glance.
+    vals = [_render_expected(e) for e in entries if isinstance(e, dict)]
+    text = ", ".join(v for v in vals if v)
     if not text:
         text = MANUAL if (entries or not uncovered) else ""
-    elif has_manual:
-        # A PARTIALLY manual id used to hide its manual half completely,
-        # because the marker was guarded by "no machine values at all".
-        text = f"{text}, {MANUAL}"
     if uncovered:
         mark = UNCHECKED if not text else f"{text}~{UNCHECKED}"
         return mark

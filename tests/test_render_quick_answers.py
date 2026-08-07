@@ -283,6 +283,31 @@ check("an all-machine id carries no manual marker",
       rqa.render_entry([{"type": "approx", "expected": 5},
                         {"type": "approx", "expected": 7}]) == "5, 7")
 
+# 30 ids across 21 sheets carry MORE THAN ONE manual entry, and the marker was
+# a single trailing bool: three separate always/sometimes/never judgements
+# printed as one "---" with all three slot labels dropped. A grader could not
+# see how many judgements were owed, or which parts they belonged to — which
+# is the same per-response-not-per-problem error the slot gate exists to stop,
+# reappearing in the artifact that reports it.
+check("each manual response gets its own marker under its own label",
+      rqa.render_entry([
+          {"type": "manual", "desc": "a", "slot": "(a) always/sometimes/never"},
+          {"type": "manual", "desc": "b", "slot": "(b) always/sometimes/never"},
+      ]) == "(a) always/sometimes/never = ---, (b) always/sometimes/never = ---")
+check("two unlabelled manual responses still show as two",
+      rqa.render_entry([{"type": "manual", "desc": "a"},
+                        {"type": "manual", "desc": "b"}]) == "---, ---")
+
+# Manual entries used to be forced to the END of the row regardless of where
+# they were declared. Measured across all four runs: of 1041 ids carrying two
+# or more lettered slots, 1041 declare them in ascending order and none
+# otherwise — authors declare in the order the sheet asks. So the old rule was
+# not a neutral convention, it reordered the parts against the printed sheet.
+check("declaration order is preserved, so a manual part stays in its place",
+      rqa.render_entry([{"type": "manual", "desc": "why", "slot": "(a)"},
+                        {"type": "approx", "expected": 4, "slot": "(b)"}])
+      == "(a) = ---, (b) = 4")
+
 print("post-eval review — defect 7: multi-slot answers are labelled")
 
 # 9 cases. Values were joined in verify.json ARRAY order with no labels:

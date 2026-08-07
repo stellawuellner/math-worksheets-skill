@@ -124,6 +124,26 @@ fails a worksheet whose problems get under 2.5cm and flags workspace `\vspace` l
 a minipage. A sheet with correct answers and nowhere to write them is a sheet the student
 cannot use.
 
+**Page overrun: count problems per page BEFORE choosing a remedy.** `page_budget.py`
+prints two NOTEs whose fixes point in opposite directions, and applying the wrong one
+makes the sheet worse. `pdftotext` the failing PDF and look at what actually landed on
+a page:
+- **2 or more problems per page** — the blocks pack fine and the budget is simply
+  under-measuring them (its stem charge is a flat 0.6cm). **Declare `workspace_cm`**
+  covering the block's real height. That is the honest move: the declaration is a
+  measurement, and it raises the ceiling without adding content.
+- **1 problem per page** — the block is taller than half a page, so nothing can share
+  with it and the rest of every page is stranded. **Shorten the block** — a smaller
+  figure, or the work space *beside* the figure instead of under it. A larger
+  `workspace_cm` here raises the ceiling without recovering one centimetre of the
+  stranded space, and it is no longer a measurement of anything.
+
+A side-by-side `minipage[t]` figure/question layout is the usual way to recover that
+stranded whitespace, and it compresses no work space — but put `\vspace{0pt}` first in
+BOTH columns, or a `tikzpicture`'s bottom-sitting baseline makes the columns stack and
+doubles the block instead (the tell: shrinking the figure changes the page count by
+exactly zero).
+
 **Answer location (every problem gets one):** `\problem` sheets emit the right-aligned
 answer blank automatically whenever the workspace argument is positive — write nothing
 extra. On enumerate/`\item` sheets, end every item with `\ansline` (or an inline
@@ -162,6 +182,31 @@ the renderer-built `\probfig` figures share one page, so
 `tests/test_figure_convention.py` fails the build if the macro and
 `render_figures.py` ever mark the right angle at different vertices.
 `tests/check_layout.py` enforces the scope rule.
+
+**A data display several problems read from goes ABOVE the first `\problem`.**
+The scope rule is all-or-nothing per problem list, and a data display IS its
+values, so the rule's usual remedy — make the figure value-free — cannot apply
+to it. A bar chart set inside problem 3 of a mixed graph/table/algebra sheet is
+a valued figure beside figureless problems, and `check_layout` fails the sheet;
+an author who does not know the pattern deletes the chart or fights the gate.
+Problem regions run from one `\problem` to the next, so a display placed before
+the first one belongs to no region and is scoped to none of them. Caption it
+with the problems that use it — "Problems 4-7 refer to this chart" — so a
+student is never left guessing which givens are theirs. Five eval batches
+arrived at this independently; it is the standard answer for mixed-representation
+sheets.
+
+**Know what that costs, because nothing else will tell you.** A display above
+problem 1 is outside every problem region, so `figure_label_numbers` never reads
+its printed values against the JSON: a drifted axis tick or a mis-plotted point
+on a SHARED graph is invisible to the entire gate chain, on the one figure the
+most problems depend on. It is also invisible to the page budget — charge its
+height to the problems that consume it via `workspace_cm`. So: source the
+plotted values from the same `data` array the `read_data` checks use (never
+retype them), and read the rendered page yourself before shipping. Hoisting a
+figure out of a problem to quiet the scope check, when only that problem uses
+it, trades a gate that works for one that cannot run — keep a single problem's
+figure inside its own block.
 
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem
@@ -270,6 +315,12 @@ The second gate exists because the first was mistaken for it. "At least one chec
 
 **Complex numbers:** `I` is available in expressions, so `eval` handles complex arithmetic (e.g. `(3+2*I)*(1-4*I)` expected `"11 - 10*I"`). For `solve`/`zeros`, non-real roots are no longer dropped silently — set `"domain": "complex"` to require the full root set (e.g. `x**4-1` → `[1, -1, "I", "-I"]`) or `"domain": "real"` to restrict to real roots.
 
+**An INVERSE solved with `solve` usually needs `"domain": "complex"`, on a problem with nothing complex in it.** `"real"` (the default) keeps only the roots SymPy can prove real, and a root written in the *other* variable often cannot be proved real — `sqrt(y-3)` is real only where `y >= 3`, which the solver does not know. The check then reports an empty root list against your answer:
+```
+❌ solve(x**2 + 3 - y, domain=real) → [] (expected [sqrt(y - 3), -sqrt(y - 3)])
+```
+That reads as "your expected answer is wrong", and it is not — the same entry with `"domain": "complex"` passes unchanged. Confirmed on `x**2+3-y`, `exp(x)-y` and `x**3-y`. Restrict the domain in the PRINTED problem ("for $y \ge 3$"); do not let the field name talk you out of a correct key.
+
 For geometry, **state the givens and let the script compute**: pass raw coordinates to `distance`/`midpoint`/`slope`/`polygon_area` and raw triangle data to `triangle` rather than doing the formula yourself in `expr`. Angle convention: side `a` is opposite angle `A` (matches the figure templates).
 
 Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments, drawn or marked representations (circle it, shade it, plot it), a named misconception, and any explanation/reasoning answer — **per response**, so a problem whose (a) is a number and whose (b) is "explain why" gets one ordinary entry and one `manual` entry, not a choice between them.
@@ -292,6 +343,8 @@ A `manual` entry's `desc` is the rubric a human grader actually reads, so it mus
 **Strict schema:** an unknown `type`, a misspelled field, or a missing required field is a hard failure (exit 1) — never a silent skip. If you need an unverifiable problem, declare it `manual` explicitly.
 
 **Explicit `tol` is capped.** A `tol` wider than max(1% of |expected|, half a unit in the expected value's last written place) is rejected — an unbounded tolerance is a one-field bypass of the whole gate. For genuine estimation problems, add `"tol_reason": "<why>"` to acknowledge the widened tolerance: the run then passes with exit 2 and a visible `⚠` tally, never silently.
+
+**So do not transcribe "round to two decimals" as `"tol": 0.01` — OMIT `tol` instead.** Run the cap on a small answer: with `expected: 0.34` the ceiling is max(0.0034, 0.005) = 0.005, and `"tol": 0.01` is rejected outright. The rule falls out of the arithmetic: **`"tol": 0.01` is illegal whenever |expected| < 1**, so the reflexive transcription passes on `6.30` and fails on `0.34` — the same sheet, two decimals both times. Writing no `tol` at all is not a weaker check but the RIGHT one: the scale-aware default already accepts exactly what rounds to the precision you wrote (`0.005` here), which is what "round to two decimals" means. Reach for an explicit `tol` only when you want something *other* than the written precision, and for a widened one write the `tol_reason` too.
 
 **If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 

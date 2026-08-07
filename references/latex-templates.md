@@ -533,6 +533,40 @@ Source the plotted values from the SAME array the `read_data` verify check uses,
 ```
 For a line plot swap `ybar`→(remove) and use `\addplot[mark=*] coordinates {(1,3)(2,7)(3,2)(4,8)}`. For a pictogram, print a row of repeated symbols per category (e.g. `\faStar`×count) instead of an axis.
 
+#### Shared display bank — one chart or table several problems read from
+A display carrying values is scoped to the problem it sits in, and the figure-scope
+rule is all-or-nothing per problem list (SKILL.md → "Figure scope"), so a chart inside
+problem 3 of a sheet whose other problems are figureless fails `check_layout`. The
+rule's usual remedy — a *value-free* reference figure — cannot apply here, because a
+data display IS its values. Hoist it: problem regions run from one `\problem` to the
+next, so a display placed **above the first `\problem`** belongs to no region.
+Caption it with the problem numbers that use it.
+```latex
+\begin{center}
+{\bfseries Problems 4--7 refer to this chart.}\par\vspace{2pt}
+\begin{tikzpicture}
+\begin{axis}[ybar, width=10cm, height=5cm, bar width=18pt,
+  ymin=0, enlarge x limits=0.15, ylabel={Books read},
+  symbolic x coords={Mon,Tue,Wed,Thu}, xtick=data,
+  nodes near coords, axis lines=left]
+  \addplot coordinates {(Mon,12) (Tue,8) (Wed,15) (Thu,6)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+\problem[5cm]{...}   % problem 1 — no figure, and now legal beside the chart
+```
+Two costs, both silent:
+- **Nothing verifies its printed values.** `figure_label_numbers` reads inside problem
+  regions only, so a drifted tick or a mis-plotted bar on a shared display passes every
+  gate. Source the coordinates from the same `data` array the `read_data` entries use,
+  and read the rendered page.
+- **Nothing charges its height.** The page budget starts at problem 1 too. Add the
+  display's height to the `workspace_cm` of the problems that consume it.
+
+Use it only for a display genuinely shared by several problems. A figure one problem
+owns stays inside that problem's block, where both checks still run.
+
 ### 3D solids (volume & surface area problems)
 Cylinder:
 ```latex

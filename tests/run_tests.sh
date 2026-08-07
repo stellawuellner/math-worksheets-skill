@@ -469,7 +469,8 @@ echo "✅ test_check_log.py (page-budget and log-fault contract)"
 # noticing, because no runner called it. Any tests/test_*.py not named in this
 # file is dead weight pretending to be coverage.
 for suite in test_answer_key_binding test_audit_fixes test_branches \
-             test_error_paths test_pipeline_fixes test_preamble_layout; do
+             test_error_paths test_pipeline_fixes test_preamble_layout \
+             test_verify; do
   output=$("$PYTHON" "$SCRIPT_DIR/$suite.py" 2>&1)
   if [ $? -ne 0 ]; then
     echo "❌ $suite.py failed"

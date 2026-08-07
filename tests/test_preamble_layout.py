@@ -31,7 +31,28 @@ PDF, because the faults they cover are only visible on the page.
    in the source — every document still compiles either way — so it is pinned
    on the rendered page, from both directions.
 
-5. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
+5.5 WORKSPACE GLUE INSIDE A \problem STEM SURVIVES A PAGE BREAK — which is
+   why check_layout must not call it "outside any minipage". \problem opens its
+   minipage IN THE PREAMBLE, so a \vspace written in a stem has no
+   \begin{minipage} beside it to count, and check_layout's minipage_depth_fn
+   (which counts literal tokens in the body) read depth 0 and reported the
+   space as glue that will vanish at a page break. It will not: the minipage is
+   unbreakable, so the whole problem moves to the next page with its glue
+   intact. That is the wrong diagnosis on the sheet shape SKILL.md teaches
+   first, and 284 of the 600 recorded worksheets carry workspace glue in that
+   exact position. Pinned from the page, in both directions: the in-stem glue
+   is measured across a forced page boundary and must still be there, while the
+   same glue OUTSIDE any minipage must be shown to disappear — otherwise this
+   test would be pinning a rule that has stopped protecting anything.
+
+5.6 A BLANK PLOTTING GRID IS WRITING SPACE. check_layout's work-space floor
+   counts glue only, so a problem whose room to work is an empty coordinate
+   plane measured 0cm and needed an artificial \problem[Ncm] adding blank paper
+   under a grid the student writes on. A grid carrying DATA is still a figure
+   and still fails the floor, which is the distinction has_valued_figure
+   already draws.
+
+6. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
    close one, so the closing full-width \rule of the generated "Common wrong
    answers" block joined the last entry's text line and overflowed it by ~200pt.
    Every answer key declaring a trap failed compile-ak, while the feature's own
@@ -101,6 +122,78 @@ LEVEL_KEY_DOC = r"""
 \problem{$m = \ans{3}$}
 \end{document}
 """
+
+
+# 5.5 — an unstarred workspace \vspace written INSIDE a \problem stem, with
+# enough problems ahead of it to drive it onto a page boundary. If the glue
+# were discarded at the break the two markers would end up a line apart.
+GEOMETRY_LINE = (r"\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}")
+STEM_GLUE_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\input{worksheet-preamble}
+\wsheader{Stem glue at a page break}
+\begin{document}
+\wstitleblock{Stem glue at a page break}{Test}{}
+\problem[5cm]{Filler one.}
+\problem[5cm]{Filler two.}
+\problem[5cm]{Filler three.}
+\problem{STEMGLUEA marker, then five centimetres of unstarred glue in the stem.
+\par\vspace{5cm}\noindent STEMGLUEB marker.}
+\end{document}
+"""
+
+# The control: identical glue, no minipage anywhere near it, landing at the
+# same break. This is the fault the rule exists for and it must still bite.
+LOOSE_GLUE_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\begin{document}
+\noindent Filler.\par\vspace{20cm}
+\noindent LOOSEGLUEA marker.\par\vspace{5cm}
+\noindent LOOSEGLUEB marker.
+\end{document}
+"""
+
+# 5.6 — the same sheet twice: a blank plotting grid (a place to write) and a
+# grid carrying plotted data (a figure to read). Only the first is workspace.
+GRID_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\input{worksheet-preamble}
+\wsheader{Grid}
+\begin{document}
+\wstitleblock{Grid}{Test}{}
+\problem[5cm]{Solve $2x + 3 = 11$.}
+\problem{Plot your counterexample on the grid below.
+\begin{center}\begin{tikzpicture}
+\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]
+\end{axis}
+\end{tikzpicture}\end{center}}
+\end{document}
+"""
+
+VALUED_GRID_DOC = GRID_DOC.replace(
+    r"\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\end{axis}",
+    r"\begin{axis}[width=8cm, height=8cm, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\addplot {2*x + 1};" "\n" r"\end{axis}").replace(
+    "Plot your counterexample on the grid below.",
+    "Read the value of $y$ at $x = 2$ from this graph.")
+
+# ...and the third case, which is why the exemption is an `axis` and nothing
+# else: an AREA MODEL is a grid path too, and the student counts its squares
+# rather than writing in them. It needs room beside it exactly as the floor
+# says. Copied in shape from a recorded worksheet that a wider rule exempted.
+AREA_MODEL_DOC = GRID_DOC.replace(
+    r"\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\end{axis}",
+    r"\draw[step=1, gray!55, thin] (0,0) grid (4,3);" "\n"
+    r"\draw[thick] (0,0) rectangle (4,3);").replace(
+    "Plot your counterexample on the grid below.",
+    "Rosa cut this rectangle into two parts. Are they the same size?")
+
+CM = 72.0 / 2.54          # PDF points per centimetre
 
 
 def check(label, cond, detail=""):
@@ -186,7 +279,93 @@ def main():
         else:
             check("the level-key probe compiles", False, "no PDF produced")
 
-        print("5. common-error block fits the line")
+        print("5.5 workspace glue inside a \\problem stem survives a break")
+
+        def build(doc, stem):
+            path = os.path.join(d, stem + ".tex")
+            with open(path, "w") as fh:
+                fh.write(doc)
+            cmd = ([engine, "-interaction=nonstopmode", stem + ".tex"]
+                   if engine.endswith("pdflatex") else [engine, stem + ".tex"])
+            subprocess.run(cmd, cwd=d, capture_output=True)
+            out = os.path.join(d, stem + ".pdf")
+            return out if os.path.isfile(out) else None
+
+        def marker(pdf, text, pages=4):
+            """(page, y) of a marker word, or None."""
+            for pg in range(1, pages + 1):
+                for x0, y0, x1, t in words_with_boxes(pdf, pg):
+                    if t.strip(",.").strip() == text:
+                        return pg, y0
+            return None
+
+        sg = build(STEM_GLUE_DOC, "stemglue")
+        if not sg:
+            check("the stem-glue probe compiles", False, "no PDF produced")
+        else:
+            a, b = marker(sg, "STEMGLUEA"), marker(sg, "STEMGLUEB")
+            check("both stem-glue markers are on the page", a is not None and b is not None)
+            if a and b:
+                check("the problem moved to a page of its own (the minipage "
+                      "cannot break)", a[0] == b[0], f"{a[0]} vs {b[0]}")
+                gap = b[1] - a[1]
+                check(f"the 5cm of unstarred glue is still there across the "
+                      f"break ({gap / CM:.2f}cm)", gap >= 5.0 * CM,
+                      f"measured {gap:.1f}pt, wanted >= {5.0 * CM:.1f}pt")
+
+        lg = build(LOOSE_GLUE_DOC, "looseglue")
+        if not lg:
+            check("the loose-glue control compiles", False, "no PDF produced")
+        else:
+            a, b = marker(lg, "LOOSEGLUEA"), marker(lg, "LOOSEGLUEB")
+            check("both loose-glue markers are on the page",
+                  a is not None and b is not None)
+            if a and b:
+                # The control: the SAME 5cm, outside any minipage, at a break.
+                # It must be gone, or the fault this rule reports is imaginary.
+                check("the same glue OUTSIDE a minipage is discarded at the "
+                      "break (so the rule still protects something)",
+                      b[0] > a[0] and b[1] < 3.0 * CM,
+                      f"after-marker landed on page {b[0]} at y={b[1]:.1f}pt")
+
+        # ...and the checker must agree with the page.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import check_layout  # noqa: E402
+        def stranded_pair(doc):
+            """(faults, stem notes) — tolerant of the pre-fix single-list
+            return, so this assertion FAILS against the old checker instead of
+            crashing on the signature."""
+            res = check_layout.stranded_workspace(check_layout.strip_comments(doc))
+            if isinstance(res, tuple) and len(res) == 2:
+                return res
+            return res, []
+
+        stranded, in_stem = stranded_pair(STEM_GLUE_DOC)
+        check("check_layout does not call stem glue 'outside any minipage'",
+              not stranded, f"reported {stranded}")
+        check("it reports it as a stem-placement note instead", len(in_stem) == 1)
+        loose, _ = stranded_pair(LOOSE_GLUE_DOC)
+        check("and the genuinely stranded glue is still a fault",
+              any(cm == 5.0 for _, cm in loose), f"reported {loose}")
+
+        print("5.6 a blank plotting grid counts as writing space")
+        for doc, stem, want in ((GRID_DOC, "grid", 0),
+                                (VALUED_GRID_DOC, "gridval", 1),
+                                (AREA_MODEL_DOC, "gridarea", 1)):
+            p = os.path.join(d, stem + "_ws.tex")
+            with open(p, "w") as fh:
+                fh.write(doc)
+            rc = subprocess.run(
+                [sys.executable, os.path.join(os.path.dirname(
+                    os.path.abspath(__file__)), "check_layout.py"), p],
+                capture_output=True, text=True)
+            floor = "of WRITING space" in rc.stdout
+            names = {"grid": "a blank plotting grid satisfies the work-space floor",
+                     "gridval": "a grid carrying plotted data does not",
+                     "gridarea": "an area model the student counts does not"}
+            check(names[stem], floor == bool(want), rc.stdout[-400:])
+
+        print("6. common-error block fits the line")
         ce = os.path.join(d, "ce.tex")
         with open(ce, "w") as fh:
             fh.write(COMMON_ERROR_DOC)

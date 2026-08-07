@@ -14,6 +14,9 @@ So this pins:
     and punctuation kerning into its neighbour
   - a FIGURE LABEL printed on top of another figure label is caught, and the
     innocent same-column stacks it must not be confused with stay silent
+  - the AMBIGUOUS-SSA coverage boundary, in both directions: the label-over-
+    label collision at the swing apex is caught, and the label-over-PATH one at
+    a flat angle is not (see SSA_MEASURED and the SSA section of main())
 
 Calibration record: across 450 PDFs this repository had already produced and
 gated, the tuned detector fires on exactly one, and that one has a genuine
@@ -47,6 +50,7 @@ both confirmed by eye. Before it, the detector fired on none of them.
 
 Requires pdflatex/tectonic and pdftotext; skips cleanly without them.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -143,6 +147,42 @@ GEOMETRY = [
 ]
 
 
+# ── the ambiguous-SSA coverage boundary ──────────────────────────────────────
+# evals/AUTHORING.md carries a KNOWN-OPEN note saying the SSA swing label defect
+# is ungated and is bounded by "prefer A >= 30 degrees on ambiguous-SSA
+# problems". An author hit a genuine collision at A = 44 degrees, so neither
+# half holds. Re-measured here by rendering:
+#
+#   A = 44, a = 310, b = 400   the "?" arc label at the near apex B_2 lands on
+#                              the "0" of the swing side's "a = 310" label. Two
+#                              WORD boxes, 54% overlap of the smaller — above
+#                              the 0.45 prose threshold, so the ORDINARY rule
+#                              catches it. Confirmed by rendering the page to
+#                              PNG: the label reads "a = 310?".
+#   A = 15/25 (the AUTHORING.md cases)  the swing label lands on the BASE LINE,
+#                              a TikZ path. No second word box exists, so this
+#                              gate is silent — correctly, and permanently.
+#
+# The two look identical on the page and are opposite here. That is the fact
+# the docs have to state, and it is what these boxes pin. Copied verbatim from
+# `pdftotext -bbox` on the rendered probe.
+SSA_MEASURED = (
+    (320.917828, 229.391085, 337.281478, 239.078365, "310"),
+    (334.368, 229.011085, 339.519277, 238.698365, "?"),
+)
+
+# The same two givens, as scripts/render_figures.py takes them, for the
+# end-to-end render below. A = 44 must flag; A = 15 must not.
+SSA_CASES = [
+    ({"A": 44, "a": 310, "b": 400}, True,
+     "A = 44 deg — label ON label at the swing apex, above the 'prefer A >= 30' bound"),
+    ({"A": 15, "a": 30, "b": 20}, False,
+     "A = 15 deg — label on the base PATH, which no word-box gate can see"),
+]
+
+SSA_DOC_HEAD = HEAD + "\\input{figs_ssa.tex}\n"
+
+
 def check(label, cond, detail=""):
     print(f"  {'✅' if cond else '❌'} {label}")
     if not cond:
@@ -169,6 +209,40 @@ def faults(pdf):
     for w, h, words in op.words_by_page(pdf):
         out += op.page_faults(w, h, words, op.OVERLAP)
     return out
+
+
+def ssa_probe(given, workdir, name):
+    r"""Render ONE ambiguous-SSA swing figure from its givens and compile it.
+
+    The figure is built by scripts/render_figures.py from the same `given` dict
+    verify.py checks, so this probe is the real renderer's output rather than a
+    hand-placed imitation of it — the point is what authors actually get.
+    Returns the PDF path, or None when the renderer cannot run (no sympy).
+    """
+    d = os.path.join(workdir, name)
+    os.makedirs(d, exist_ok=True)
+    for f in os.listdir(TEMPLATES):
+        if f.endswith(".tex"):
+            shutil.copy(os.path.join(TEMPLATES, f), d)
+    vj = os.path.join(d, "verify_ssa.json")
+    with open(vj, "w") as fh:
+        json.dump({"topic": "ssa", "problem_count": 1,
+                   "problems": [{"id": 1, "type": "triangle", "given": given,
+                                 "solve_for": "B", "expected": 0}]}, fh)
+    r = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "render_figures.py"),
+         vj, os.path.join(d, "figs_ssa.tex")], capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.isfile(os.path.join(d, "figs_ssa.tex")):
+        return None
+    open(os.path.join(d, "p.tex"), "w").write(
+        SSA_DOC_HEAD + "\\problem[3cm]{Solve the triangle. \\probfig{1}}\n"
+        "\\end{document}\n")
+    eng = shutil.which("pdflatex") or shutil.which("tectonic")
+    cmd = ([eng, "-interaction=nonstopmode", "p.tex"] if eng.endswith("pdflatex")
+           else [eng, "p.tex"])
+    subprocess.run(cmd, cwd=d, capture_output=True)
+    pdf = os.path.join(d, "p.pdf")
+    return pdf if os.path.isfile(pdf) else None
 
 
 def main():
@@ -237,6 +311,29 @@ def main():
             f = faults(marker)
             check("a marker printed on a figure label is caught", len(f) >= 1,
                   "the detector saw nothing")
+
+        print("ambiguous-SSA coverage, on geometry measured off a rendered page")
+        a, b = SSA_MEASURED
+        frac = op.overlap_fraction(a[:4], b[:4])
+        check(f"the A = 44 deg swing-apex collision is above the PROSE "
+              f"threshold, so the ordinary rule catches it — it is not an "
+              f"unseen figure defect ({frac * 100:.0f}% >= "
+              f"{op.OVERLAP * 100:.0f}%)",
+              frac >= op.OVERLAP, f"measured {frac:.3f}")
+        check("and it is reported as a page fault",
+              any(k == "overprint" for k, _ in
+                  op.page_faults(612.0, 792.0, [a, b], op.OVERLAP)))
+
+        print("...and end to end, through the real figure renderer")
+        for given, must_flag, why in SSA_CASES:
+            pdf = ssa_probe(given, tmp, "ssa%s" % given["A"])
+            if pdf is None:
+                print(f"  ·  skipped ({why}): renderer unavailable")
+                continue
+            got = bool(faults(pdf))
+            check(f"{'flagged' if must_flag else 'silent'}: {why}",
+                  got == must_flag,
+                  f"faults: {faults(pdf)}")
 
         good = build(CLEAN, tmp, "clean")
         if not good:

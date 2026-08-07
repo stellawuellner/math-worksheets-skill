@@ -18,6 +18,14 @@ tolerance let \\boxed{4.52} satisfy a verified 4.51. The box is what the
 student trusts, so the hard gate reads only the boxes, problem by problem,
 at the precision each answer is printed with.
 
+Not every answer is a value. An `equiv` entry's `expected` is a whole
+EXPRESSION written as lhs - rhs, so its literals are pieces of one answer
+rather than answers of their own: a miss there is reported once, naming the
+type and the rule ("box the whole rewritten form"), not once per literal as
+"the boxed value is wrong". And whether an answer is SYMBOLIC is decided by
+walking `expected`, not by its JSON shape — ["18 - 3*x/2"] is the same
+mathematics as "18 - 3*x/2" and `--schema` prints the list form for `solve`.
+
 Units bind the same way (tests/_units.py): a problem that declares
 "answer_unit" must print that unit inside its own box, and a box printing a
 lexicon unit the JSON never declared hard-fails — otherwise a key could
@@ -76,6 +84,26 @@ _MIXED = re.compile(
 _MIXED_SUM = re.compile(r"(?<![\w.*^/}])(-?\d+)\s*\+\s*(\d+)/(\d+)(?!\d)")
 
 
+# \pm PRINTS BOTH SIGNS, so a box holding it offers both values.
+#
+# A solution set stored as ["7*I", "-7*I"] is correctly and idiomatically boxed
+# as \ans{x = \pm 7i}, but the number scanner saw one token, +7, and the -7 was
+# reported as "boxed as 7 without its sign" — a sign complaint against a key
+# that prints the sign, in the one notation that prints BOTH. The same holds for
+# a real solution set [7, -7] against \ans{x = \pm 7}, where strict sign applies
+# and the false failure is unavoidable without reading \pm.
+#
+# So \pm N (and \mp N) expands to the two values it means. It only ADDS the
+# opposite-signed reading of a token that is already there; nothing that used to
+# bind stops binding. Only a digit directly after the macro is expanded —
+# \pm\sqrt{7} keeps its single 7, because the value the box offers is not 7.
+_PM = re.compile(r"\\(?:pm|mp)\s*(?:\\[,!;:>]\s*)*(\d+(?:\.\d+)?(?:/\d+)?)")
+
+
+def _pm_pair(m):
+    return f"{m.group(1)} -{m.group(1)}"
+
+
 def _mixed_sum_value(m):
     whole, num, den = int(m.group(1)), int(m.group(2)), int(m.group(3))
     if den == 0:
@@ -112,6 +140,9 @@ def normalize_latex_numbers(text):
     # writes the mixed number as a sum binds to the same value as one that
     # writes it as a mixed numeral.
     text = _MIXED_SUM.sub(_mixed_sum_value, text)
+    # After the fraction rules, so "\pm\dfrac{7}{2}" has already become
+    # "\pm 7/2" and expands to both readings of the same fraction.
+    text = _PM.sub(_pm_pair, text)
     text = re.sub(r"(?<=\d),(?=\d{3})", "", text)
     text = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", text)
     text = re.sub(r"(?<=[A-Za-z0-9)\}])-", " ", text)
@@ -347,6 +378,73 @@ def expected_strings(entry):
     return out
 
 
+_ALPHA = re.compile(r"[A-Za-z]")
+
+# String leaves that are BOOKKEEPING, not algebra. An interval's endpoint
+# markers and infinities are the shape verify.py's `inequality`/`interval`
+# types store their answer in ("expected": ["-oo", 18, "loopen"]), and every
+# one of them contains a letter. Reading them as "this answer is an
+# expression" would switch a boundary value to magnitude matching, and an
+# inequality's boundary sign IS its answer: x > 7 and x > -7 are different
+# answers, so nothing about them should be sign-blind. Measured — with these
+# counted as symbolic, a sweep that flipped one boxed sign per key lost 14
+# detections across the 600 recorded keys and 600 study guides, every one of
+# them an inequality.
+_NOT_EXPRESSIONS = {"oo", "-oo", "+oo", "open", "closed", "loopen", "hiopen",
+                    "ropen", "true", "false", "none", "nan"}
+
+
+def expected_is_symbolic(entry):
+    """Does this entry's ANSWER contain algebra, wherever it is stored?
+
+    This used to read the top level only:
+
+        isinstance(e.get("expected"), str) and re.search("[A-Za-z]", ...)
+
+    so "18 - 3*x/2" was symbolic and ["18 - 3*x/2"] — the SAME mathematics, and
+    the shape `--schema` prints for `solve` — was not. verify.py accepts both
+    forms identically, so the JSON shape alone decided whether the magnitude
+    branch below ran. When it did not, a correct key boxing y = -3/2 x + 18
+    tokenised to {-1.5, 18} against JSON numbers {18, 3, 2} and produced eight
+    binding failures on one sheet, every one of them reading "the boxed value is
+    wrong" and pointing at an answer key that was right. Unwrapping the list in
+    the JSON cleared all eight without touching the key — i.e. the gate was
+    asking the author to edit verified data to suit the checker.
+
+    The same asymmetry kept sign matching strict on ["7*I", "-7*I"], so
+    \\ans{x = \\pm 7i} failed as "boxed as 7 without its sign".
+
+    So walk the structure, exactly the way json_expected_nums already walks it
+    for the values themselves — the two must agree about what an answer IS.
+    A list of purely numeric strings (["5", "-2"]) stays non-symbolic and keeps
+    strict sign, which is where a sign error still IS the wrong answer.
+    Interval bookkeeping (_NOT_EXPRESSIONS) is not algebra either.
+    """
+    return any(_ALPHA.search(s) and s.strip().lower() not in _NOT_EXPRESSIONS
+               for s in expected_strings(entry))
+
+
+# `equiv` verifies a whole EXPRESSION, written as lhs - rhs. It is the correct
+# type for every "rewrite in this form" task, and it is the one type whose
+# `expected` is not a value at all — so the numeric binding below, which asks
+# "is each verified number in the box?", asks the wrong question of it. A study
+# guide boxing \ans{25} for "(x-4)**2 + (y+1)**2 - 25" drew three faults reading
+# "verified value 1 ... 2 ... 4 is in the worked steps but NOT in the box — the
+# boxed value is wrong". The boxed value was not wrong; the rule is that the
+# whole rewritten form belongs in the box. The author is then sent hunting for
+# an arithmetic error that does not exist, three times over for one entry.
+#
+# The values still have to be bound — an equiv key that drops a term is a real
+# fault — but they are reported ONCE, as what they are.
+EQUIV_TYPES = {"equiv"}
+
+
+def equiv_forms(entries):
+    """The `expected` expressions of this problem's equiv entries."""
+    return [e["expected"] for e in entries
+            if e.get("type") in EQUIV_TYPES and isinstance(e.get("expected"), str)]
+
+
 def main():
     # comments are blanked (length-preserving) so a commented-out \boxed or
     # '% \problem{...}' remark can neither count as an answer nor split a
@@ -426,6 +524,7 @@ def main():
 
     hard = []      # per-problem binding failure — wrong/missing boxed value
     soft = []      # degraded mode only: printed elsewhere, not in own segment
+    equiv_faults = []  # an equiv answer whose rewritten form is not fully boxed
     for i in sorted(by_id):
         entries = by_id[i]
         if all(e.get("type") == "manual" for e in entries):
@@ -440,7 +539,11 @@ def main():
                              if not printed
                              else f"the boxed relation is {sorted(printed)[0]!r}")
                     hard.append((i, r, f"is the verified comparison, but {where}"))
-        expected = set().union(*(json_expected_nums(e) for e in entries))
+        # Provenance is kept, not just the union: which ENTRY a value came from
+        # decides how a miss should be explained, and an `equiv` entry's numbers
+        # are pieces of one expression rather than answers in their own right.
+        per_entry = [(e, json_expected_nums(e)) for e in entries]
+        expected = set().union(*(nums for _, nums in per_entry))
         # 0 was filtered as "trivial", which meant a problem whose ANSWER is
         # zero had no printed-answer binding at all: the key could box 42 and
         # the gate still reported "every verified answer is boxed in its own
@@ -456,10 +559,48 @@ def main():
         # a SYMBOLIC answer the sign is carried by the printed expression, not by
         # a token, so those are matched on magnitude. A purely numeric answer
         # keeps strict sign — that is where a sign error IS a wrong answer.
-        symbolic = any(isinstance(e.get("expected"), str)
-                       and re.search(r"[A-Za-z]", e["expected"]) for e in entries)
+        symbolic = any(expected_is_symbolic(e) for e in entries)
+        # A ± PAIR IS TWO ANSWERS, and collapsing it to one magnitude would let
+        # a key print either root and pass. Measured: with a flat collapse, a
+        # mutation sweep over the 600 recorded keys planting one wrong digit or
+        # one flipped sign lost 17 detections, every one of them a solution set
+        # where {7, -7} became {7} and the surviving root covered for the broken
+        # one. So the collapse still happens — that is what stops a correct key
+        # failing because "6x - 1/x^2" tokenises +1 against a JSON -1 — but a
+        # magnitude the expected set holds in BOTH signs is remembered, and the
+        # box has to print both.
+        #
+        # "Holds both signs" is read from ONE entry's SOLUTION SET — a list
+        # `expected` — and nowhere else. Taking it off the merged set instead
+        # produced four false failures across the 600 recorded keys, every one
+        # an incidental pairing rather than two roots: "-25/(25 - x**2)**(3/2)"
+        # yields -25 from the numerator and +25 from inside the denominator of
+        # the SAME expression, and an equiv "2*(x + 4)" sat beside a solve [-4]
+        # in another. Neither is a ± answer and neither key was wrong.
+        pm_pairs = set()
         if symbolic:
+            for e, _ in per_entry:
+                if not isinstance(e.get("expected"), list):
+                    continue
+                roots = set()
+                for r in e["expected"]:
+                    roots |= json_expected_nums({"expected": r})
+                pm_pairs |= {abs(v) for v in roots
+                             if abs(v) > 1e-9 and -v in roots}
             expected = {abs(v) for v in expected}
+        forms = equiv_forms(entries)
+        equiv_nums, other_nums = set(), set()
+        for e, nums in per_entry:
+            got = {abs(v) for v in nums} if symbolic else set(nums)
+            if e.get("type") in EQUIV_TYPES:
+                equiv_nums |= got
+            else:
+                other_nums |= got
+        # A literal that only an equiv entry claims is a piece of that entry's
+        # expression; one that another entry also claims is a value in its own
+        # right and keeps the ordinary diagnosis.
+        equiv_only = equiv_nums - other_nums
+        equiv_missing = []
 
         def unsigned(val, tok):
             """Magnitude AND the text that prints it, moved together.
@@ -497,8 +638,26 @@ def main():
                                 box_toks.append(unsigned(float(part), part))
                             except ValueError:
                                 pass
+            raw_toks = seg_boxes[i - 1] if i - 1 < len(seg_boxes) else []
+            if v in pm_pairs and strict:
+                # Both roots have to be on the page. \pm counts as both (see
+                # _PM), so \ans{\pm 7i} satisfies this and \ans{7i} does not.
+                missing = [s for s in (1, -1)
+                           if not any_match(s * v, raw_toks)]
+                if missing:
+                    hard.append((i, v, f"and {-v:g} are BOTH verified answers "
+                                 f"— a ± pair — but only one sign is boxed. "
+                                 f"Print both roots: \\ans{{\\pm {v:g}}}, or "
+                                 f"\\ans{{{v:g} \\text{{ or }} {-v:g}}}"))
+                continue
             if strict:
                 if any_match(v, box_toks):
+                    continue
+                # An `equiv` answer is an EXPRESSION. Its literals are collected
+                # and reported once, below, as the one thing that is actually
+                # wrong — the rewritten form is not all inside a box.
+                if v in equiv_only:
+                    equiv_missing.append(v)
                     continue
                 # A negative answer whose magnitude IS boxed is almost always
                 # a detached sign: "k = - 2" tokenises as +2, because a minus
@@ -535,10 +694,28 @@ def main():
                                      "segment — transcription drift"))
             else:
                 if not any_match(v, doc_tokens):
-                    hard.append((i, v, "appears NOWHERE in the answer key — "
-                                 "transcription drift"))
+                    if v in equiv_only:
+                        equiv_missing.append(v)
+                    else:
+                        hard.append((i, v, "appears NOWHERE in the answer key — "
+                                     "transcription drift"))
                 elif not any_match(v, num_tokens(seg)):
                     soft.append((i, v))
+
+        # ONE fault per equiv entry, naming the type and the rule, instead of
+        # one "the boxed value is wrong" per literal in the expression.
+        if equiv_missing:
+            missing = ", ".join(f"{v:g}" for v in sorted(set(equiv_missing)))
+            shown = "; ".join(forms) if forms else "the verified expression"
+            equiv_faults.append(
+                f"problem {i}'s answer is an EXPRESSION, not a value: this "
+                f"entry is \"type\": \"equiv\", so verify.py checked the whole "
+                f"rewritten form ({shown}) rather than any single number. Box "
+                f"that whole form — \\ans{{}} must hold the complete rewritten "
+                f"expression, not one number out of it. Missing from the "
+                f"boxed answer: {missing}. (If a literal really is absent from "
+                f"your rewritten form, the form itself is wrong; nothing here "
+                f"says a boxed VALUE is wrong.)")
 
     # ── Unit binding (tests/_units.py) ───────────────────────────────────────
     # Forward: a declared answer_unit must be printed inside the problem's own
@@ -584,15 +761,17 @@ def main():
     for pid, v, why in hard:
         shown = v if isinstance(v, str) else f"{v:g}"
         print(f"  ❌ problem {pid}: verified value {shown} {why}.")
+    for msg in equiv_faults:
+        print(f"  ❌ {msg}")
     for msg in unit_faults:
         print(f"  ❌ {msg}.")
     for pid, v in soft:
         print(f"  ⚠ problem {pid}: verified value {v:g} not in its own segment "
               "(printed elsewhere) — check problem/answer alignment.")
 
-    if hard or unit_faults:
-        print(f"\n❌ {len(hard) + len(unit_faults)} binding failure(s) — fix "
-              "the key before delivering.")
+    if hard or unit_faults or equiv_faults:
+        print(f"\n❌ {len(hard) + len(unit_faults) + len(equiv_faults)} binding "
+              "failure(s) — fix the key before delivering.")
         sys.exit(1)
     if soft:
         print(f"\n⚠ {len(soft)} alignment warning(s) — heuristic, review by eye.")

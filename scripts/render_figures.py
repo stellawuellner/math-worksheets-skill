@@ -73,6 +73,10 @@ class FigureError(Exception):
 TARGET_CM = 4.5                    # longest drawn side after normalization
 THIN_ANGLE = math.radians(25.0)    # thin-triangle rule, latex-templates.md
 THIN_SIDE_CM = 2.0                 # (any angle < 25 deg or drawn side < 2cm)
+# Two vertex labels closer than this share a footprint: a \small "$B_2$" box is
+# about 0.5cm wide, so 1.0cm apart still touches once both carry a subscript.
+# Measured, not guessed — below it the A/B_2 pair overprints, above it does not.
+CROWDED_VERTEX_CM = 1.0
 RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
 
 # THE right-triangle labelling convention, shared with the shipped \rtfig and
@@ -271,10 +275,27 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
                             (n_f, "$" + f_ang + "$", fp)):
         d = _unitv(pos[0] - cx, pos[1] - cy)
         lines.append(_node(_anchor(*d), pos, text, thin))
-    # W2 sits ON the base inside the solid triangle — push its label clear
-    d = _unitv(w2[0] - cx, w2[1] - cy)
-    lines.append(_node(_anchor(*d), w2, "$" + w_ang + "_2$", thin,
-                       shift_dir=(0.0, -1.0), shift_pt=2.0))
+    # W2 sits ON the base inside the solid triangle — push its label clear.
+    #
+    # Clear of the BASE was the whole rule, and it is not enough: W2 slides
+    # toward P0 as the triangle thins, and the direction-from-centroid anchor
+    # then points its label down-LEFT, straight onto P0's own label. Swept over
+    # 33 ambiguous-SSA geometries, "A and B overlap" fired in 10 of the 12
+    # collisions — the single most common fault in the figure, and one no
+    # amount of moving the SIDE labels can reach.
+    #
+    # So W2's label is pushed away from P0 along the base once the two vertices
+    # are within a label's width of each other. Above that gap nothing changes,
+    # which keeps every already-clean figure identical.
+    gap = math.hypot(w2[0] - p0[0], w2[1] - p0[1])
+    if gap < CROWDED_VERTEX_CM:
+        away = 1.0 if w2[0] >= p0[0] else -1.0
+        lines.append(_node(_anchor(away, -1.0), w2, "$" + w_ang + "_2$", thin,
+                           shift_dir=(away, -1.0), shift_pt=6.0))
+    else:
+        d = _unitv(w2[0] - cx, w2[1] - cy)
+        lines.append(_node(_anchor(*d), w2, "$" + w_ang + "_2$", thin,
+                           shift_dir=(0.0, -1.0), shift_pt=2.0))
 
     def _side_node(p_from, p_to, frac, away_from, text, extra_shift=0.0):
         pos = (p_from[0] + frac * (p_to[0] - p_from[0]),
@@ -314,6 +335,15 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
         crowd.append(_arc_label_pos(w2, fp, p0))
     if f_ang in solve_fors:
         crowd.append(_arc_label_pos(fp, p0, w1))
+    # THE VERTEX LABELS ARE IN THE CROWD TOO. They were not, and they are the
+    # dominant collision: swept across 33 ambiguous-SSA geometries, 12 collide
+    # and the causes are "C" on the fixed side's own label (A = 15, 20 — 63%
+    # and 51% overlap), the two vertex labels A and B_2 on each other, and only
+    # then the arc-on-swing-label case the docs describe. A label placed to
+    # clear the arcs while ignoring the vertex letters is choosing between two
+    # obstacles with one eye shut, which is the likeliest reason three previous
+    # attempts at this moved the swing labels and made the count worse.
+    crowd += [p0, w1, w2, fp]
 
     def _clearance(frac):
         pos = (p0[0] + frac * (fp[0] - p0[0]), p0[1] + frac * (fp[1] - p0[1]))

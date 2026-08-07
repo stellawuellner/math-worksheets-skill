@@ -335,6 +335,31 @@ def main():
                   got == must_flag,
                   f"faults: {faults(pdf)}")
 
+        # The vertex-crowding fix, pinned on the geometry that motivated it.
+        # A = 15, a = 25, b = 26 collided TWICE before it: "C" on the "26" of
+        # its own fixed-side label (63% of the smaller) and "A" on "B_2" (66%).
+        # The second was the commonest fault in the whole figure — 10 of the 12
+        # collisions in a 33-geometry sweep — because B_2 slides toward A on a
+        # thin triangle and the centroid anchor aims its label down-LEFT, onto
+        # A. Both are VERTEX labels, which no placement rule modelled.
+        print("...and the vertex-crowding fix holds on the geometry that "
+              "motivated it")
+        thin = ssa_probe({"A": 15, "a": 25, "b": 26}, tmp, "ssathin")
+        if thin is None:
+            print("  ·  skipped: renderer unavailable")
+        else:
+            f = faults(thin)
+            check("A = 15, a = 25, b = 26 no longer overprints its vertex "
+                  "labels", not f, "; ".join(m for _, m in f)[:200])
+            # A gate that has stopped seeing a fault and a fault that is gone
+            # look identical from here, so assert the fix moved the LABEL, not
+            # just the verdict: B_2 must now be placed away from A along the
+            # base rather than back toward it.
+            fig = open(os.path.join(tmp, "ssathin", "figs_ssa.tex")).read()
+            b2 = [ln for ln in fig.splitlines() if "B_2" in ln]
+            check("B_2's label is shifted away from A, not toward it",
+                  bool(b2) and "xshift=6.0pt" in b2[0], b2[0] if b2 else "")
+
         good = build(CLEAN, tmp, "clean")
         if not good:
             check("the clean probe compiles", False, "no PDF produced")

@@ -110,34 +110,50 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
-- **KNOWN, OPEN: the SSA swing figure mislays its swing-side labels, and the
-  given angle does NOT bound the defect.** The renderer computes the FIXED
-  side's label position and still places the two swing-side labels at flat
-  fractions, so where they land moves with the whole shape of the triangle.
-  There are two collisions, and they behave differently at the gate:
-  - **Label over the base LINE**, on a flat triangle: with A small the swing
-    side is nearly parallel to the base and its `a = N` label lands on it. No
-    gate sees this one — `check_overprint` reads word boxes, and a label over a
-    TikZ path leaves nothing to overlap. Confirmed on rendered pages at
-    (15,30,20), (15,26,25) and (25,40,27).
-  - **Label over another LABEL**, at the swing apex: the `?` arc label lands on
-    the `a = N` label. `check_overprint` DOES catch this one, and hard-fails the
-    build. Reproduced at `a=310, b=400, A=44`, which reports
-    `'?' and '310' overlap by 54% of the smaller`.
+- **KNOWN, PARTLY OPEN: the SSA figure crowds its labels, and the given angle
+  does NOT bound it.** Swept over 33 ambiguous-SSA geometries (A from 15 to 70
+  degrees, four side-ratio families), rendered and read with `check_overprint`:
+  **12 of 33 collided.** Halved to 6 by the fix below. What remains, and the
+  corrected diagnosis, are both worth reading before touching this again.
 
-  An earlier version of this note said the defect is avoided by preferring
-  A >= 30 degrees. That is WRONG and was removed: 44 degrees is well above the
-  threshold and still collides, while the same sides at A = 30, 35 and 50 are
-  clean. The angle alone does not predict it. Render a page and look at it; if
-  the overprint gate names `'?'` against a side length, the figure is the cause
-  and different givens are the only lever you have.
+  **The swing-side labels were never the main cause.** Earlier notes here said
+  the renderer computes the fixed side's position and leaves the swing sides at
+  flat fractions, so the swing sides were the thing to fix. The sweep says
+  otherwise — the 12 collisions were:
+  - **two VERTEX labels on each other** (`A` on `B_2`) — in 10 of the 12. `B_2`
+    slides toward `A` as the triangle thins and the direction-from-centroid
+    anchor then points its label down-LEFT, straight onto `A`.
+  - **a vertex label on a side label** (`C` on the `b = 26` it sits beside) —
+    63% overlap at A = 15, 51% at A = 20.
+  - **an arc label on a swing-side label** (`'?'` on `'310'`, 54%, at A = 44) —
+    the only case the old note described, and the least common.
 
-  Three attempts to fix it by computing the swing placement each made things
-  worse — they pushed labels into the arc labels, which IS gated, taking
-  collisions from 0 of 15 to 4 and then 7. The fixed-side computation stands;
-  the swing sides need a placement model validated against what \_side_node
-  actually does with its anchor and shift, which is the work that has not
-  been done.
+  Vertex labels were in nobody's crowd model: the fixed side's placement search
+  avoided the ARC labels and nothing else. That is the likeliest reason three
+  earlier attempts at "compute the swing placement" each made things worse
+  (collisions 0 of 15 → 4 → 7) — they moved the minority cause, into obstacles
+  the model could not see.
+
+  **Fixed:** vertex positions joined `crowd`, and `B_2`'s label is pushed away
+  from `A` along the base once the two vertices are within `CROWDED_VERTEX_CM`.
+  Above that gap nothing changes, so every already-clean figure is identical.
+  12 → 6, and the `A`/`B_2` collision is gone from the rendered page.
+
+  **Still open, and it needs a box model, not a better distance.** The six
+  survivors are the angle label against a side label (`35` on `a`, `50°` on
+  `a`) and the arc-on-swing-label case at A = 44. And `check_overprint`
+  UNDER-reports: at A = 15 the page still reads `b = 26C`, because the two
+  boxes are *adjacent*, not overlapping, so a 45%-overlap rule sees nothing.
+  Every placement rule here compares anchor POINTS; the remaining faults are
+  all box WIDTH running into a neighbour. Until label extents are modelled,
+  render an SSA page and look at it — the gate's silence is not evidence.
+
+  A measurement warning, learned twice while producing the numbers above: a
+  geometric "label is within N cm of a drawn segment" proxy does NOT track
+  visible collision. It rates 22 of 33 figures faulty, including ones that are
+  clean on the page, because a side label lies on its own side by construction
+  and is offset away from it. Rendered word boxes are the measure; distance to
+  a path is not.
 
 - **A word answer inside `\ans{}` needs `\text{}` — a box is math mode.**
   `\ans{no solution}` reaches the student as "nosolution": it compiles clean and

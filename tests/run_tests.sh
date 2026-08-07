@@ -470,7 +470,7 @@ echo "✅ test_check_log.py (page-budget and log-fault contract)"
 # file is dead weight pretending to be coverage.
 for suite in test_answer_key_binding test_audit_fixes test_branches \
              test_error_paths test_pipeline_fixes test_preamble_layout \
-             test_verify; do
+             test_seed_defects test_verify; do
   output=$("$PYTHON" "$SCRIPT_DIR/$suite.py" 2>&1)
   if [ $? -ne 0 ]; then
     echo "❌ $suite.py failed"

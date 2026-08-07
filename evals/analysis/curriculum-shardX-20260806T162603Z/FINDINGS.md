@@ -351,3 +351,31 @@ Measured across BOTH runs (600 sheets) after narrowing:
     slot-gate clean            99 / 300         291 / 291
     open-ask gaps             343 in 158 cases  0
     stale rubrics               1                0
+
+## Post-run fix wave — queued items surfaced by the fixes themselves
+
+**Page budget (FIXED, committed).** See the commit for the measurement. Three
+things the fix surfaced that are NOT fixed:
+
+1. **The two-column inference is guessing a layout the JSON cannot see.** After
+   the fix the halving fires on 0 of 600 corpus sheets, and not one worksheet in
+   the corpus uses `multicols` at all. It is correctly gated now, but a future
+   all-`compare` sheet with no declarations would still be halved with no
+   `multicols` anywhere. The real fix keys it on a `multicols` signal read from
+   the .tex, which needs a `budget()` signature change and a build.sh edit.
+
+2. **The residual −1 under-measurement (293 sheets) is the stem-picture gap**,
+   not these bugs: `\problem[3.5cm]` blocks whose stems hold an `itemize` plus a
+   tikzpicture number line, all charged the flat 0.6cm stem rate. The old
+   first-entry bug was ACCIDENTALLY COMPENSATING for it (an `inequality`
+   default of 8.0cm), so removing the bug makes the real gap visible. The
+   `unpriced` advisory already names this class but stays silent whenever
+   `workspace_cm` is declared at all — so it never fires on exactly these sheets.
+
+3. **NEW, and a data-integrity class nobody had found:** curr-300's worksheet
+   uses bare `\problem{...}` with no bracket, and `\problem`'s optional argument
+   defaults to `0pt` — so its JSON `workspace_cm` declarations describe space
+   the document never reserves. Nothing cross-checks the JSON's declared
+   workspace against the .tex's actual `\problem[...]` argument. That is the
+   same shape as every other drift this project has chased: two files asserting
+   different things with no gate between them.

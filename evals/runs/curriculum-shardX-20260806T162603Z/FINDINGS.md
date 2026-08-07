@@ -183,3 +183,39 @@ chain, and the rule mildly rewards hoisting figures out of problems to quiet
 the scope check. This is the same undocumented pattern R02/R04/R06/R07 each
 arrived at independently — it is now the standard answer to mixed-representation
 sheets, and nothing checks it.
+
+## R12 — the `equiv` cluster (three findings, one root)
+
+An `equiv` answer is a whole EXPRESSION written as `lhs - rhs`, and three
+separate parts of the system present it as if it were a value:
+
+- **check_answer_key's message.** `expected: "(x-4)**2 + (y+1)**2 - 25"` boxed
+  as `\ans{25}` produced three faults reading "verified value 1 … 2 … 4 is in
+  the worked steps but NOT in the box — the boxed value is wrong". The boxed
+  value was not wrong; the rule is that an `equiv` answer is the entire
+  rewritten form, so every literal must appear in one box. The author hunts a
+  numeric error that does not exist. Naming the type ("this entry's answer is
+  an expression — box the whole rewritten form") would end it in one read.
+- **The Quick Answers bank** then prints that same entry as
+  `(x − 3)² + (y + 5)² − 16` on a sheet that asked for centre-radius form, so a
+  grader scanning the bank sees a subtraction where the student wrote an
+  equation. Faithful to the JSON, consistent with form preservation, and still
+  misleading at a glance. An `equiv` row could render `lhs = rhs`.
+- **And `equiv` cannot carry traps at all** (R04), so error analysis on any
+  symbolic answer is unreachable.
+
+Together these make `equiv` the least well-served type in the system despite
+being the correct choice for every "rewrite in this form" task. Queued as one
+piece of work rather than three.
+
+## R12 — other
+
+- Solution-set trap `value` must be a list; `--schema` says only "that set as
+  printed", which reads as a scalar. Third independent report (R06, R10, R12).
+- NEAR MISS, cause not confirmed: a `tangent` label ~0.4 cm from a `$Q$` vertex
+  label extracted as `Qtangent` while check_overprint passed. The agent moved
+  the label rather than confirm whether it was a real collision, and said so.
+  Same class as the KNOWN-OPEN SSA note.
+- INFERRED (not observed): `check_layout`'s work-space floor counts glue only,
+  so a problem whose height comes from an 8 cm tikzpicture needs an artificial
+  `\problem[Ncm]` that adds blank space the problem does not need.

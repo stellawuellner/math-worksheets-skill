@@ -381,8 +381,11 @@ check("a fully covered problem carries NO mark",
       "1.~AC = " in _with and "\\unchecked" not in _with.split("2.~")[0])
 check("a manual id still prints --- and is not called unchecked",
       "3.~---" in _with)
-check("the note tallies what is machine-checked",
-      "1 of 3 problem" in _with and "machine-checked" in _with)
+# Counted in ANSWERS, not problems: an error-analysis sheet whose every item
+# is a correction plus a diagnosis has zero fully-machine-checked PROBLEMS, and
+# one shipped key read "0 of 8" with eleven passing SymPy checks behind it.
+check("the note tallies machine-checked ANSWERS, not whole problems",
+      "of 5 answers machine-checked" in _with and "across 3 problems" in _with)
 check("the note names the unchecked problem so acting on it needs no digging",
       "problem 2" in _with and "NO machine guarantee" in _with)
 check("the note names the judgement problem separately",
@@ -406,6 +409,24 @@ _cws = ("\\input{worksheet-preamble}\n\\begin{document}\n"
         "\\problem[3cm]{Add.}\n\\end{document}\n")
 check("a fully verified sheet prints no legend at all (no warning fatigue)",
       "What is verified" not in rqa.render(_clean, ws_tex=_cws))
+
+
+# ── Unit-factor artifact (shipped defect) ─────────────────────────────────
+# parse_expr(evaluate=False) builds Mul(1, Pow(4,-1)) for "1/4" and latex
+# printed "$1 \\cdot \\frac{1}{4}$". Every numerator-1 fraction was affected
+# and nothing else; it shipped as malformed probabilities in delivered keys,
+# and no spelling avoided it. The fix must not undo the form preservation it
+# lives inside.
+print("Unit-factor artifact from evaluate=False parsing:")
+for src, want in (("1/4", r"\frac{1}{4}"), ("1/2", r"\frac{1}{2}"),
+                  ("1/10", r"\frac{1}{10}"), ("1/x", r"\frac{1}{x}")):
+    out = rqa._math(src)
+    check(f"{src} prints without a redundant unit factor",
+          want in out and "cdot" not in out)
+check("an unreduced fraction is still not reduced", "9" in rqa._math("9/12"))
+check("a mixed number is still mixed", "2 +" in rqa._math("2 + 3/4"))
+check("a factored product is still factored",
+      "3 \\left(x - 3\\right)" in rqa._math("3*(x-3)*(x+3)"))
 
 
 if FAILS:

@@ -107,6 +107,13 @@ def values_pinned(entry):
     if entry.get("type") not in _MULTI_SLOT_TYPES:
         return 1
     v = entry.get("expected")
+    # A `system` answer is the dict {var: value}, so the list test below never
+    # fired for it and its membership here was dead: a "find the month AND the
+    # cost" problem printing two blanks against one correct system entry was
+    # flagged. Each variable is a printed blank, so the dict's size is the
+    # count. (The list-of-dicts form counts SOLUTIONS, which is also right.)
+    if isinstance(v, dict) and v:
+        return len(v)
     n = len(v) if isinstance(v, list) and v else 1
     # A relation compare prints the two operands AND the symbol between them.
     if entry.get("type") == "compare" and entry.get("order") == "relation":
@@ -235,10 +242,17 @@ def open_response_gaps(segments, by_id):
 # lowercase: "Priya wants" flags, "Fundamental Theorem" does not — multi-word
 # proper terms are vocabulary, not names. Measured on all 299 corpus manual
 # entries: exactly one fire, and it is the true positive.
+# Grading vocabulary, not names. "Rubric" is the word SKILL.md itself uses for
+# what a desc IS ("the rubric a human grader actually reads"), so a desc opening
+# "Rubric: the answer must name..." is the most natural phrasing there is — and
+# it hard-failed a correct sheet mid-run. A stop list for a name detector has to
+# carry the words authors reach for when they are describing grading.
 _DESC_STOP = frozenset(
     "The This That These Those Then There Answer Grade Step Part Open Full "
     "Credit Student Students Accept Also Reasons Reason Solution Sum Rule "
-    "Graph Table Figure Law Segment".split())
+    "Graph Table Figure Law Segment Rubric Rubrics Model Award Give Look "
+    "Listen Watch Expect Require Required Correct Incorrect Note Notes "
+    "Marks Mark Points Point Score Scoring Criteria Criterion".split())
 _CAPWORD_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
 
 

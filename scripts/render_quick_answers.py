@@ -132,6 +132,38 @@ def _is_range_label(s):
     return bool(m) and float(m.group(1)) <= float(m.group(2))
 
 
+def _drop_unit_factors(expr):
+    r"""Remove redundant literal-1 factors left by evaluate=False parsing.
+
+    `parse_expr("1/4", evaluate=False)` builds Mul(1, Pow(4, -1)) — the 1 is an
+    artifact of not evaluating, not something the author wrote — and
+    sympy.latex faithfully prints "$1 \cdot \frac{1}{4}$". Every numerator-1
+    fraction was affected and nothing else: 3/8 and 7/12 print correctly. This
+    shipped as visibly malformed probabilities (1/4, 1/2, 1/10) in delivered
+    answer keys, and no spelling avoided it — "(1)/(4)" and "1 / 4" parse the
+    same way. Dropping the unit factor restores the author's form rather than
+    overriding it, which is the whole point of parsing with evaluate=False.
+
+    Top level and one level into an Add's terms: that covers the observed shape
+    ("2 + 1/4") without walking the whole tree and risking a rewrite of the
+    form this function exists to protect.
+    """
+    def strip(e):
+        if isinstance(e, sympy.Mul):
+            kept = [a for a in e.args if a != sympy.Integer(1)]
+            if len(kept) != len(e.args) and kept:
+                return (kept[0] if len(kept) == 1
+                        else sympy.Mul(*kept, evaluate=False))
+        return e
+
+    expr = strip(expr)
+    if isinstance(expr, sympy.Add):
+        terms = [strip(a) for a in expr.args]
+        if any(t is not a for t, a in zip(terms, expr.args)):
+            return sympy.Add(*terms, evaluate=False)
+    return expr
+
+
 def _math(s):
     """Typeset an expression string the author's way, or raise VerifyInputError.
 
@@ -147,6 +179,7 @@ def _math(s):
         expr = parse_expr(normalized, local_dict=_LOCALS, evaluate=False)
     except Exception:                  # printer-only fallback; already validated
         expr = safe_parse(s)
+    expr = _drop_unit_factors(expr)
     # order='none' keeps the author's term order, so "2 + 3/4" prints as the
     # mixed number it is instead of being reordered to 3/4 + 2.
     tex = sympy.latex(expr, order="none")
@@ -323,7 +356,7 @@ def _idlist(ids):
     return ", ".join(str(i) for i in ids)
 
 
-def coverage_note(n, unchecked_ids, manual_ids, scratch=0):
+def coverage_note(n, unchecked_ids, manual_ids, scratch=0, machine=0, total=0):
     r"""The instructor's one-line answer to "what can I trust here?".
 
     The bank shows values; it never said what stands behind them. An instructor
@@ -332,17 +365,34 @@ def coverage_note(n, unchecked_ids, manual_ids, scratch=0):
     explicitly and names the problems, so acting on it takes no archaeology:
     mark the verified ones fast, read the flagged ones properly.
 
+    COUNTED IN ANSWERS, NOT PROBLEMS. It counted problems where EVERY response
+    was machine-checked, which on a find-and-fix sheet — a correction plus a
+    written diagnosis on each item — is always zero. One shipped key read
+    "0 of 8 problems fully machine-checked" with eleven passing SymPy checks
+    behind it. That is the original defect inverted: it understates the
+    verification instead of overstating it, and a parent reading it concludes
+    nothing was checked. Answers are also simply the truthful unit — the whole
+    reason the slot gate exists is that a problem is not an answer.
+
     Silent when every response is machine-verified — a legend explaining marks
     that do not appear is noise, and noise is what makes real warnings invisible.
     """
     if not unchecked_ids and not manual_ids and not scratch:
         return []
-    verified = n - len(unchecked_ids) - len(manual_ids)
     out = ["\\medskip\\noindent{\\small\\textbf{What is verified}}"
            "\\par\\nopagebreak",
-           "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak",
-           f"\\noindent{{\\small {verified} of {n} problem"
-           f"{'s' if n != 1 else ''} fully machine-checked against SymPy.}}\\par"]
+           "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak"]
+    if total:
+        out.append(
+            f"\\noindent{{\\small {machine} of {total} answer"
+            f"{'s' if total != 1 else ''} machine-checked against SymPy, "
+            f"across {n} problem{'s' if n != 1 else ''}.}}\\par")
+    else:                                    # pre-count callers
+        verified = n - len(unchecked_ids) - len(manual_ids)
+        out.append(
+            f"\\noindent{{\\small {verified} of {n} problem"
+            f"{'s' if n != 1 else ''} fully machine-checked against SymPy.}}"
+            "\\par")
     if manual_ids:
         out.append(
             f"\\noindent{{\\small {MANUAL} marks an answer only you can "
@@ -479,7 +529,17 @@ def render(data, level="", ws_tex=""):
         "% boxed answers inside problem segments count).",
         "\\medskip\\noindent{\\small\\textbf{Quick Answers}}\\par\\nopagebreak",
         "\\vspace{2pt}\\noindent\\rule{\\linewidth}{0.4pt}\\par\\nopagebreak",
-        f"\\begin{{multicols}}{{{cols}}}\\small\\raggedcolumns\\noindent",
+        # \raggedright + \sloppy: a bank row is \\-terminated inside multicols,
+        # so a long symbolic answer beside a descriptive "slot" label has NO
+        # break point and overfulls the column — compile-ak then fails on a
+        # sheet whose mathematics and verification are both correct. The two
+        # levers that left an author are both bad: shorten the label (against
+        # the guidance that labels be descriptive) or change the mathematics.
+        # One eval author shortened "(a) fully factored form" to "(a)" to get a
+        # green build. Let the row wrap instead; the bank is a reference column,
+        # not justified prose, so ragged edges cost nothing.
+        f"\\begin{{multicols}}{{{cols}}}\\small\\raggedcolumns"
+        "\\raggedright\\sloppy\\noindent",
     ]
     for i, t in enumerate(entries, 1):
         sep = " \\\\" if i < len(entries) else ""
@@ -496,7 +556,12 @@ def render(data, level="", ws_tex=""):
             scratch = len(SCRATCH_RE.findall(_bc(ws_tex)))
         except ImportError:
             pass
-    lines += coverage_note(n, unchecked_ids, manual_ids, scratch)
+    machine = sum(1 for e in data.get("problems", [])
+                  if isinstance(e, dict) and e.get("type") != "manual")
+    total = machine + sum(1 for e in data.get("problems", [])
+                          if isinstance(e, dict) and e.get("type") == "manual")
+    total += sum(gap.values())          # printed responses nothing covers
+    lines += coverage_note(n, unchecked_ids, manual_ids, scratch, machine, total)
     lines += curriculum_block(by_id, n, level)
     lines += common_errors(by_id, n)
     return "\n".join(lines)

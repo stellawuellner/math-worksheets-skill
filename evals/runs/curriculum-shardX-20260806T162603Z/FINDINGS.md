@@ -149,3 +149,37 @@ Queued — each WOULD change what passes, so untouched mid-run:
   (R06).
 - Solution-set trap `value` must be a list, and SKILL.md's traps section shows
   only the scalar form (R06, R10).
+
+## R05 — a gate that hard-fails correct work on JSON shape alone
+
+**`check_answer_key.py:459` misses symbolic answers wrapped in a list.**
+CONFIRMED at source by me, not just reported:
+
+    symbolic = any(isinstance(e.get("expected"), str) and ... for e in entries)
+
+    bare string   "18 - 3*x/2"    -> symbolic True
+    1-elem list  ["18 - 3*x/2"]   -> symbolic False   <- same mathematics
+
+`verify.py` accepts both forms identically, and `--schema` shows the LIST form
+for `solve`. When `symbolic` stays False the magnitude-matching branch never
+runs, so a key boxing `y = -3/2 x + 18` tokenises to {-1.5, 18} against JSON
+numbers {18, 3, 2} — eight binding failures across four problems on curr-223,
+every one reported as "the boxed value is wrong", pointing the author at a
+correct answer key. Unwrapping the list fixed all eight with ZERO change to the
+key. Fix: walk the `expected` structure the way `json_expected_nums` already
+does.
+
+Queued, not fixed: it changes gate results, which is a measured dimension of
+the comparison. Note the class though — this is a FALSE FAILURE, and its cost
+is the same as the `eval` exactness bug: an author changed the artifact to
+satisfy a tool defect rather than a mathematical need.
+
+**Shared figure banks above problem 1 are verified by nobody.** Four sheets
+printed a fully labelled coordinate grid with plotted data while the layout
+gate said "none of the N problems carries a valued figure" — `problem_regions`
+starts at the first `\problem`, and `figure_label_numbers` never sees the bank.
+A drifted tick or mis-plotted point on a shared graph is invisible to the whole
+chain, and the rule mildly rewards hoisting figures out of problems to quiet
+the scope check. This is the same undocumented pattern R02/R04/R06/R07 each
+arrived at independently — it is now the standard answer to mixed-representation
+sheets, and nothing checks it.

@@ -273,7 +273,7 @@ The second gate exists because the first was mistaken for it. "At least one chec
 
 | Type | Verifiable? | What it checks |
 |---|---|---|
-| `solve` | ✅ | Roots of expr=0 match expected list (optional `var`, default `x`) |
+| `solve` | ✅ | Roots of expr=0 match expected list (optional `var`, default `x`). An equation with no solution is keyed `"no solution"` and an identity `"all real numbers"` — both are decided from the expression, not from an empty root list, so keying an identity `[]` fails. Free symbols beyond `var` make it a literal equation: it solves for `var` in terms of the others |
 | `zeros` | ✅ | Zeros of expr match expected list (duplicates collapse) |
 | `factor` | ✅ | Factored form is equivalent to expr |
 | `expand` | ✅ | Expanded form is equivalent to expr |
@@ -281,21 +281,21 @@ The second gate exists because the first was mistaken for it. "At least one chec
 | `diff` | ✅ | Derivative of expr matches expected (optional `order`) |
 | `integrate` | ✅ | Expected antiderivative differentiates back to expr — omit the `+C` |
 | `limit` | ✅ | Limit of expr as var → `to`; optional `dir`: `"+"`, `"-"`, `"+-"` (default) |
-| `equiv` | ✅ | expr and expected are the same function (trig identities, simplification) |
-| `solve_interval` | ✅ | Roots of expr=0 on `[a, b)`; `"unit": "deg"` for degree-mode trig equations |
+| `equiv` | ✅ | expr and expected are the same function (trig identities, simplification). **The only type that accepts an equation:** where the student's answer *is* an equation, write it as one — `"expected": "(x-3)**2 + (y+5)**2 = 25"` — and the check compares `lhs - rhs` exactly as before. Do this whenever the ask is "write it in ⟨form⟩" for a locus (centre-radius, standard form of a conic); leave it an expression when the answer is one (vertex form, a simplified expression, an identity's other side) |
+| `solve_interval` | ✅ | Roots of expr=0 on `[a, b)`; `"unit": "deg"` for degree-mode trig equations. Write a radian endpoint exactly — `"2*pi"`, not `6.28318…`: the interval is half-open, so a decimal endpoint decides a root sitting *on* the boundary by rounding. A decimal within 1e-3 of a π multiple is read as that multiple and the detail line says so |
 | `approx` | ✅ | Numeric expr recomputed exactly, compared within `tol` (default: scale-aware — accepts what rounds to the written precision) — for rounded answers |
 | `distance` | ✅ | Distance between two `points`; exact, or within `tol` if given |
 | `midpoint` | ✅ | Midpoint of two `points`; expected is an `[x, y]` pair |
 | `slope` | ✅ | Slope through two `points`; expected value or `"undefined"` for vertical |
 | `polygon_area` | ✅ | Shoelace area of the ordered `points` (3+) — triangles, quads, composite grid figures |
 | `triangle` | ✅ | Solves the triangle from 3 `given` values (sides `a/b/c`, angles `A/B/C`), checks `solve_for` within `tol`; degrees by default; accepts either triangle in the ambiguous SSA case |
-| `system` | ✅ | `equations` (each `=0`), `vars`, `expected` `{var: value}` (all vars) or a list of solution dicts. Each listed solution must satisfy every equation; PASS only when the count matches SymPy's full solution set — MANUAL for infinite families |
+| `system` | ✅ | `equations` (each `=0`), `vars`, `expected` `{var: value}` (all vars) or a list of solution dicts. Each listed solution must satisfy every equation; PASS only when the count matches SymPy's full solution set. A dependent system is keyed `"expected": "infinitely many"` and an inconsistent one `[]` — both PASS on the right system and FAIL by name on the wrong one, so neither is a MANUAL any more |
 | `series` | ✅ | `summation(term, var, from..to)` vs `expected`; finite or infinite (`"to": "oo"`), incl. geometric and Taylor (`factorial` allowed) |
 | `inequality` | ✅ | Solution set of `expr relation 0` (`relation`: `<`, `<=`, `>`, `>=`) vs an interval spec `[lo, hi, openness]` (`openness`: `open`/`closed`/`loopen`/`hiopen`; `lo`/`hi` may be `"oo"`/`"-oo"`) |
 | `stats` | ✅ | `measure` of a `data` list: `mean`/`median`/`mode`/`range`/`sum`/`variance`/`stdev`/`q1`/`q3`/`iqr` (school median-of-halves quartiles; non-unique mode → manual) |
 | `probability` | ✅ | `favorable`/`total` as an exact fraction |
-| `read_data` | ✅ | Read/compute from a chart or table whose `data` is in the JSON. Object data → `query` `value`/`total`/`max_value`/`min_value`/`max_key`/`min_key`/`difference` (with `key`); list data → `total`/`count`/`max_value`/`min_value`. The SAME `data` feeds the pgfplots chart, so figure and check share one source |
-| `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`. Uses SymPy's exact integral when available, else convergence-checked mpmath quadrature; returns MANUAL if numerics don't converge rather than trust a wrong value |
+| `read_data` | ✅ | Read/compute from a chart or table whose `data` is in the JSON. Object data → `query` `value`/`total`/`max_value`/`min_value`/`max_key`/`min_key`/`difference` (with `key`); list data → `total`/`count`/`max_value`/`min_value`. `difference` takes `key` as a **two-element list in subtraction order** — `["Fri","Thu"]` means Fri − Thu. The SAME `data` feeds the pgfplots chart, so figure and check share one source |
+| `definite_integral` | ✅ | ∫ from `from` to `to` of `expr`. Uses SymPy's exact integral when available, else convergence-checked mpmath quadrature; returns MANUAL if numerics don't converge rather than trust a wrong value. A divergent integral is an answer, keyed `"oo"` (or `"-oo"`); an `Abs`/`sign` integrand is split at its corners instead of being handed whole to a quadrature that cannot see them |
 | `estimate` | ✅ | Rounds each numeric **operand** in `expr` (half-up) to `place` (`ten`/`hundred`/`thousand`/`whole`/`tenth`/`hundredth`), then evaluates — front-end "estimate by rounding". `probability` favorable/total is range-validated (0 ≤ fav ≤ total) |
 | `compare` | ✅ | Order `values` (`order`: `asc`/`desc`) or state a `relation` (`<`/`>`/`=`) between the first two |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
@@ -350,12 +350,28 @@ A `manual` entry's `desc` is the rubric a human grader actually reads, so it mus
 
 **Trust boundary of `approx`:** it confirms the *arithmetic of the formula you wrote* matches `expected` — it cannot confirm the formula is the right one for the stated problem. Keep the `approx` `expr` a faithful transcription of the problem's givens, and rely on the prose/figure/answer-key checkers below to bind the story to the math.
 
-**Misconception traps (`"traps"`, universal on scalar-answer types):** declare the result a known wrong method yields:
+**How values are compared — exact where both sides are exact, scale-aware as soon as a decimal appears.** If your `expr` or your `expected` contains a decimal literal, the comparison is made at the precision the expected value is *written* to (as `approx` has always done), not exactly. This is not a loosening you have to ask for and it is not a bypass: two exact values (integers, `Rational`, `sqrt(2)`, `pi/3`) are still compared exactly, and a genuinely wrong answer still fails at any scale.
+
+State it because the alternative was silently corrupting problem design. Exact comparison on decimal arithmetic fails for reasons that have nothing to do with the mathematics — `9.4 - 0.4x` at `x = 20` is `1.4`, but binary floating point makes it `1.40000000000000` against a JSON `1.4` that parsed to `Rational(7,5)`, and `1.2*6` fails while `1.2*10` passes on luck alone. In the 300-case review **five separate authors changed correct mathematics to get green**: `9.4−0.4x` became `9.5−0.5x`, the physical constant `4.9t²` became `5t²`, `1.2` became `1.25`. Write the numbers the problem actually calls for. When a decimal comparison does fail, the detail line says the comparison was scale-aware, so the failure points at the answer rather than at the tool.
+
+Two things this does **not** cover. A root *list* gets no such tolerance — `x**2 - 2` keyed `[1.41, -1.41]` still fails, because a set has no single written precision and that is an author rounding an irrational, not a representation artefact; key it `["sqrt(2)", "-sqrt(2)"]`. And an interval endpoint is not a value being compared but a boundary deciding membership — see `solve_interval` above and write it exactly.
+
+**Misconception traps (`"traps"`, universal):** declare the result a known wrong method yields:
 ```json
 {"id": 11, "type": "approx", "expr": "9*sin(35*pi/180)", "expected": 5.16,
  "traps": [{"desc": "used cos instead of sin", "expr": "9*cos(35*pi/180)", "value": 7.37}]}
 ```
-Verification computes each trap `expr` and **fails unless the problem's own comparison rejects it** — a trap the check would accept means the problem cannot distinguish the error it targets: change the givens. The optional `value` (the wrong number printed in an error-analysis stem) must round-match its own `expr`, so the planted number is derived, never hand-typed; it then counts as a JSON given for the prose checker. The `desc`↔`expr` correspondence is yours to keep faithful — the same trust boundary as `approx` above. Allowed only on types with a single comparable answer (`approx eval triangle distance slope polygon_area stats probability limit series definite_integral estimate read_data`); `--schema` documents the shape.
+Verification computes each trap `expr` and **fails unless the problem's own comparison rejects it** — a trap the check would accept means the problem cannot distinguish the error it targets: change the givens. The optional `value` (the wrong number printed in an error-analysis stem) must round-match its own `expr`, so the planted number is derived, never hand-typed; it then counts as a JSON given for the prose checker. The `desc`↔`expr` correspondence is yours to keep faithful — the same trust boundary as `approx` above.
+
+There are **three shapes**, one per kind of answer, and `--schema` prints all three with the field names:
+
+| Answer shape | Types | Trap fields |
+|---|---|---|
+| Scalar | `approx eval triangle distance slope polygon_area stats probability limit series definite_integral estimate read_data` | `"expr"` a **string**; optional `"value"` a JSON **number**, or a **string** where a number cannot hold the value (`"3 - 4*I"`, `"sqrt(2)/2"`) |
+| Solution set | `solve zeros solve_interval` | `"exprs"` a **list of strings**, one per root the wrong method yields — `["5", "-2"]`, not `[5, -2]`; optional `"value"` the same set as printed, also a **list** |
+| Symbolic rewrite | `equiv expand factor` | `"exprs"` a **list of strings** holding the wrong *rewritten form* — `["x**12"]` where the answer is `"x**7"`; optional `"value"` a **list** |
+
+A solution-set trap is distinguishable when its set differs from `expected`, so a dropped root, an extraneous root and finding nothing at all are all declarable. A symbolic trap is distinguishable when its form is **not equivalent** to `expected` — a merely reordered factoring is rejected, because the check would accept it and so the problem cannot distinguish the error. The symbolic shape is what makes error analysis reachable on factoring, expansion and rewrite sheets at all: before it existed, every polynomial and factoring sheet in the run shipped with no "Common wrong answers" block, though `x⁴·x³ = x¹²` is as mechanical a misconception as any in trigonometry.
 
 ### 4b. Render figures from the verified JSON
 

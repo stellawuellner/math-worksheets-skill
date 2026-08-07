@@ -79,7 +79,7 @@ from sympy.parsing.sympy_parser import parse_expr
 # an inequality's [-oo, -3, "open"] shipped that repr into a delivered key.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import verify  # noqa: E402
-from verify import safe_parse, VerifyInputError  # noqa: E402
+from verify import safe_parse, split_equation, VerifyInputError  # noqa: E402
 
 # safe_parse is the GATE; these locals only pin name -> sympy object for the
 # second, printing parse. If verify ever renames the table, the printer keeps
@@ -187,6 +187,15 @@ def _math(s):
     3*(x-3)*(x+3) into (x+3)(3x-9) on a sheet whose directions say "Factor
     completely", and shipped a wrong answer.
     """
+    # An `equiv` answer may be written as the equation the student writes
+    # ("(x-3)**2 + (y+5)**2 = 25"); verify.py compares lhs - rhs, and the bank
+    # prints the equation, because a grader scanning this column for a
+    # centre-radius answer should see one. Each side is typeset by the same
+    # form-preserving path, so the guarantee below holds on both.
+    sides = split_equation(s)
+    if sides is not None:
+        lhs, rhs = (_math(side).strip("$") for side in sides)
+        return f"${lhs} = {rhs}$"
     safe_parse(s)                      # validate — raises VerifyInputError
     normalized = s.replace("^", "**")
     try:

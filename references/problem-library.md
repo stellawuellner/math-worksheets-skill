@@ -267,6 +267,22 @@ arithmetic:
    verify.py proves the planted result is *distinguishably wrong* and that the
    printed `value` really is what the wrong method computes — the promise the
    bloom "analyze" tag makes is now machine-checked.
+
+   **When the answer is a rewritten expression rather than a number**, the trap
+   is the wrong *form*, and it goes in `exprs` (a list of strings) instead of
+   the scalar `expr` — `equiv`, `expand` and `factor` take this shape:
+   ```json
+   {"id": 7, "type": "equiv", "expr": "x**4*x**3", "expected": "x**7",
+    "traps": [{"desc": "multiplied the exponents instead of adding them",
+               "exprs": ["x**12"], "value": ["x**12"]}]}
+   ```
+   Two rows of the table above — Exponents/logs and Factoring/quadratics — were
+   unreachable while only the scalar shape existed, so the families with the
+   most mechanical misconceptions were the ones that could not declare them.
+   Distinguishability here means the trap form is **not equivalent** to
+   `expected`: a factoring merely reordered to `(x+3)*(x-5)` is rejected as a
+   trap, because the check would accept it and the problem therefore cannot
+   discriminate the error. Change the givens, don't restate the answer.
 2. **Prose second** — the worksheet stem shows the planted solution ("Ari
    claims … ≈ 7.37. Find the mistake, then compute the correct value."), with
    every number drawn from the entry's givens or the trap `value` —

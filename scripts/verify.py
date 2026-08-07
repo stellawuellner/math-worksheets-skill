@@ -228,6 +228,16 @@ def safe_parse(expr_str):
     names = []
     for m in _TOKEN_RE.finditer(expr_str):
         if m.start() != pos:
+            if expr_str[pos] == "=":
+                # "disallowed character '='" reads as a typo and sends the
+                # author hunting a syntax error. It is a schema fact: only
+                # `equiv` takes an equation, because only there is the answer
+                # one. Everywhere else the field holds the value's own side.
+                raise VerifyInputError(
+                    f"{expr_str!r} contains '=', which only the 'equiv' type "
+                    "accepts (its answer is an equation the student writes, "
+                    "e.g. \"(x-3)**2 + (y+5)**2 = 25\"). On every other type "
+                    "the field holds one side: write the expression alone.")
             raise VerifyInputError(
                 f"disallowed character {expr_str[pos]!r} in {expr_str!r}")
         tok = m.group()
@@ -247,6 +257,51 @@ def safe_parse(expr_str):
         return sympy.sympify(normalized, locals=_SYMPY_LOCALS)
     except Exception as e:
         raise VerifyInputError(f"could not parse {expr_str!r}: {e}")
+
+
+def split_equation(raw):
+    """'lhs = rhs' → ('lhs', 'rhs'); a plain expression → None.
+
+    Only `equiv` uses this, and only because `equiv`'s answer is the one place
+    in the schema where the thing the student writes is an EQUATION and the
+    thing the checker compares is an expression. Asked for centre-radius form,
+    a student writes (x-3)^2 + (y+5)^2 = 25; the check needs the =0 rearrangement
+    (x-3)^2 + (y+5)^2 - 25. Both were the same JSON string, so the answer bank
+    printed a subtraction where the student wrote an equation — faithful to the
+    JSON, and still misleading to a grader scanning the column.
+
+    The obvious repair — split a trailing constant off the =0 form when printing
+    — was measured and rejected. 253 of the corpus's 479 `equiv` answers have a
+    bare numeric term at top level, and nearly all of them are ordinary
+    simplifications ("4*x + 12", "8*x + 5") that print correctly today and would
+    be corrupted into equations. There is no structural signal separating "this
+    expression is a rearranged equation" from "this expression is the answer",
+    because there isn't one: it is the author's intent. So the author states it.
+    """
+    if not isinstance(raw, str) or "=" not in raw:
+        return None
+    parts = raw.split("=")
+    if len(parts) != 2:
+        raise VerifyInputError(
+            f"{raw!r} has more than one '=' — an equation has exactly two sides")
+    lhs, rhs = parts[0].strip(), parts[1].strip()
+    if not lhs or not rhs:
+        raise VerifyInputError(f"{raw!r} has an empty side")
+    return lhs, rhs
+
+
+def parse_equation(raw):
+    """Parse an `equiv` side: an equation becomes lhs - rhs, else the value.
+
+    Falls through to parse_value, NOT safe_parse: an `equiv` expected may be a
+    bare JSON number ({"expr": "25 + 5*w - (18 + 5*w)", "expected": 7}), and
+    routing that to the string-only parser turned 10 corpus entries into
+    "expression must be a string, got int".
+    """
+    sides = split_equation(raw)
+    if sides is None:
+        return parse_value(raw)
+    return safe_parse(sides[0]) - safe_parse(sides[1])
 
 
 def parse_value(value):
@@ -1327,7 +1382,9 @@ def _check_expr_traps(p, pid, expected_raw):
     saying so is the point — that "wrong" answer is the right one rewritten.
     """
     try:
-        expected = parse_value(expected_raw)
+        # equation form is legal here for the same reason it is on the answer
+        # itself: the trap is the wrong form of what the student writes.
+        expected = parse_equation(expected_raw)
     except VerifyInputError as e:
         return (False, f"problem {pid} declares traps but its 'expected' "
                        f"({expected_raw!r}) does not parse — {e}")
@@ -1337,7 +1394,7 @@ def _check_expr_traps(p, pid, expected_raw):
         forms = []
         for raw in t["exprs"]:
             try:
-                forms.append((raw, safe_parse(raw)))
+                forms.append((raw, parse_equation(raw)))
             except VerifyInputError as e:
                 return (False,
                         f"problem {pid} trap {desc!r}: bad exprs entry "
@@ -2323,7 +2380,7 @@ def check_problem(p, ptype):
                 f"(expected {p['expected']})"
                 + decimal_note(total, expected, p["expected"], ok))
 
-    expr = safe_parse(p["expr"])
+    expr = parse_equation(p["expr"]) if ptype == "equiv" else safe_parse(p["expr"])
 
     if ptype == "approx":
         if expr.free_symbols:
@@ -2470,7 +2527,11 @@ def check_problem(p, ptype):
                                None, ok))
 
     if ptype in ("factor", "expand", "equiv"):
-        expected = parse_value(p["expected"])
+        # equiv only: either side may be written as an equation, and lhs - rhs
+        # is what gets compared — so the JSON can say what the student writes
+        # without changing what is checked. See split_equation.
+        expected = (parse_equation(p["expected"]) if ptype == "equiv"
+                    else parse_value(p["expected"]))
         ok = sym_equal_decimal(expr, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"{ptype}({p['expr']}) ≟ {p['expected']}"
@@ -2994,6 +3055,13 @@ def print_schema(mode="table"):
           "expression written with decimals evaluates to a binary float, and "
           "9.4 - 0.4*x at x=20 is 1.4000000000000004, not 7/5. Comparisons "
           "where BOTH sides are exact are unchanged.")
+    print('Equations: "equiv" is the only type whose fields accept a \'=\' — '
+          'write "expected": "(x-3)**2 + (y+5)**2 = 25" where the student\'s '
+          "answer IS an equation (centre-radius form, standard form of a "
+          "conic) and lhs - rhs is what gets compared, so the answer bank "
+          "prints an equation instead of a subtraction. Leave it an expression "
+          "where the answer is one (vertex form, a simplified expression). "
+          "Every other type holds one side of the equation in its own field.")
     print(f"Allowed functions: {' '.join(sorted(_FUNCS))}")
     print(f"Allowed constants: {' '.join(sorted(_CONSTS))}")
     print(f"Allowed variables: {' '.join(sorted(_VARS))}")

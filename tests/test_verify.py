@@ -291,6 +291,59 @@ expect_says("a 'value' query with a key that is not in the data says so",
             "INPUT", "not a category")
 
 
+# ── An equiv answer may be written as the equation the student writes ────────
+# The bank printed "(x-3)^2 + (y+5)^2 - 16" on a sheet asking for centre-radius
+# form: faithful to the JSON and still a subtraction where the student wrote an
+# equation. Splitting the trailing constant off when printing was measured and
+# rejected — 253 of the corpus's 479 equiv answers carry a bare numeric term and
+# nearly all are plain simplifications that would be corrupted into equations.
+# The author declares it instead.
+print("\nequiv accepts the equation form, on both sides:")
+
+CIRCLE = "x**2 + y**2 - 6*x + 10*y + 18"
+expect("centre-radius keyed as an equation → PASS",
+       {"id": 1, "type": "equiv", "expr": CIRCLE,
+        "expected": "(x-3)**2 + (y+5)**2 = 16"}, "PASS")
+expect("the same equation with the wrong radius still FAILs",
+       {"id": 1, "type": "equiv", "expr": CIRCLE,
+        "expected": "(x-3)**2 + (y+5)**2 = 25"}, "FAIL")
+expect("expr may be an equation too",
+       {"id": 1, "type": "equiv", "expr": "x**2 + y**2 - 6*x + 10*y = -18",
+        "expected": "(x-3)**2 + (y+5)**2 = 16"}, "PASS")
+expect("a vertex-form answer is an EXPRESSION and is untouched",
+       {"id": 1, "type": "equiv", "expr": "x**2 + 6*x + 5",
+        "expected": "(x+3)**2 - 4"}, "PASS")
+expect("a JSON-number expected still parses (10 corpus entries key equiv to an int)",
+       {"id": 1, "type": "equiv", "expr": "25 + 5*w - (18 + 5*w)",
+        "expected": 7}, "PASS")
+
+expect_says("'=' on a type that is not equiv names the schema rule, not a typo",
+            {"id": 1, "type": "solve", "expr": "x = 5", "expected": [5]},
+            "INPUT", "only the 'equiv' type accepts")
+expect_says("two '=' signs are rejected",
+            {"id": 1, "type": "equiv", "expr": "x**2",
+             "expected": "y = x = 2"},
+            "INPUT", "more than one '='")
+expect_says("an empty side is rejected",
+            {"id": 1, "type": "equiv", "expr": "x**2", "expected": "x**2 ="},
+            "INPUT", "empty side")
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "equiv", "expr": CIRCLE,
+     "expected": "(x-3)**2 + (y+5)**2 = 16",
+     "traps": [{"desc": "did not balance the completed square",
+                "exprs": ["(x-3)**2 + (y+5)**2 = 18"]}]})
+check("a trap may be an equation too", ok)
+
+# The bank is the artifact this exists for: it must print the equation.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+import render_quick_answers as _bank   # noqa: E402
+check("the answer bank prints the equation, not the =0 rearrangement",
+      _bank._fmt("(x-3)**2 + (y+5)**2 = 16", "equiv").endswith("= 16$"))
+check("an expression answer is still printed as an expression",
+      "=" not in _bank._fmt("(x+3)**2 - 4", "equiv"))
+
+
 # ── The shipped documentation is generated from the enforced rules ───────────
 print("\n--schema states every shape that was reported as undocumented:")
 import io               # noqa: E402

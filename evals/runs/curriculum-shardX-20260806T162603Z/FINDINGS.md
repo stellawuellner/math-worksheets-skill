@@ -283,3 +283,39 @@ Also from R14, queued: `solve` compares float-coefficient roots exactly
 (`sqrt(9.8*d) - 70` → 499.999999999999 rejected against 500) with no `tol`
 available — the same class as the `eval` defect and a fourth forced content
 change; and the trap-shape doc gap, now a fifth independent report.
+
+## SYNTHESIS — symbolic and complex answers are second-class throughout
+
+Six batches reported what look like six unrelated defects. They are one theme:
+every mechanism the system added for TEACHING quality works on scalars and
+degrades or vanishes on symbolic, list-valued or complex answers.
+
+- **Traps are unreachable** on `equiv`, `expand`, `factor` (R04, R13) — so
+  polynomial arithmetic, long division and factoring sheets ship with NO
+  "Common wrong answers" block, though their classic errors (undistributed
+  subtraction, dropped placeholder, candidate list without fractions) are as
+  mechanical as the trigonometry ones that do get traps.
+- **Trap `value` cannot be complex** (R13): four of seven planted results on a
+  complex-arithmetic error-analysis sheet could not be declared, so the printed
+  wrong number is hand-typed — the exact drift the field exists to prevent.
+- **Trap `value` must be a list on solution-set types**, undocumented in
+  `--schema` (five independent reports: R06, R10, R12, R14, R16).
+- **`check_answer_key` treats a list-valued `expected` as non-symbolic**
+  (R05, R13), so magnitude matching never runs and a correct key fails with
+  "the boxed value is wrong". R13 adds that `\pm 7i` is unreadable to the
+  binder while `7i \text{ or } -7i` passes — the JSON side loses the sign and
+  the printed side must carry it.
+- **`equiv` is misreported by three separate components** (R12).
+- **Float-coefficient answers fail exact comparison** on `eval` (R07, R08, R16)
+  and `solve` (R14), with no `tol` escape on either.
+
+CONSEQUENCE, stated plainly: the system is most trustworthy on elementary
+arithmetic and least trustworthy exactly where the mathematics gets symbolic —
+Algebra 2 upward. That is the inverse of where a parent needs the most help,
+and it is invisible in any per-case review because each instance looks like a
+small local annoyance.
+
+This is the run's most valuable output. No single case could have shown it; it
+took 300 sheets across ten bands, and the pattern is the argument for
+prioritising the queued numeric/symbolic work as ONE project rather than eight
+tickets.

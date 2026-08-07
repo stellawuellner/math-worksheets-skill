@@ -204,6 +204,23 @@ def main():
     check("a theorem name in the desc does not fire", rc == 0,
           out.strip()[-160:])
 
+    # 19. THE SILENT-PASS HOLE. AUTHORING.md prescribes `\item[(a)]` for
+    #     sub-part labels, and the marker there follows a `[` — which the
+    #     character class originally omitted, so a sheet following the brief's
+    #     own guidance lost the lettered-sub-part half of this gate and PASSED.
+    #     133 of 300 worksheets in the regeneration run use that form.
+    rc, out = run(r"\problem[5cm]{Two parts. \begin{itemize}"
+                  r"\item[(a)] Solve for x. \item[(b)] Explain your choice."
+                  r"\end{itemize}}",
+                  [entry(1), {"id": 1, "type": "manual", "desc": "the choice"}])
+    check("\\item[(a)] sub-parts are counted (AUTHORING's own form)",
+          rc == 0, out.strip()[-160:])
+    rc, out = run(r"\problem[5cm]{Two parts. \begin{itemize}"
+                  r"\item[(a)] Solve for x. \item[(b)] Solve for y."
+                  r"\end{itemize}}", [entry(1)])
+    check("\\item[(a)] sub-parts still FAIL when uncovered",
+          rc == 1, out.strip()[-160:])
+
     print()
     if FAILS:
         print(f"❌ {len(FAILS)} answer-slot check(s) failed:")

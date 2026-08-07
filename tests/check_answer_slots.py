@@ -52,7 +52,14 @@ SLOT_RE = re.compile(r"\\(?:ansline|ansblank|answerline)(?![A-Za-z])")
 NOANS_RE = re.compile(r"\\noansline(?![A-Za-z])")
 SCRATCH_RE = re.compile(r"\\scratchblank(?![A-Za-z])")
 PROBLEM_WS_RE = re.compile(r"\\problem(?:\[([^\]]*)\])?\{")
-SUBPART_RE = re.compile(r"(?:^|[\s~{])\((a|b|c|d|e|f|g|h)\)", re.M)
+# The `[` is load-bearing. AUTHORING.md prescribes `\item[(a)]` for sub-part
+# labels, and without `[` in this class the marker sits after a bracket and does
+# not match — so a sheet following the brief's OWN guidance silently lost the
+# lettered-sub-part half of this gate. Measured when an eval author noticed:
+# 133 of 300 worksheets in the regeneration run use `\item[(a)]`, i.e. the gate
+# was blind on 44% of the corpus, and the failure direction is a SILENT PASS.
+# `[label=(\alph*)]` still cannot match — that needs a single letter before `)`.
+SUBPART_RE = re.compile(r"(?:^|[\s~{\[])\((a|b|c|d|e|f|g|h)\)", re.M)
 
 # Types whose expected list lands in SEPARATE printed blanks. Measured against
 # the corpus: crediting any list-valued expected also credits solve/zeros, whose

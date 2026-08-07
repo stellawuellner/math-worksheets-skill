@@ -249,3 +249,37 @@ Queued from R16:
 - `--schema` says solution-set traps take "the roots the wrong method yields",
   which reads as numeric; `[5, -2]` is rejected, `["5", "-2"]` accepted. Fourth
   independent report of the trap-shape doc gap.
+
+## R14 — a SILENT-PASS hole in the slot gate itself (fixed immediately)
+
+`SUBPART_RE`'s character class omitted `[`, so the marker in `\item[(a)]` — the
+form **AUTHORING.md itself prescribes** — did not match. `subparts_in` returned
+0 for `\item[(a)] … \item[(b)]` and 2 for the same problem written
+`\textbf{(a)} … \textbf{(b)}`. A sheet following the brief's own guidance
+silently lost the lettered-sub-part half of the gate, and the failure direction
+is a PASS.
+
+Exposure measured before deciding: **133 of 300** run-2 worksheets use
+`\item[(a)]`. The gate was blind on 44% of the corpus it was being used to
+score.
+
+FIXED MID-RUN, and the reasoning differs from every other entry above. This is
+a defect in the MEASURING INSTRUMENT, not in the generator. Scoring happens
+after generation, so a corrected gate applies uniformly to all 300 tasks in both
+runs and cannot advantage early tasks over late ones. Leaving it would have made
+the run's headline number partly unearned.
+
+RE-MEASURED, same corrected gate, both runs:
+    run 2 (new system): 291 clean / 0 flagged
+    run 1 (old system):  99 clean / 201 flagged
+
+Run 2 is clean even under the corrected gate, which is a STRONGER result than
+the original number: those 133 sheets were built while the gate was blind to
+their sub-parts, so the per-response entries were declared because the CONTRACT
+asked for them, not because a gate forced them. The written guidance did the
+work on its own.
+
+Also from R14, queued: `solve` compares float-coefficient roots exactly
+(`sqrt(9.8*d) - 70` → 499.999999999999 rejected against 500) with no `tol`
+available — the same class as the `eval` defect and a fourth forced content
+change; and the trap-shape doc gap, now a fifth independent report.

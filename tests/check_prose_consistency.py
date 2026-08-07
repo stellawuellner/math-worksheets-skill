@@ -156,6 +156,18 @@ def _prose_stripped(block):
     block = re.sub(r"(?<=\d)\{,\}(?=\d{3})", "", block)
     block = re.sub(r"(?<=\d),(?=\d{3})", "", block)
     block = re.sub(r"\\rotatebox\s*\{[\d.]+\}", "", block)
+    # enumitem OPTION LENGTHS: \begin{itemize}[leftmargin=1.1cm, itemsep=2pt].
+    # Same leak as the braced dimensions above, from a far more ordinary
+    # construct — a sub-part list inside a stem. Three separate eval authors
+    # reported it independently; on one sheet it alone moved the reported match
+    # rate from 73.5% to 90.0%, and on another from 56.4% to 100%. A checker
+    # that cries wolf on standard list formatting trains its reader to skim,
+    # which costs more than the numbers it was protecting. Only key=LENGTH
+    # pairs are dropped: a bare bracketed number stays visible, because
+    # \item[3] prints a 3 the student reads.
+    block = re.sub(r"\[[^\[\]]*=[^\[\]]*\]",
+                   lambda m: "[]" if re.search(r"=\s*[-\d.]", m.group(0))
+                   else m.group(0), block)
     block = re.sub(r"\\\\\[[\d.]+[a-z]{2}\]", "", block)
     # Inverse-function notation is a NAME, not a number. $f^{-1}(x)$ put a
     # phantom 1 into every stem on an inverses sheet — six of ten problems on

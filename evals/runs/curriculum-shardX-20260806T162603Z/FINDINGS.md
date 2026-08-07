@@ -111,3 +111,41 @@ than smoothed over.
   (R03).
 - `right_triangle` figures at extreme aspect ratios cluster their labels;
   check_overprint misses it (R11).
+
+## Later batches (R00–R11 complete)
+
+Fixed mid-run (advisory only, cannot change any pass/fail):
+- **enumitem option lengths leaked into the prose scan.** Reported by THREE
+  batches independently. `\begin{itemize}[leftmargin=1.1cm, itemsep=2pt]` inside
+  a stem put 1.1 and 2.0 into the "missing from JSON" list; on one sheet this
+  alone moved the reported match rate 73.5%→90.0%, on another 56.4%→100%.
+  check_prose_consistency exits 2 only on structural faults, never on a number
+  mismatch, so stripping key=length option pairs changes no verdict — it only
+  stops the checker crying wolf on standard list formatting. Bare bracket
+  labels (`\item[3]`) still count, because the student reads that 3.
+
+Queued — each WOULD change what passes, so untouched mid-run:
+- **`eval` compares exactly, so ordinary decimal models fail intermittently.**
+  Reported independently by R07 and R08. `9.4 - 0.4*x` at x=20 evaluates to
+  1.4000000000000004 against an `expected: 1.4` parsed as exactly 7/5;
+  `200*1.2**t` at t=3 likewise. Passes or fails depending on which value lands
+  on a representable binary float — the worst possible shape to debug — and the
+  message ("expected 7/5") points at the JSON rather than the arithmetic.
+  `eval` accepts no `tol` and has no rounds-to fallback, while `approx` has
+  both. CONSEQUENCE ALREADY VISIBLE IN THIS RUN: one agent re-chose a trend
+  line from 9.4−0.4x to 9.5−0.5x purely because halves are exact in binary.
+  That is problem design bent by a tool defect. Highest-priority queued item.
+- `system` cannot express "infinitely many solutions": the MANUAL path makes
+  check_answer_key demand a listed value in the box while the correct printed
+  answer is "infinitely many", so two gates want different things (R07).
+- Shared display panels above problem 1 are invisible to the page budget, and
+  `workspace_cm` REPLACES the type default rather than adding to it, so
+  charging a shared panel means recomputing every problem by hand (R07).
+- `check_layout` reports `\vspace` inside a `\problem` stem as "outside any
+  minipage" — `minipage_depth_fn` counts literal `\begin{minipage}` and
+  `\problem`'s is in the preamble. Wrong diagnosis on the sheet shape SKILL.md
+  teaches first; the offered fix (star the glue) does work (R06).
+- `\skillheading`'s 57-char failure does not name WHICH heading overflowed
+  (R06).
+- Solution-set trap `value` must be a list, and SKILL.md's traps section shows
+  only the scalar form (R06, R10).

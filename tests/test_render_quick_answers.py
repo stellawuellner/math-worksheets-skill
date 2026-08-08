@@ -454,6 +454,48 @@ check("a factored product is still factored",
       "3 \\left(x - 3\\right)" in rqa._math("3*(x-3)*(x+3)"))
 
 
+# ── The bank prints model-written prose, so it must not print model-written
+# ── LaTeX ───────────────────────────────────────────────────────────────────
+# The security claim in the README is about the EXPRESSION allowlist: a
+# validated expr string can only build a mathematical expression, so sympify
+# cannot execute anything. That is tested (fixtures/reject_injection.json) and
+# it is not the whole surface. `slot` is free prose written by the same model,
+# emitted straight into a .tex the pipeline then compiles — a path the
+# allowlist never sees.
+#
+# Two assertions above already cover that path end-to-end-ish ("injection-shaped
+# string is escaped, never injected" and "a slot label is escaped, not
+# injected"), which is more than an earlier draft of this comment credited; both
+# fire when _texsafe's backslash handling is removed. What they do NOT pin is
+# WHICH characters are handled, so an escape table could lose an entry — the
+# usual way an escape function acquires an exception — with the two broad
+# assertions still green. That is what the per-character checks below add.
+#
+# Measured end to end before writing them: these payloads reach the PDF as
+# literal text, compile.sh passes no -shell-escape, and no file is read or
+# written. These assertions pin the emitter half; they do not re-test TeX.
+print("model-written prose cannot become LaTeX:")
+_HOSTILE = "\\input{/etc/passwd} 100% ~of $x_1$ #h & ^caret _under {brace}"
+_escaped = rqa._texsafe(_HOSTILE)
+for token, why in (
+        (r"\input{", "a file-reading control sequence"),
+        ("\\immediate", "an expansion primitive")):
+    check(f"_texsafe leaves no live {why}",
+          token not in rqa._texsafe(_HOSTILE + "\\immediate\\write18{id}"))
+check("the backslash itself is neutralised, not passed through",
+      "\\textbackslash{}" in _escaped and "\\input" not in _escaped)
+for ch in "%#&_{}":
+    check(f"{ch!r} is escaped rather than left as a TeX special",
+          ("\\" + ch) in _escaped or ch in "{}" and "\\" + ch in _escaped)
+check("^ and ~ become their text-mode commands, not superscript/nbsp",
+      "textasciicircum" in _escaped and "textasciitilde" in _escaped)
+# Escaping twice must not double up: a bank regenerated on every build would
+# otherwise grow \textbackslash{}textbackslash{}... one layer per rebuild.
+check("escaping is idempotent in the way that matters (no runaway doubling)",
+      rqa._texsafe(_escaped).count("textbackslash") >= 1
+      and "\\\\input" not in rqa._texsafe(_escaped))
+
+
 if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")
     sys.exit(1)

@@ -23,7 +23,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install "sympy>=1.12" coverage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pip install "sympy>=1.12" coverage
 
       - name: Regression suite (verify.py contract)
         run: bash tests/run_tests.sh

@@ -43,11 +43,18 @@ jobs:
     env:
       RUN_ID: ${{ inputs.run_id || '' }}
       REQUIRE_AUTHOR_REVIEWS: ${{ inputs.require_author_reviews || 'false' }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install PDF inspection dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
 
       - name: Recompute committed score reports
         shell: bash
@@ -55,6 +62,29 @@ jobs:
           shopt -s nullglob
           if [[ -n "$RUN_ID" ]]; then
             candidates=("evals/runs/$RUN_ID")
+          elif [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            mapfile -t changed_run_ids < <(
+              git diff --name-only "$BASE_SHA" "$GITHUB_SHA" |
+                awk -F/ '$1 == "evals" && $2 == "runs" && (($4 == "verdicts" && $5 ~ /\.json$/) || $4 == "report.md") { print $3 }' |
+                sort -u
+            )
+            if [[ "${#changed_run_ids[@]}" -gt 0 ]]; then
+              candidates=()
+              for id in "${changed_run_ids[@]}"; do
+                candidates+=("evals/runs/$id")
+              done
+            else
+              mapfile -t changed_review_ids < <(
+                git diff --name-only "$BASE_SHA" "$GITHUB_SHA" |
+                  awk -F/ '$1 == "evals" && $2 == "runs" && $4 == "author-reviews" && $5 ~ /\.json$/ { print $3 }' |
+                  sort -u
+              )
+              if [[ "${#changed_review_ids[@]}" -gt 0 ]]; then
+                echo "Only author reviews changed; no score report needs recomputation."
+                exit 0
+              fi
+              candidates=(evals/runs/*)
+            fi
           else
             candidates=(evals/runs/*)
           fi

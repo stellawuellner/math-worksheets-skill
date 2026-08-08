@@ -96,6 +96,8 @@ See `references/latex-templates.md` → "Skills Summary / Study Guide Template" 
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
+**Use the figure HOUSE STYLES before raw TikZ** — `references/latex-templates.md` → "Figure house style". The preamble ships graph styles (`wsgrid`, `wsgridwide`, `wsgridq1`, `wstrig`, `wsfuntall` + `wscurve`/`wsasym`/`wsopen`/`wsclosed`), chart styles (`wsbar`, `wshist`, `wsboxplot`, `wsboxplot pair`, `\wsdotplot`, `wsstemleaf`, `\wspictorow`) and `figure-macros.tex` ships geometry marks (`\congtick`, `\parallelmark`), a transformation grid (`\gridtrifig`), fixed-size solids (`\cylfig` … `\cylnetfig`) and the K-4 model set (`\tenframefig`, `\arrayfig`, `\basetenfig`, `\clockfig`, `\fraclinefig`, `\tapefig`, `\coinrowfig`, …). Four rendered-page reviews found the raw-TikZ route producing grids students cannot plot on, self-overprinting solids, color-only semantics that die in photocopy, and hand-rolled K-4 models with broken proportions — the styles encode the fixes once. Two standing rules: figures are SPACE-GENEROUS (budget `workspace_cm` for the style's natural size rather than scaling it down), and every "sketch/plot" problem's answer key prints the model graph on the same grid style the worksheet used.
+
 **Draw diagrams in TikZ, not as imported images.** TikZ uses the document's own fonts and line weights, so a figure's labels match the surrounding mathematics exactly — an imported bitmap or an externally-drawn PDF does not, and cannot be regenerated when the numbers change. The shipped preamble loads TikZ, pgfplots and the libraries below for every document, so nothing needs requesting:
 
 | Library | Use it for | Template |

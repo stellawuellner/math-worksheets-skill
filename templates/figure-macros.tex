@@ -98,8 +98,448 @@
     \node[below] at (1.8,0) {$b$};
     \node[right] at (3.6,1.35) {$a$};
     \node[above left] at (1.8,1.35) {$c$};
-    \pic [draw, angle radius=6mm, angle eccentricity=1.7, "$A$"] {angle = C--A--B};
+    \pic [draw, angle radius=7mm, angle eccentricity=1.6, "$A$"] {angle = C--A--B};
   \end{tikzpicture}\\
   {\small\textit{How every triangle here is labelled. No values shown: use the
   numbers given in each problem.}}
   \end{center}}
+
+% ═══ Segment/parallel marks (CCSS congruence notation) ══════════════════════
+% Usable INSIDE any tikzpicture, on named coordinates. Drawn `thick` so the
+% marks match primary-edge weight: these are semantics, not auxiliary lines,
+% and a hairline mark is a photocopy fade risk (the transversal template's
+% hand-plotted chevrons were 0.4pt against 0.8pt edges — inverted hierarchy).
+%   \congtick{P}{Q}       one tick at the midpoint of segment PQ
+%   \congtickk{P}{Q}      two ticks (second congruence class)
+%   \parallelmark{P}{Q}   one chevron pointing P -> Q
+%   \parallelmarkk{P}{Q}  two chevrons (second parallel pair)
+\newcommand{\congtick}[2]{%
+  \draw[thick] ($($(#1)!0.5!(#2)$)!3.2pt!90:(#2)$) -- ($($(#1)!0.5!(#2)$)!3.2pt!270:(#2)$);}
+\newcommand{\congtickk}[2]{%
+  \draw[thick] ($($($(#1)!0.5!(#2)$)!2.2pt!(#1)$)!3.2pt!90:(#2)$) -- ($($($(#1)!0.5!(#2)$)!2.2pt!(#1)$)!3.2pt!270:(#2)$);
+  \draw[thick] ($($($(#1)!0.5!(#2)$)!2.2pt!(#2)$)!3.2pt!90:(#2)$) -- ($($($(#1)!0.5!(#2)$)!2.2pt!(#2)$)!3.2pt!270:(#2)$);}
+\newcommand{\parallelmark}[2]{%
+  \draw[thick] ($($(#1)!0.5!(#2)$)!5pt!25:(#1)$) -- ($(#1)!0.5!(#2)$) -- ($($(#1)!0.5!(#2)$)!5pt!335:(#1)$);}
+\newcommand{\parallelmarkk}[2]{%
+  \draw[thick] ($($($(#1)!0.5!(#2)$)!3pt!(#1)$)!5pt!25:(#1)$) -- ($($(#1)!0.5!(#2)$)!3pt!(#1)$) -- ($($($(#1)!0.5!(#2)$)!3pt!(#1)$)!5pt!335:(#1)$);
+  \draw[thick] ($($($(#1)!0.5!(#2)$)!3pt!(#2)$)!5pt!25:(#1)$) -- ($($(#1)!0.5!(#2)$)!3pt!(#2)$) -- ($($($(#1)!0.5!(#2)$)!3pt!(#2)$)!5pt!335:(#1)$);}
+
+% ═══ \gridtrifig[scale]{xA}{yA}{xB}{yB}{xC}{yC} — transformation grid ═══════
+% CCSS-8 rigid motions/dilations. Fixed -8..8 window with a gridline at EVERY
+% integer (the one corpus attempt had lines only every 2 — no line at y = 1
+% for a student asked to plot A(-4,1)), labels every 2, gray preimage triangle
+% labeled A/B/C for the student to transform. The six numeric args are the
+% problem's given vertices — same value-binding contract as \trifig.
+\newcommand{\gridtrifig}[7][0.42]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \draw[gray!35, very thin] (-8,-8) grid (8,8);
+    \draw[-{Stealth}] (-8.6,0) -- (8.6,0) node[below right] {$x$};
+    \draw[-{Stealth}] (0,-8.6) -- (0,8.6) node[above left] {$y$};
+    \foreach \t in {-8,-6,-4,-2,2,4,6,8}{%
+      \draw (\t,0.15) -- (\t,-0.15) node[below, font=\scriptsize] {$\t$};
+      \draw (0.15,\t) -- (-0.15,\t) node[left, font=\scriptsize] {$\t$};}
+    \draw[thick, fill=gray!25] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+    \node[below left, font=\small] at (#2,#3) {$A$};
+    \node[below right, font=\small] at (#4,#5) {$B$};
+    \node[above, font=\small] at (#6,#7) {$C$};
+  \end{tikzpicture}
+  \end{center}}
+
+% ═══ Fixed-size solids (about 4cm tall at scale 1) ══════════════════════════
+% These anchor the honest print size: the reference's raw snippets were
+% authored at ~3cm nominal and corpus sheets scaled them DOWN to 0.35-0.42 —
+% a 10m silo printing 2.2cm tall with 2-3 coarse dashes per hidden edge. At
+% these sizes every dimension label sits outside the silhouette or rides a
+% leader line; the raw snippets they replace overprinted their own rims.
+% \cylfig[scale]{r-label}{h-label}
+\newcommand{\cylfig}[3][1]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \draw[thick] (0,3.4) ellipse (1.6 and 0.52);
+    \draw[thick] (-1.6,3.4) -- (-1.6,0);
+    \draw[thick] (1.6,3.4) -- (1.6,0);
+    \draw[thick] (-1.6,0) arc (180:360:1.6 and 0.52);
+    \draw[dashed] (1.6,0) arc (0:180:1.6 and 0.52);
+    \fill (0,3.4) circle (1pt);
+    \draw (0,3.4) -- ({1.6*cos(30)},{3.4+0.52*sin(30)});
+    \node[above right=-2pt] at ({1.6*cos(30)},{3.4+0.52*sin(30)}) {#2};
+    \node[right=3pt] at (1.6,1.7) {#3};
+  \end{tikzpicture}
+  \end{center}}
+% \conefig[scale]{r-label}{h-label}{slant-label}
+\newcommand{\conefig}[4][1]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \draw[thick] (-1.6,0) arc (180:360:1.6 and 0.52);
+    \draw[dashed] (1.6,0) arc (0:180:1.6 and 0.52);
+    \draw[thick] (-1.6,0) -- (0,3.4) -- (1.6,0);
+    \draw[dashed] (0,0) -- (0,3.4);
+    \draw (0,0) -- (1.6,0);
+    \draw (0.28,0) -- (0.28,0.28) -- (0,0.28);
+    \fill (0,0) circle (1pt);
+    \node[right=2pt, font=\small] at (0,0.78) {#3};
+    \node[below=2pt] at (0.8,-0.42) {#2};
+    \node[above right=-1pt] at (0.85,1.7) {#4};
+  \end{tikzpicture}
+  \end{center}}
+% \prismfig[scale]{l-label}{w-label}{h-label}
+\newcommand{\prismfig}[4][1]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=1.1*#1]
+    \draw[thick] (0,0) -- (4,0) -- (4,2.5) -- (0,2.5) -- cycle;
+    \draw[thick] (4,0) -- (5.2,0.8) -- (5.2,3.3) -- (4,2.5);
+    \draw[thick] (0,2.5) -- (1.2,3.3) -- (5.2,3.3);
+    \draw[dashed] (0,0) -- (1.2,0.8) -- (5.2,0.8);
+    \draw[dashed] (1.2,0.8) -- (1.2,3.3);
+    \node[below=2pt] at (2,0) {#2};
+    \node[below right=-2pt] at (4.75,0.35) {#3};
+    \node[left=2pt] at (0,1.25) {#4};
+  \end{tikzpicture}
+  \end{center}}
+% \pyrfig[scale]{base-label}{height-label} — square pyramid. The interior is
+% too cramped for any inline label (three placements collided, measured), so
+% h rides a thin leader line to an external label.
+\newcommand{\pyrfig}[3][1]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \coordinate (P) at (2.2,4.0);
+    \draw[thick] (0,0) -- (3.4,0) -- (P) -- cycle;
+    \draw[thick] (3.4,0) -- (4.4,1.0) -- (P);
+    \draw[dashed] (0,0) -- (1.0,1.0) -- (4.4,1.0);
+    \draw[dashed] (1.0,1.0) -- (P);
+    \draw[dashed] (2.2,0.5) -- (P);
+    \fill (2.2,0.5) circle (1pt);
+    \draw (2.42,0.5) -- (2.42,0.72) -- (2.2,0.72);
+    \node[below=2pt] at (1.7,0) {#2};
+    \draw (2.2,2.4) -- (3.35,3.1);
+    \node[right=1pt] at (3.35,3.1) {#3};
+  \end{tikzpicture}
+  \end{center}}
+% \cylnetfig[scale]{r-label}{h-label}{circumference-label} — the unfolded
+% surface for surface-area teaching: rectangle + two tangent circles, dashed
+% fold lines, and the load-bearing 2*pi*r width label.
+\newcommand{\cylnetfig}[4][1]{%
+  \begin{center}
+  \begin{tikzpicture}[scale=#1]
+    \draw[thick] (0,0) rectangle (5.03,2.2);
+    \draw[thick] (2.515,3.0) circle (0.8);
+    \draw[thick] (2.515,-0.8) circle (0.8);
+    \draw[dashed] (0,2.2) -- (5.03,2.2);
+    \draw[dashed] (0,0) -- (5.03,0);
+    \fill (2.515,3.0) circle (1pt);
+    \draw (2.515,3.0) -- ++(30:0.8);
+    \node[above right=-2pt] at ($(2.515,3.0)+(30:0.8)$) {#2};
+    \node[right=3pt] at (5.03,1.1) {#3};
+    \node[below=2pt] at (2.515,-1.6) {#4};
+  \end{tikzpicture}
+  \end{center}}
+% ---------------------------------------------------------------------------
+% \tenframefig[cell]{n} — ten frame, 2 rows x 5 cols, first n cells filled
+% with black counters, remaining cells empty for the student's pencil.
+% Cell default 1.1cm: a first-grader drawing a counter needs >= 1cm.
+% Fill order: top row left-to-right, then bottom row (the convention every
+% K-1 program teaches).
+\newcommand{\tenframefig}[2][1.1]{%
+  \begin{tikzpicture}[x=#1cm, y=#1cm, line width=1pt]
+    \draw (0,0) rectangle (5,2);
+    \foreach \i in {1,...,4} \draw (\i,0) -- (\i,2);
+    \draw (0,1) -- (5,1);
+    \foreach \k in {1,...,10}{%
+      \ifnum\k>#2\relax\else
+        \pgfmathtruncatemacro{\row}{\k<=5 ? 1 : 0}%
+        \pgfmathtruncatemacro{\colx}{\k<=5 ? \k : \k-5}%
+        \fill (\colx-0.5,\row+0.5) circle ({0.33*#1});
+      \fi}
+  \end{tikzpicture}}
+
+% \fiveframefig[cell]{n} — five frame, one row.
+\newcommand{\fiveframefig}[2][1.1]{%
+  \begin{tikzpicture}[x=#1cm, y=#1cm, line width=1pt]
+    \draw (0,0) rectangle (5,1);
+    \foreach \i in {1,...,4} \draw (\i,0) -- (\i,1);
+    \foreach \k in {1,...,5}{%
+      \ifnum\k>#2\relax\else \fill (\k-0.5,0.5) circle ({0.33*#1}); \fi}
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \numbondfig{whole}{part1}{part2} — number bond, whole on top. Pass ? for
+% the unknown. Circles sized for handwriting the missing value inside.
+\newcommand{\numbondfig}[3]{%
+  \begin{tikzpicture}[line width=1pt]
+    \draw (0,1.15) circle (0.62);   \node[font=\Large] at (0,1.15) {#1};
+    \draw (-1.15,-0.55) circle (0.62); \node[font=\Large] at (-1.15,-0.55) {#2};
+    \draw (1.15,-0.55) circle (0.62);  \node[font=\Large] at (1.15,-0.55) {#3};
+    \draw (-0.38,0.68) -- (-0.78,-0.08);
+    \draw (0.38,0.68) -- (0.78,-0.08);
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \fracbarfig[width-cm]{num}{den} — fraction bar, num of den parts shaded
+% with hatching (photocopy-safe). The WHOLE has fixed width (default 9cm) so
+% two stacked bars always show the same whole — the property equivalence and
+% comparison problems depend on.
+\newcommand{\fracbarfig}[3][9]{%
+  \begin{tikzpicture}[line width=1pt]
+    \pgfmathsetmacro{\w}{#1/#3}
+    \foreach \i in {1,...,#3}{\draw ({(\i-1)*\w},0) rectangle ({\i*\w},1.5);}
+    \ifnum#2>0
+      \foreach \i in {1,...,#2}{\fill[pattern=north east lines]
+        ({(\i-1)*\w+0.06},0.06) rectangle ({\i*\w-0.06},1.44);}
+    \fi
+  \end{tikzpicture}}
+
+% \fraccircfig[radius]{num}{den} — fraction circle, num of den sectors
+% hatched. First sector starts at 12 o'clock, filling clockwise (the
+% direction fraction-circle manipulatives read).
+\newcommand{\fraccircfig}[3][1.7]{%
+  \begin{tikzpicture}[line width=1pt]
+    \pgfmathsetmacro{\secang}{360/#3}
+    \ifnum#2>0
+      \foreach \i in {1,...,#2}{%
+        \fill[pattern=north east lines]
+          (0,0) -- (90-\i*\secang+\secang:#1) arc ({90-\i*\secang+\secang}:{90-\i*\secang}:#1) -- cycle;}
+    \fi
+    \foreach \i in {1,...,#3}{\draw (0,0) -- (90-\i*\secang:#1);}
+    \draw (0,0) circle (#1);
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \arrayfig[spacing]{rows}{cols} — multiplication array of solid dots.
+% Default spacing 0.85cm keeps dots countable one-by-one with a pencil tip.
+\newcommand{\arrayfig}[3][0.85]{%
+  \begin{tikzpicture}[x=#1cm, y=#1cm]
+    \foreach \r in {1,...,#2} \foreach \c in {1,...,#3}
+      \fill (\c,-\r) circle (0.16);
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \basetenfig{hundreds}{tens}{ones} — base-ten blocks, PROPORTIONAL by
+% construction: one = u square, rod = 1 x 10 units, flat = 10 x 10 grid, all
+% from the same unit length u = 0.24cm, so ten ones really line up against
+% one rod. Grouped hundreds | tens | ones, gaps between groups.
+\newlength{\btu}
+\newcommand{\basetenfig}[3]{%
+  \begin{tikzpicture}[line width=0.9pt]
+    \setlength{\btu}{0.24cm}
+    \pgfmathsetmacro{\u}{0.24}
+    \pgfmathsetmacro{\x}{0}
+    % hundreds flats
+    \ifnum#1>0
+      \foreach \f in {1,...,#1}{%
+        \begin{scope}[shift={({(\f-1)*(10*\u+0.35)},0)}]
+          \draw[step=\u, line width=0.3pt, gray] (0,0) grid ({10*\u},{10*\u});
+          \draw (0,0) rectangle ({10*\u},{10*\u});
+        \end{scope}}
+    \fi
+    \pgfmathsetmacro{\xtens}{#1*(10*\u+0.35)+0.25}
+    % tens rods
+    \ifnum#2>0
+      \foreach \t in {1,...,#2}{%
+        \begin{scope}[shift={({\xtens+(\t-1)*(\u+0.3)},0)}]
+          \draw (0,0) rectangle (\u,{10*\u});
+          \foreach \j in {1,...,9} \draw[line width=0.3pt, gray] (0,{\j*\u}) -- (\u,{\j*\u});
+        \end{scope}}
+    \fi
+    \pgfmathsetmacro{\xones}{\xtens+#2*(\u+0.3)+0.25}
+    % ones units
+    \ifnum#3>0
+      \foreach \o in {1,...,#3}{%
+        \pgfmathsetmacro{\ox}{\xones+Mod(\o-1,5)*(\u+0.12)}
+        \pgfmathsetmacro{\oy}{(\o<=5 ? 0 : \u+0.12)}
+        \draw ({\ox},{\oy}) rectangle ({\ox+\u},{\oy+\u});}
+    \fi
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \clockfig[radius]{hour}{minute} — analog clock. Hour hand: short + thick.
+% Minute hand: long + thin, arrowhead. Hour hand advances with the minutes
+% (3:30 puts it halfway between 3 and 4) — the detail students are tested on.
+\newcommand{\clockfig}[3][1.9]{%
+  \begin{tikzpicture}[line width=1pt]
+    \draw[line width=1.6pt] (0,0) circle (#1);
+    \foreach \m in {0,...,59}
+      \draw[line width=0.5pt] ({90-\m*6}:{0.94*#1}) -- ({90-\m*6}:{0.99*#1});
+    \foreach \h in {1,...,12}{%
+      \draw[line width=1.2pt] ({90-\h*30}:{0.88*#1}) -- ({90-\h*30}:{0.99*#1});
+      \node[font=\large] at ({90-\h*30}:{0.74*#1}) {\h};}
+    \pgfmathsetmacro{\hang}{90-(#2*30+#3*0.5)}
+    \pgfmathsetmacro{\mang}{90-#3*6}
+    \draw[line width=2.6pt, line cap=round] (0,0) -- (\hang:{0.45*#1});
+    \draw[line width=1.1pt, -{Stealth[length=6pt]}] (0,0) -- (\mang:{0.68*#1});
+    \fill (0,0) circle (0.09);
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% NUMBER LINES. All use -{Stealth} heads on BOTH ends, major ticks taller
+% than minor, and \small labels (not \scriptsize) below.
+%
+% \elemlinefig[spacing]{min}{max} — every integer tick labeled; K-2 counting
+% and placement. Default 1.0cm spacing = room to write above each tick.
+\newcommand{\elemlinefig}[3][1.0]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (#2-0.55,0) -- (#3+0.55,0);
+    \foreach \x in {#2,...,#3}{%
+      \draw[line width=1pt] (\x,0.14) -- (\x,-0.14);
+      \node[below=3pt, font=\small] at (\x,0) {$\x$};}
+  \end{tikzpicture}}
+
+% \fraclinefig[spacing-per-part]{den}{wholes} — 0 to <wholes>, each whole cut
+% into den parts. Whole-number ticks TALLER and labeled; part ticks shorter.
+% Blank above the line for the student's dot and counting marks.
+\newcommand{\fraclinefig}[3][1.0]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \pgfmathtruncatemacro{\nparts}{#2*#3}
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (-0.55,0) -- (\nparts+0.55,0);
+    \foreach \i in {0,...,\nparts}{\draw (\i,0.13) -- (\i,-0.13);}
+    \foreach \w in {0,...,#3}{%
+      \draw[line width=1.4pt] ({\w*#2},0.22) -- ({\w*#2},-0.22);
+      \node[below=4pt, font=\small] at ({\w*#2},-0.1) {$\w$};}
+  \end{tikzpicture}}
+
+% \linepoint{pos-in-parts}{label} — filled dot + letter label above; put
+% inside the \fraclinefig tikzpicture via \fraclinept variant below. To keep
+% flat-brace args, offer a combined macro:
+% \fracptlinefig[spacing]{den}{wholes}{part-position}{label}
+\newcommand{\fracptlinefig}[5][1.0]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \pgfmathtruncatemacro{\nparts}{#2*#3}
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (-0.55,0) -- (\nparts+0.55,0);
+    \foreach \i in {0,...,\nparts}{\draw (\i,0.13) -- (\i,-0.13);}
+    \foreach \w in {0,...,#3}{%
+      \draw[line width=1.4pt] ({\w*#2},0.22) -- ({\w*#2},-0.22);
+      \node[below=4pt, font=\small] at ({\w*#2},-0.1) {$\w$};}
+    \fill (#4,0) circle (3.2pt);
+    \node[above=5pt, font=\small] at (#4,0.1) {#5};
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \hoplinefig[spacing]{min}{max}{start}{end} — integer-operation hop arrows:
+% one curved arrow per unit step from start toward end, above the line, with
+% the landing numbers readable below. Works left or right.
+\newcommand{\hoplinefig}[5][1.0]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (#2-0.55,0) -- (#3+0.55,0);
+    \foreach \x in {#2,...,#3}{%
+      \draw (\x,0.14) -- (\x,-0.14);
+      \node[below=3pt, font=\small] at (\x,0) {$\x$};}
+    \pgfmathtruncatemacro{\dir}{#5>#4 ? 1 : -1}
+    \pgfmathtruncatemacro{\nhops}{abs(#5-#4)}
+    \foreach \k in {1,...,\nhops}{%
+      \pgfmathsetmacro{\a}{#4+(\k-1)*\dir}
+      \pgfmathsetmacro{\b}{#4+\k*\dir}
+      \draw[-{Stealth[length=5pt]}, line width=0.9pt]
+        (\a,0.18) .. controls ({(\a+\b)/2},0.75) .. (\b,0.18);}
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \ineqlinefig[spacing]{min}{max}{value}{type} — solved inequality graph.
+% type: geq | leq | gt | lt.  Open circle for strict, filled for inclusive;
+% heavy ray with its own Stealth head riding above the axis heads.
+\newcommand{\ineqlinefig}[5][0.65]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (#2-0.7,0) -- (#3+0.7,0);
+    \foreach \x in {#2,...,#3}{%
+      \draw (\x,0.13) -- (\x,-0.13);
+      \node[below=3pt, font=\footnotesize] at (\x,0) {$\x$};}
+    \def\tp{#5}\def\tgeq{geq}\def\tleq{leq}\def\tgt{gt}\def\tlt{lt}%
+    \ifx\tp\tgeq
+      \draw[line width=2.2pt,-{Stealth[length=8pt]}] (#4,0) -- (#3+0.55,0);
+      \fill (#4,0) circle (3.6pt);
+    \fi
+    \ifx\tp\tgt
+      \draw[line width=2.2pt,-{Stealth[length=8pt]}] (#4,0) -- (#3+0.55,0);
+      \draw[fill=white, line width=1.3pt] (#4,0) circle (3.6pt);
+    \fi
+    \ifx\tp\tleq
+      \draw[line width=2.2pt,-{Stealth[length=8pt]}] (#4,0) -- (#2-0.55,0);
+      \fill (#4,0) circle (3.6pt);
+    \fi
+    \ifx\tp\tlt
+      \draw[line width=2.2pt,-{Stealth[length=8pt]}] (#4,0) -- (#2-0.55,0);
+      \draw[fill=white, line width=1.3pt] (#4,0) circle (3.6pt);
+    \fi
+  \end{tikzpicture}}
+
+% \blanklinefig[spacing]{min}{max}{labelstep} — blank student number line;
+% ticks at every integer, labels every labelstep, tick spacing wide enough to
+% draw an open circle between labels.
+\newcommand{\blanklinefig}[4][0.65]{%
+  \begin{tikzpicture}[x=#1cm, line width=1pt]
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (#2-0.7,0) -- (#3+0.7,0);
+    \foreach \x in {#2,...,#3}{\draw (\x,0.13) -- (\x,-0.13);}
+    \pgfmathtruncatemacro{\labtwo}{#2+#4}
+    \foreach \x in {#2,\labtwo,...,#3}{%
+      \draw[line width=1.4pt] (\x,0.16) -- (\x,-0.16);
+      \node[below=3pt, font=\footnotesize] at (\x,0) {$\x$};}
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \roundlinefig[width]{left}{right}{mid} — rounding support line: labeled
+% endpoints AND labeled midpoint (the tick the decision hinges on), minor
+% ticks between. Student marks the target number themselves.
+\newcommand{\roundlinefig}[4][9]{%
+  \begin{tikzpicture}[line width=1pt]
+    \pgfmathsetmacro{\w}{#1/10}
+    \draw[{Stealth[length=7pt]}-{Stealth[length=7pt]}] (-0.55,0) -- (#1+0.55,0);
+    \foreach \i in {0,...,10}{\draw ({\i*\w},0.12) -- ({\i*\w},-0.12);}
+    \draw[line width=1.4pt] (0,0.2) -- (0,-0.2);
+    \draw[line width=1.4pt] (#1,0.2) -- (#1,-0.2);
+    \draw[line width=1.4pt] ({5*\w},0.2) -- ({5*\w},-0.2);
+    \node[below=4pt, font=\small] at (0,-0.06) {$#2$};
+    \node[below=4pt, font=\small] at (#1,-0.06) {$#3$};
+    \node[below=4pt, font=\small] at ({5*\w},-0.06) {$#4$};
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \tapefig[width]{parts}{part-label}{total-label} — tape/bar model: <parts>
+% equal cells each labeled part-label, total brace below labeled total-label.
+\newcommand{\tapefig}[4][8]{%
+  \begin{tikzpicture}[line width=1pt]
+    \pgfmathsetmacro{\w}{#1/#2}
+    \foreach \i in {1,...,#2}{%
+      \draw ({(\i-1)*\w},0) rectangle ({\i*\w},1.1);
+      \node at ({(\i-0.5)*\w},0.55) {#3};}
+    \draw[decorate, decoration={brace, mirror, amplitude=7pt}]
+      (0,-0.18) -- (#1,-0.18) node[midway, below=8pt]{#4};
+  \end{tikzpicture}}
+
+% \tapecmpfig[width]{top-cells}{bot-cells}{cell-label}{diff-label} — two
+% aligned tapes for comparison problems; the difference bracketed on top.
+\newcommand{\tapecmpfig}[5][0.9]{%
+  \begin{tikzpicture}[line width=1pt]
+    \foreach \i in {1,...,#2}{\draw ({(\i-1)*#1},1.3) rectangle ({\i*#1},2.3);
+      \node[font=\small] at ({(\i-0.5)*#1},1.8) {#4};}
+    \foreach \i in {1,...,#3}{\draw ({(\i-1)*#1},0) rectangle ({\i*#1},1);
+      \node[font=\small] at ({(\i-0.5)*#1},0.5) {#4};}
+    \draw[decorate, decoration={brace, amplitude=6pt}]
+      ({#3*#1},2.42) -- ({#2*#1},2.42) node[midway, above=7pt]{#5};
+  \end{tikzpicture}}
+
+% ---------------------------------------------------------------------------
+% \coinfig{denomination} — one coin: double-rim circle, denomination with a
+% cent sign inside (\textcent: textcomp, preloaded in modern pdflatex).
+% Relative sizes follow the real coins: quarter > nickel > penny > dime.
+\newcommand{\coinfig}[1]{%
+  \begin{tikzpicture}[line width=1pt]
+    \pgfmathsetmacro{\crad}{#1==25 ? 0.75 : (#1==5 ? 0.66 : (#1==1 ? 0.6 : 0.56))}
+    \draw (0,0) circle (\crad);
+    \draw[line width=0.4pt] (0,0) circle ({\crad-0.08});
+    \node[font=\bfseries] at (0,0) {#1\textcent};
+  \end{tikzpicture}}
+% \coinrowfig{quarters}{dimes}{nickels}{pennies} — a row, largest value
+% first, tangent spacing so coins never overlap.
+\newcommand{\coinrowfig}[4]{%
+  \begin{tikzpicture}[line width=1pt]
+    \xdef\cx{0}
+    \foreach \denom/\ct/\crad in {25/#1/0.75, 10/#2/0.56, 5/#3/0.66, 1/#4/0.6}{%
+      \ifnum\ct>0
+        \foreach \i in {1,...,\ct}{%
+          \pgfmathsetmacro{\tmp}{\cx+\crad}\global\let\cx\tmp
+          \draw (\cx,0) circle (\crad);
+          \draw[line width=0.4pt] (\cx,0) circle ({\crad-0.08});
+          \node[font=\bfseries] at (\cx,0) {\denom\textcent};
+          \pgfmathsetmacro{\tmp}{\cx+\crad+0.25}\global\let\cx\tmp}
+      \fi}
+  \end{tikzpicture}}
+

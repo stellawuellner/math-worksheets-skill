@@ -479,3 +479,234 @@
   \hrule height 1pt
   \vspace{0.14cm}
 }
+
+% ═══ Worksheet graph & chart house styles ═══════════════════════════════════
+% One set of styles every figure on every sheet inherits, so a document's
+% graphs match each other and survive a photocopier. The rules they encode,
+% each measured against rendered corpus pages before shipping:
+%   * black ink; semantics carried by dash pattern, fill pattern, line weight
+%     and LABELS — never by hue (a red-vs-blue distinction is two identical
+%     dots after one photocopy, and a shipped grade-3 comparison sheet was
+%     unanswerable in grayscale for exactly that reason)
+%   * line-weight hierarchy: minor grid 0.25pt < major grid 0.4pt
+%     < axis 0.8pt < curve/data 1.1pt — the data must be the darkest thing
+%   * fixed PHYSICAL units (x=7mm), never width/height stretching: unit
+%     squares stay pencil-sized and slopes render true (a corpus piecewise
+%     graph drew slope 1 at ~30 degrees from independent width/height)
+%   * Stealth arrowheads; tick labels white-backed so a curve can never
+%     strike a number ("2pi", "-1" and "6" were all struck in corpus renders)
+\pgfplotsset{
+  % Draw order for graphs: grid at the bottom, then axis lines, then the
+  % curves, then white-backed tick labels, then descriptions. This custom
+  % layer set — NOT `axis on top` — is load-bearing: with `axis on top` a
+  % dashed asymptote lying on an integer gridline (x = 2) is painted over by
+  % the grid and disappears. Verified by rendering both.
+  layers/wsgraph/.define layer set=
+    {axis background, axis grid, axis ticks, axis lines, main,
+     axis tick labels, axis descriptions, axis foreground}
+    {grid style={/pgfplots/on layer=axis grid},
+     tick style={/pgfplots/on layer=axis ticks},
+     axis line style={/pgfplots/on layer=axis lines},
+     label style={/pgfplots/on layer=axis descriptions},
+     legend style={/pgfplots/on layer=axis descriptions},
+     title style={/pgfplots/on layer=axis descriptions},
+     ticklabel style={/pgfplots/on layer=axis tick labels},
+     axis background@ style={/pgfplots/on layer=axis background}},
+  wsaxisbase/.style={
+    set layers=wsgraph,
+    axis lines=center,
+    axis line style={line width=0.8pt,
+      {Stealth[length=2.4mm, width=2.2mm]}-{Stealth[length=2.4mm, width=2.2mm]},
+      shorten <=-3.5mm, shorten >=-3.5mm},
+    xlabel={$x$}, ylabel={$y$},
+    xlabel style={anchor=west, font=\small, xshift=3.5mm},
+    ylabel style={anchor=south, font=\small, yshift=3.5mm},
+    grid=both,
+    minor grid style={line width=0.25pt, draw=gray!35},
+    major grid style={line width=0.4pt, draw=gray!55},
+    tick style={draw=none},
+    tick label style={font=\small, fill=white, inner sep=1pt},
+    xticklabel={\ifdim\tick pt=0pt\else$\pgfmathprintnumber{\tick}$\fi},
+    yticklabel={\ifdim\tick pt=0pt\else$\pgfmathprintnumber{\tick}$\fi},
+    execute at end axis={\begin{pgfonlayer}{axis tick labels}
+      \node[below left, font=\scriptsize, inner sep=2pt, fill=white]
+        at (axis cs:0,0) {$O$};\end{pgfonlayer}},
+    enlargelimits=false, clip=false},
+  % Student plotting grid: 7mm unit squares, a gridline and label at EVERY
+  % integer. The grid this replaces had lines only every 2 units — no line
+  % at any odd integer, on the figure whose whole job is plotting (3,-1).
+  wsgrid/.style={wsaxisbase, x=7mm, y=7mm, xtick distance=1, ytick distance=1},
+  % Wide range (to +-10): 5.5mm units, labels every 2, a line still every 1.
+  wsgridwide/.style={wsaxisbase, x=5.5mm, y=5.5mm,
+    xtick distance=2, ytick distance=2, minor tick num=1,
+    tick label style={font=\scriptsize, fill=white, inner sep=1pt}},
+  % Tall-range sketching (cubics): y compressed 2:1, still gridded.
+  wsfuntall/.style={wsaxisbase, x=7mm, y=3.5mm,
+    xtick distance=1, ytick distance=4, minor y tick num=1},
+  % Trig: give width/height and pi-multiple xtick/xticklabels per figure.
+  wstrig/.style={wsaxisbase, ytick distance=1, minor y tick num=1},
+  % Quadrant-I context grid (rates, proportions): axes start AT the origin,
+  % arrows outward only, unit words go at the arrow tips, never inside the
+  % plot area.
+  wsgridq1/.style={wsaxisbase, xmin=0, ymin=0,
+    axis line style={line width=0.8pt,
+      -{Stealth[length=2.4mm, width=2.2mm]}, shorten >=-3.5mm},
+    execute at end axis={\begin{pgfonlayer}{axis tick labels}
+      \node[below left, font=\scriptsize, inner sep=2pt]
+        at (axis cs:0,0) {$0$};\end{pgfonlayer}},
+    x=7mm, y=7mm, xtick distance=1, ytick distance=1},
+  % ── data displays ──
+  % wsbar: single-series bar chart a student READS VALUES OFF. No printed
+  % value labels: horizontal gridlines at a countable step do that work.
+  % Call-site rules: pick the ytick step from {1,2,5,10} so every bar top
+  % lands ON a gridline; set ymax one step above the tallest bar.
+  % NOTE the trailing comma inside cycle list={{...},} — a single-entry cycle
+  % list without it is split into per-token entries by pgfkeys brace
+  % stripping, and the style silently falls back to the blue default.
+  wsbar/.style={
+    ybar, axis lines=left, ymin=0,
+    bar width=22pt,
+    enlarge x limits={abs=0.75cm},
+    ymajorgrids=true,
+    major grid style={line width=0.4pt, draw=gray!60},
+    axis line style={line width=0.6pt},
+    every tick/.append style={black, line width=0.5pt},
+    tick label style={font=\small},
+    label style={font=\small},
+    cycle list={{fill=gray!30, draw=black, line width=0.6pt},},
+    height=5.6cm, width=10.5cm},
+  % wsbar labeled: printed values ON the bars — ONLY for charts feeding
+  % computation (means, fraction-of-total). Never for a read_data sheet whose
+  % query is value/max_key/min_key/difference: the label answers the question
+  % for the student, which is the defect a judge found shipped on curr-200.
+  wsbar labeled/.style={
+    wsbar,
+    nodes near coords,
+    every node near coord/.append style={font=\small, color=black}},
+  % wsline: line chart over ordered categories/time; same read-off-the-grid
+  % contract as wsbar.
+  wsline/.style={
+    axis lines=left, ymin=0,
+    enlarge x limits={abs=0.45cm},
+    ymajorgrids=true,
+    major grid style={line width=0.4pt, draw=gray!60},
+    axis line style={line width=0.6pt},
+    tick label style={font=\small},
+    label style={font=\small},
+    cycle list={{black, thick, mark=*, mark size=2.2pt},},
+    height=5.6cm, width=10.5cm},
+  % wshist: a TRUE histogram — touching bars, ticks and labels at BIN EDGES
+  % (feed n+1 coordinates: each bin's left edge plus the closing right edge;
+  % the last y is ignored). A gapped ybar chart with interval labels is a
+  % bar chart of intervals, not a histogram — shape-of-distribution language
+  % (skew, tail) depends on the continuity the gaps break.
+  wshist/.style={
+    ybar interval, axis lines=left, ymin=0,
+    xtick=data,
+    x tick label as interval=false,
+    xmajorgrids=false, enlarge x limits=false,
+    ymajorgrids=true,
+    major grid style={line width=0.4pt, draw=gray!60},
+    axis line style={line width=0.6pt},
+    tick label style={font=\small},
+    label style={font=\small},
+    cycle list={{fill=gray!25, draw=black, line width=0.6pt},},
+    height=5.6cm, width=11cm},
+  % wsboxplot: horizontal box plot over a numeric axis. No y-axis (a box plot
+  % has no y meaning). Feed boxplot prepared the SAME five-number summary the
+  % stats entries verify — never raw data: pgfplots quartiles by an
+  % interpolating convention and verify.py uses school median-of-halves, and
+  % on [4,6,7,9,11,12,18] they disagree (median 9 vs 8).
+  wsboxplot/.style={
+    axis x line=bottom,
+    hide y axis,
+    ymin=0.5, ymax=1.6,
+    height=3.4cm, width=10.5cm,
+    tick label style={font=\small},
+    label style={font=\small},
+    axis line style={line width=0.6pt},
+    xmajorgrids=true,
+    major grid style={line width=0.3pt, draw=gray!45},
+    every axis plot/.append style={black, line width=0.8pt, fill=gray!15},
+    boxplot/draw direction=x,
+    boxplot/box extend=0.55,
+    boxplot/whisker extend=0.35},
+  % wsboxplot pair: two summaries on ONE shared axis for compare items —
+  % one axis cannot mis-scale, which the two-panel groupplot template did.
+  % Give each \addplot boxplot prepared={draw position=1 / 2, ...} and name
+  % the rows with yticklabels.
+  wsboxplot pair/.style={
+    wsboxplot,
+    hide y axis=false,
+    y axis line style={draw=none},
+    ytick style={draw=none},
+    ymin=0.4, ymax=2.6,
+    height=4.6cm,
+    ytick={1,2}},
+}
+\tikzset{
+  wscurve/.style={line width=1.1pt},
+  wscurvearrow/.style={wscurve,
+    {Stealth[length=2mm, width=1.9mm]}-{Stealth[length=2mm, width=1.9mm]}},
+  wsraya/.style={wscurve, {Stealth[length=2mm, width=1.9mm]}-},
+  wsrayb/.style={wscurve, -{Stealth[length=2mm, width=1.9mm]}},
+  wscurvealt/.style={wscurve, densely dashed},
+  wsasym/.style={dash pattern=on 3pt off 2pt, line width=0.8pt, black!75},
+  wsclosed/.style={draw=black, fill=black, line width=0.7pt},
+  wsopen/.style={draw=black, fill=white, line width=0.9pt},
+  wslabel/.style={font=\small, fill=white, inner sep=1.5pt},
+}
+
+% ── Dot plot / line plot (K-8) ──────────────────────────────────────────────
+% \wsdotplot[column sep]{v1/c1, v2/c2, ...}{caption} — one column per value,
+% count marks stacked above it. A value with count 0 keeps its tick: an empty
+% stack IS data on 5.MD.B.2 sheets. Marks are \wsplotmark (X, the K-5 line
+% plot convention); \renewcommand{\wsplotmark}{\wsdotmark} for grade 6+ dot
+% plots. Counts come from the same list-form data the read_data check uses.
+\newcommand{\wsplotmark}{\raisebox{-1pt}{\large$\times$}}
+\newcommand{\wsdotmark}{\tikz\fill[black] (0,0) circle (2.6pt);}
+\newcommand{\wsdotplot}[3][1.35cm]{%
+  \begin{center}%
+  \begin{tikzpicture}[x=#1, y=0.5cm]
+    \foreach [count=\i] \l/\c in {#2} {\xdef\wsdpN{\i}}%
+    \draw[line width=0.7pt] (0.4,0) -- ({\wsdpN+0.6},0);
+    \foreach [count=\i] \l/\c in {#2} {
+      \draw[line width=0.7pt] (\i,-0.16) -- (\i,0.16);
+      \node[below=4pt, font=\small] at (\i,-0.16) {\l};
+      \ifnum\c>0\relax
+        \foreach \k in {1,...,\c} {\node at (\i,{0.28+0.72*\k}) {\wsplotmark};}
+      \fi
+    }
+    \node[below=26pt, font=\small] at ({(\wsdpN+1)/2},0) {\textbf{#3}};
+  \end{tikzpicture}%
+  \end{center}}
+
+% ── Pictogram row (K-3) ─────────────────────────────────────────────────────
+% \wspictorow{count}{Name}{half} inside a tikzpicture — a row of countable
+% boxed symbols; the half symbol carries scaled picture graphs (3.MD.B.3:
+% "each symbol = 4, half = 2"). 0.34cm symbols survive photocopying where the
+% corpus's 0.22cm smudges did not.
+\newcommand{\wspictosym}[2]{%
+  \ifnum#2=1\relax
+    \draw[line width=0.7pt, fill=gray!25] ({#1},0) rectangle ({#1+0.34},0.42);
+    \draw[line width=0.5pt] ({#1+0.10},0) -- ({#1+0.10},0.42);
+  \else
+    \draw[line width=0.7pt, fill=gray!25] ({#1},0) rectangle ({#1+0.17},0.42);
+  \fi}
+\newcommand{\wspictorow}[3]{%
+  \node[left=6pt, font=\small] at (0,0.21) {#2};
+  \pgfmathsetmacro{\wspN}{#1}%
+  \ifnum#1>0\relax
+    \foreach \i in {1,...,#1} {\wspictosym{0.52*(\i-1)}{1}}
+  \fi
+  \ifnum#3=1\relax \wspictosym{0.52*#1}{0} \fi}
+
+% ── Stem-and-leaf ───────────────────────────────────────────────────────────
+% Leaves are single digits separated by \; (CM digits are uniform width, so
+% columns align). The key line is REQUIRED — a stem plot without one is
+% unreadable across place values.
+\newenvironment{wsstemleaf}{%
+  \begin{center}\begin{tabular}{r@{\ \ \vrule width 0.7pt\ \ }l}
+  \multicolumn{1}{r}{\textbf{Stem}\ \ } & \textbf{Leaf} \\[2pt]}%
+  {\end{tabular}\end{center}}
+\newcommand{\wsstemkey}[1]{\noalign{\vspace{5pt}}\multicolumn{2}{l}{\small \textbf{Key:} #1}}

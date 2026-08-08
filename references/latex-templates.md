@@ -243,39 +243,160 @@ $3$  & \\[0.5cm]\hline
 \vspace{1cm}
 ```
 
-## Coordinate Planes
+## Figure house style — use these styles first
 
-### Blank grid (student fills in — algebraic range)
+Every graph, chart and model below has a preamble STYLE or a shipped MACRO.
+Reach for the style before writing raw TikZ: four rendered-page reviews of the
+corpus found the raw-snippet route producing grids a student cannot plot on,
+labels struck by curves, charts that answer their own questions, and color
+semantics that die in a photocopier. The styles encode the fixes once.
+
+**The house rules the styles enforce** (from four category reviews, each
+judged on rendered pages):
+
+- **Black ink; semantics by dash pattern, fill pattern, weight and LABEL —
+  never hue.** A shipped grade-3 sheet distinguished 3/8 from 5/8 by red vs
+  blue dots; photocopied, the problem is unanswerable. Points compared on one
+  line are distinguished by LETTER labels or fill style.
+- **Line-weight hierarchy**: minor grid 0.25pt < major grid 0.4pt < axis
+  0.8pt < curve/data 1.1pt. The data is the darkest thing on the figure.
+- **Fixed physical units, generous sizes.** `wsgrid` uses `x=7mm, y=7mm` —
+  never `width/height` stretching, which distorted a corpus slope-1 segment
+  to ~30 degrees. Space is the accepted cost of legibility: budget for it in
+  `workspace_cm` rather than shrinking the figure.
+- **A gridline at every integer a student must plot on.** The grid this
+  replaces had lines only every 2 units.
+- **Tick labels are white-backed** (the styles do this) so a curve can never
+  strike a number.
+
+### Graph styles (pgfplots, in the shipped preamble)
+
+| Style | Use | Notes |
+|---|---|---|
+| `wsgrid` | student plotting grid to about +-6 | 7mm unit squares, line + label every integer |
+| `wsgridwide` | ranges to +-10 | 5.5mm units, labels every 2, line still every 1 |
+| `wsgridq1` | quadrant-I context grids (rates) | axes start AT origin; unit words go at the arrow tips, never inside the plot |
+| `wsfuntall` | tall-range sketches (cubics) | y compressed 2:1, still gridded |
+| `wstrig` | trig axes | give width/height and pi-multiple `xtick`/`xticklabels` |
+
+Companion tikz styles: `wscurve` (1.1pt), `wscurvearrow` (both-end arrows),
+`wsraya`/`wsrayb` (one-sided, so no arrowhead backs into an endpoint dot),
+`wscurvealt` (dashed second curve — the grayscale-safe way to draw an image
+beside its parent), `wsasym` (asymptote, label it ON the line with
+`node[wslabel, pos=...]`), `wsclosed`/`wsopen` (endpoint dots), `wslabel`
+(white-backed label).
+
 ```latex
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[
-    axis lines=center, xmin=-6, xmax=6, ymin=-6, ymax=6,
-    xtick={-6,-4,...,6}, ytick={-6,-4,...,6},
-    grid=both,
-    grid style={line width=0.15pt, draw=gray!30},
-    major grid style={line width=0.3pt, draw=gray!50},
-    tick label style={font=\small},
-    xlabel={$x$}, ylabel={$y$},
-    width=9cm, height=9cm, enlargelimits=false
-]
-\end{axis}
-\end{tikzpicture}
-\end{center}
+% blank student grid — this is the whole figure
+\begin{tikzpicture}\begin{axis}[wsgrid, xmin=-6, xmax=6, ymin=-6, ymax=6]
+\end{axis}\end{tikzpicture}
+
+% answer-key model graph with asymmetric features labeled
+\begin{tikzpicture}\begin{axis}[wsgrid, xmin=-6, xmax=6, ymin=-6, ymax=6]
+  \draw[wsasym] (axis cs:2,-6) -- (axis cs:2,6)
+      node[wslabel, pos=0.10, right] {$x = 2$};
+  \addplot[wscurvearrow, domain=-0.9:4.9, samples=100] {x^2 - 4*x + 3}
+      node[wslabel, pos=0.85, right] {$y = x^2 - 4x + 3$};
+  \draw[wsclosed] (axis cs:1,0) circle (2pt);
+  \draw[wsopen]   (axis cs:3,0) circle (2pt);   % open dot: excluded point
+\end{axis}\end{tikzpicture}
 ```
 
-### Blank grid (full −10 to 10, Pre-Algebra style)
+**Answer keys print the model graph.** A "sketch the graph" problem whose key
+answers in prose leaves the grader checking a drawing against a sentence; in
+the reviewed corpus exactly 1 of 86 axis-bearing documents put a graph in its
+key. Use the same `wsgrid` the worksheet printed.
+
+### Chart styles (data displays)
+
+| Style / macro | Use |
+|---|---|
+| `wsbar` | single-series bar chart the student READS — no value labels; countable gridlines do that work. Pick the ytick step from {1,2,5,10} so every bar top lands ON a gridline, and set `ymax` one step above the tallest bar |
+| `wsbar labeled` | bars WITH printed values — only for charts feeding computation (means, fraction-of-total). Never on a sheet whose `read_data` query is value/max_key/min_key/difference: the label answers the question |
+| `wsline` | line chart over ordered categories/time |
+| `wshist` | a TRUE histogram: touching bars, ticks at BIN EDGES (feed n+1 coordinates). A gapped ybar with interval labels is a bar chart of intervals, not a histogram |
+| `wsboxplot` | one box plot; feed `boxplot prepared` the verify `stats` five-number summary, never raw data |
+| `wsboxplot pair` | two summaries on ONE shared axis for compare items — one axis cannot mis-scale |
+| `\wsdotplot{v/c, ...}{caption}` | K-8 line plots / dot plots; zero-count values keep their tick. `\renewcommand{\wsplotmark}{\wsdotmark}` switches X marks to dots for grade 6+ |
+| `wsstemleaf` env + `\wsstemkey` | stem-and-leaf; the key line is REQUIRED |
+| `\wspictorow{n}{Name}{half}` | scaled pictograms with a half symbol (3.MD.B.3) |
+
 ```latex
-\begin{axis}[
-    axis lines=center, xmin=-10, xmax=10, ymin=-10, ymax=10,
-    xtick={-10,-8,...,10}, ytick={-10,-8,...,10},
-    minor tick num=1, grid=both,
-    grid style={line width=0.12pt, draw=gray!20},
-    major grid style={line width=0.3pt, draw=gray!50},
-    tick label style={font=\scriptsize},
-    xlabel={$x$}, ylabel={$y$}, width=9cm, height=9cm
-]
-\end{axis}
+% compare two distributions: ONE axis, two prepared summaries
+\begin{tikzpicture}\begin{axis}[wsboxplot pair, xmin=0, xmax=20,
+                                yticklabels={Class A, Class B}]
+  \addplot+[boxplot prepared={draw position=1, lower whisker=4,
+    lower quartile=6, median=9, upper quartile=12, upper whisker=18}] coordinates {};
+  \addplot+[boxplot prepared={draw position=2, lower whisker=2,
+    lower quartile=5, median=8, upper quartile=11, upper whisker=16}] coordinates {};
+\end{axis}\end{tikzpicture}
+```
+
+### Geometry additions (figure-macros.tex)
+
+`\congtick{P}{Q}` / `\congtickk{P}{Q}` (congruence ticks), `\parallelmark{P}{Q}`
+/ `\parallelmarkk{P}{Q}` (chevrons) — CCSS congruence notation, drawn `thick`
+because marks are semantics, not auxiliary lines. `\gridtrifig{xA}{yA}{xB}{yB}{xC}{yC}`
+— the CCSS-8 transformation grid: every-integer gridlines, gray preimage
+triangle ABC, student draws the image.
+
+### Solids (figure-macros.tex) — use these, not raw TikZ
+
+`\cylfig{$r$-label}{$h$-label}`, `\conefig{r}{h}{slant}`, `\prismfig{l}{w}{h}`,
+`\pyrfig{base}{h}`, `\cylnetfig{r}{h}{$2\pi r$}` (the surface-area net).
+About 4cm tall at scale 1 — that IS the intended print size. The raw snippets
+these replace overprinted their own labels (a cylinder's `r = 3` struck its
+rim ellipse) and were habitually scaled down to ~2cm in the corpus; if one of
+these does not fit, give the problem more `workspace_cm`, do not shrink the
+figure below ~0.8 scale.
+
+### Elementary models (figure-macros.tex) — K-4 credibility set
+
+| Macro | Model |
+|---|---|
+| `\tenframefig{7}` / `\fiveframefig{3}` | ten/five frames, 1.1cm cells (pencil-sized), top-row-first fill |
+| `\numbondfig{8}{3}{?}` | number bond, circles sized for a written digit |
+| `\fracbarfig{3}{8}` | hatched fraction bar; the whole is FIXED at 9cm so stacked bars share one whole |
+| `\fraccircfig{5}{6}` | fraction circle, sectors from 12 o'clock |
+| `\arrayfig{3}{5}` | multiplication array (3.OA.A.1), countable 0.85cm pitch |
+| `\basetenfig{2}{3}{7}` | base-ten blocks, proportional BY CONSTRUCTION from one unit |
+| `\clockfig{3}{30}` | clock; the hour hand advances with the minutes (3:30 renders between 3 and 4) |
+| `\elemlinefig{0}{10}` | elementary number line |
+| `\fraclinefig{6}{1}` / `\fracptlinefig{8}{1}{5}{$P$}` | fractions on a number line; marked points are labeled by LETTER, never color |
+| `\hoplinefig{-5}{5}{-3}{2}` | integer-operation hop arcs |
+| `\ineqlinefig{-6}{6}{-1}{geq}` | inequality: open/closed dot + heavy ray |
+| `\blanklinefig{-10}{10}{2}` | blank line students mark |
+| `\roundlinefig{80}{90}{85}` | rounding line with the MIDPOINT labeled (the tick the decision hinges on) |
+| `\tapefig{4}{$6$}{$24$}` / `\tapecmpfig` | tape/bar models with brace totals |
+| `\coinfig{25}` / `\coinrowfig{2}{1}{1}{2}` | coins at true relative sizes |
+
+### TikZ pitfalls (each cost a compile-debug cycle; do not rediscover them)
+
+- A single-entry `cycle list` inside a `.style` needs a trailing comma
+  (`cycle list={{...},}`) or pgfkeys brace-stripping splits it per token and
+  the style silently keeps the default blue.
+- `\ifnum` in tikz macros needs `\relax` before `\foreach`/`\draw`, or number
+  scanning expands them.
+- `\foreach {a, a+step, ..., b}` needs the second element precomputed with
+  `\pgfmathtruncatemacro` — the literal form loops to memory exhaustion.
+- Do not name pgfmath macros `\u` or `\r` (they shadow LaTeX accents).
+- `enlarge x limits={abs=0.75cm}` needs the braced dimension form — plain
+  `abs=` errors on symbolic x coords.
+
+## Coordinate Planes
+
+### Blank grid (student fills in)
+
+Use the preamble styles — see "Figure house style" above. The raw snippet this
+section used to print had gridlines only every 2 units (no line at any odd
+integer, on the figure whose whole job is plotting integer points) and 3.7mm
+unit squares on the wide form; `wsgrid`/`wsgridwide` fix both.
+
+```latex
+\begin{tikzpicture}\begin{axis}[wsgrid, xmin=-6, xmax=6, ymin=-6, ymax=6]
+\end{axis}\end{tikzpicture}
+% wide range: wsgridwide (labels every 2, a line still at EVERY integer)
+% quadrant-I rates: wsgridq1 (axes from the origin, units at the arrow tips)
 ```
 
 ### Completed graph (answer key — plot a function)
@@ -639,19 +760,26 @@ rather than asserted, and the labels are the same symbols the check uses.
 \end{tikzpicture}\end{center}
 ```
 
-### Two displays side by side — `groupplots`
-For compare-the-distributions items, so both axes are built once with shared limits
-instead of two `tikzpicture`s that can drift apart in height or scale.
+### Two displays for a compare item
+
+The two-panel `groupplot` template that used to live here auto-scaled each
+panel independently — equal-height bars for different values, on a
+compare-the-distributions task. Prefer ONE shared axis, which cannot
+mis-scale: `wsboxplot pair` for five-number summaries (see "Figure house
+style"), or grouped bars distinguished by fill pattern for two categorical
+series:
+
 ```latex
-\begin{center}\begin{tikzpicture}
-\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
-                  width=5cm, height=3.6cm, axis lines=left, ymin=0]
-  \nextgroupplot[title={\small Class A}, symbolic x coords={A,B,C}, xtick=data, ybar]
-    \addplot coordinates {(A,4) (B,7) (C,2)};
-  \nextgroupplot[title={\small Class B}, symbolic x coords={A,B,C}, xtick=data, ybar]
-    \addplot coordinates {(A,6) (B,3) (C,8)};
-\end{groupplot}\end{tikzpicture}\end{center}
+\begin{tikzpicture}\begin{axis}[wsbar, symbolic x coords={A,B,C}, xtick=data,
+    ymax=10, ytick={0,2,...,10}, legend style={font=\small}]
+  \addplot[fill=gray!55, draw=black] coordinates {(A,4) (B,7) (C,2)};
+  \addplot[pattern=north east lines, draw=black] coordinates {(A,6) (B,3) (C,8)};
+  \legend{Class A, Class B}
+\end{axis}\end{tikzpicture}
 ```
+
+If side-by-side panels are genuinely needed, `groupplot` must be given shared
+explicit `ymin`/`ymax` and `enlarge x limits` on both panels.
 
 ### Fitting an oversized figure — `adjustbox`
 When a figure is genuinely wider than the column, scale it; do not redraw it smaller
@@ -667,64 +795,17 @@ being legible: if `adjustbox` is doing more than about 15%, the figure wants few
 labels, not more scaling.
 
 ### 3D solids (volume & surface area problems)
-Cylinder:
-```latex
-\begin{center}
-\begin{tikzpicture}[scale=0.8]
-  \draw[thick] (0,3) ellipse (1.4 and 0.4);
-  \draw[thick] (-1.4,3) -- (-1.4,0);
-  \draw[thick] (1.4,3) -- (1.4,0);
-  \draw[thick] (-1.4,0) arc (180:360:1.4 and 0.4);
-  \draw[dashed] (1.4,0) arc (0:180:1.4 and 0.4);
-  \draw[dashed] (0,0) -- (0,3);
-  \node[right] at (0.05,1.5) {$h = 8$};
-  \draw (0,3) -- (1.4,3);
-  \node[above] at (0.7,3.05) {$r = 3$};
-\end{tikzpicture}
-\end{center}
-```
-Cone:
-```latex
-\begin{center}
-\begin{tikzpicture}[scale=0.8]
-  \draw[thick] (-1.4,0) arc (180:360:1.4 and 0.4);
-  \draw[dashed] (1.4,0) arc (0:180:1.4 and 0.4);
-  \draw[thick] (-1.4,0) -- (0,3) -- (1.4,0);
-  \draw[dashed] (0,0) -- (0,3);
-  \node[left] at (0,1.5) {$h$};
-  \draw (0,0) -- (1.4,0);
-  \node[below] at (0.7,-0.1) {$r$};
-  \node[right] at (0.78,1.5) {$\ell$};
-\end{tikzpicture}
-\end{center}
-```
-Rectangular prism:
-```latex
-\begin{center}
-\begin{tikzpicture}[scale=0.7]
-  \draw[thick] (0,0) -- (4,0) -- (4,2.5) -- (0,2.5) -- cycle;
-  \draw[thick] (4,0) -- (5.2,0.8) -- (5.2,3.3) -- (4,2.5);
-  \draw[thick] (0,2.5) -- (1.2,3.3) -- (5.2,3.3);
-  \draw[dashed] (0,0) -- (1.2,0.8) -- (5.2,0.8);
-  \draw[dashed] (1.2,0.8) -- (1.2,3.3);
-  \node[below] at (2,0) {$\ell = 8$};
-  \node[right] at (4.65,0.3) {$w = 3$};
-  \node[left] at (0,1.25) {$h = 5$};
-\end{tikzpicture}
-\end{center}
-```
-Sphere:
-```latex
-\begin{center}
-\begin{tikzpicture}[scale=0.8]
-  \draw[thick] (0,0) circle (1.5);
-  \draw[thick] (-1.5,0) arc (180:360:1.5 and 0.45);
-  \draw[dashed] (1.5,0) arc (0:180:1.5 and 0.45);
-  \fill (0,0) circle (1.2pt);
-  \draw (0,0) -- (40:1.5) node[midway, above left] {$r$};
-\end{tikzpicture}
-\end{center}
-```
+
+Use the shipped macros — `\cylfig`, `\conefig`, `\prismfig`, `\pyrfig`,
+`\cylnetfig` (see "Figure house style"). The raw snippets that used to live
+here overprinted their own labels when rendered (`r = 3` struck the cylinder's
+rim ellipse; `h = 8` was bisected by its wall) and were habitually scaled down
+to ~2cm in the corpus, where hidden-edge dashes degrade to 2-3 coarse marks.
+The macros are ~4cm tall at scale 1 with every label outside the silhouette or
+leader-lined — that IS the intended print size; give the problem more
+`workspace_cm` rather than shrinking below ~0.8. Composite solids: compose the
+macro bodies (they are plain TikZ inside), keeping `thick` outlines and dashed
+hidden edges.
 
 ## Answer Key Patterns
 

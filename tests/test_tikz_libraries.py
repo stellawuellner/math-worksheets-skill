@@ -78,7 +78,7 @@ SNIPPETS = [
     "Shaded area model (fractions, percent, probability)",
     "Number line — matches `inequality` / `compare`",
     "Brace annotating a part — bar models, ratio and part-whole problems",
-    "Two displays side by side — `groupplots`",
+    "Two displays for a compare item",
 ]
 
 engine = shutil.which("pdflatex") or shutil.which("tectonic")
@@ -125,6 +125,49 @@ else:
           "boxplot prepared" in bp and "table[" not in bp, bp[:120])
     for value in ("lower quartile=6", "median=9", "upper quartile=12"):
         check(f"it passes verify.py's own summary ({value})", value in bp)
+
+# ── the figure house style compiles, every style and macro of it ─────────────
+# tests/fixtures/house_style_probe.tex exercises all of: the wsgraph layer set
+# and every ws* graph/chart style, the dot plot / stem-leaf / pictogram macros,
+# the geometry marks, \gridtrifig, all five solid macros, and the full K-4
+# model set. A style that breaks takes down every document in a run, and a
+# macro that breaks takes down every sheet that uses the documented way to
+# draw its model — this is the same "documented snippet is a promise" contract
+# as the section above, at the scale of the whole house style.
+if not engine:
+    print("\n  ·  house-style probe skipped: no LaTeX engine on PATH")
+else:
+    print("\nthe figure house style compiles end to end:")
+    work2 = tempfile.mkdtemp(prefix="housestyle")
+    for f in os.listdir(TEMPLATES):
+        if f.endswith(".tex"):
+            shutil.copy(os.path.join(TEMPLATES, f), work2)
+    shutil.copy(os.path.join(ROOT, "tests", "fixtures",
+                             "house_style_probe.tex"),
+                os.path.join(work2, "probe.tex"))
+    cmd = ([engine, "-interaction=nonstopmode", "probe.tex"]
+           if engine.endswith("pdflatex") else [engine, "probe.tex"])
+    subprocess.run(cmd, cwd=work2, capture_output=True)
+    log2 = os.path.join(work2, "probe.log")
+    errs2 = [ln for ln in open(log2, errors="replace")
+             if ln.startswith("! ")] if os.path.isfile(log2) else ["no log"]
+    check("house_style_probe.tex compiles with zero errors",
+          os.path.isfile(os.path.join(work2, "probe.pdf")) and not errs2,
+          "; ".join(e.strip() for e in errs2[:2])[:160])
+    # Style names the probe and the docs promise — a rename must fail loudly.
+    pre2 = open(PREAMBLE, encoding="utf-8").read()
+    for style in ("wsaxisbase", "wsgrid", "wsgridwide", "wsgridq1",
+                  "wsfuntall", "wstrig", "wsbar", "wshist", "wsboxplot",
+                  "wscurve", "wsasym", "wsopen", "wsclosed"):
+        check(f"preamble defines {style}", style + "/.style" in pre2)
+    mac = open(os.path.join(TEMPLATES, "figure-macros.tex"),
+               encoding="utf-8").read()
+    for m in ("congtick", "parallelmark", "gridtrifig", "cylfig", "conefig",
+              "prismfig", "pyrfig", "cylnetfig", "tenframefig", "arrayfig",
+              "basetenfig", "clockfig", "fraclinefig", "ineqlinefig",
+              "tapefig", "coinrowfig"):
+        check(f"figure-macros defines \\{m}",
+              "\\newcommand{\\" + m + "}" in mac)
 
 print()
 if FAILS:

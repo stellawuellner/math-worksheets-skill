@@ -347,6 +347,113 @@ _EQUATION_PART_RE = re.compile(
     r"|\bsolved\s+for\b)", re.I)
 
 
+
+# ── Stem-side: a requested FORMULA that nothing verifies ─────────────────────
+# The gate above counts printed slots. curr-482 slipped past it because the
+# shortfall is not in the count: each problem prints ONE blank and the stem asks
+# for two things in prose -- "Write the particular solution y = f(x), THEN
+# evaluate y(1)". verify.json covered the antiderivative of one side (slot "the
+# x-integral") and the evaluated value, and never the requested formula. The
+# bank then printed only what it had, so coverage was vacuously complete: this
+# gate measures the responses the BANK PRINTS, not the responses the STEM ASKS
+# FOR, and nothing else reads the stem.
+#
+# ADVISORY, not a hard fail, and the measurement is why. Over 6,096 problems in
+# 625 corpus worksheets the rule fires 20 times across 6 cases, of which ~19 are
+# real -- good for a flag, short of the 100%-on-corpus bar every hard-fail lint
+# here had to clear. Two shapes were measured and excluded rather than tolerated:
+#
+#   * "Find the general solution of dy/dx = 8x^3 - 6x" keyed `integrate` ->
+#     '2*x**4-3*x**2' IS the general solution, bar the +C the type tells you to
+#     omit (curr-484 p1, curr-473 p7). An integrate/diff/equiv entry is credited
+#     as covering the formula -- UNLESS its slot names a COMPONENT ("the
+#     x-integral", "the y-integral", "left side"), which is the author declaring
+#     in their own words that this entry is a part and not the whole. That one
+#     distinction is what separates curr-484 (covered) from curr-482 (not).
+#   * The noun list is deliberately narrow: "particular/general solution",
+#     "recursive/explicit formula/rule". A wider list including a bare
+#     "equation" fires on ordinary word-problem design -- "Write an equation for
+#     the number of pencils in one pack, then solve it" over a single
+#     \answerline{pencils}, where the equation is the setup and the count is the
+#     answer. That variant measured 24 hits, over half of them defensible
+#     sheets, and is NOT shipped.
+_FORMULA_NOUN = (r"(?:particular\s+solution|general\s+solution|"
+                 r"recursive\s+formula|explicit\s+formula|"
+                 r"recursive\s+rule|explicit\s+rule)")
+# The filler between article and noun may not itself be a formula noun, or
+# "Write the equation the explicit rule gives" matches with "equation the" as
+# filler -- a stem asking for neither. Measured: 1 false hit, curr-274.
+_FORMULA_ASK_RE = re.compile(
+    r"\b(?:write|give|state|find|determine)\s+(?:down\s+)?(?:the|an|a)\s+"
+    r"(?:(?!of\b|from\b|in\b|for\b|that\b|this\b|to\b|with\b|equation\b"
+    r"|formula\b|solution\b|rule\b)\w+\s+){0,2}?" + _FORMULA_NOUN + r"\b",
+    re.I)
+# A slot naming a component, i.e. the author saying this entry is a part.
+_COMPONENT_SLOT_RE = re.compile(
+    r"\b(?:integral|antiderivative|side|step|substitution)\b", re.I)
+_FORMULA_TYPES = frozenset({"equiv", "integrate", "diff", "system",
+                            "inequality", "manual"})
+
+
+# An antiderivative IS the general solution and is NOT the particular one: the
+# particular solution is the antiderivative with its constant fixed by an
+# initial condition, which no `integrate` check ever sees. So the same entry
+# type covers one ask and cannot cover the other, and the stem says which.
+# This is what separates curr-484 p1 ("Find the general solution of
+# dy/dx = 8x^3-6x", keyed integrate -> 2*x**4-3*x**2, genuinely covered) from
+# curr-482 p1 ("Give the particular solution, then use it to find y(2)", keyed
+# the same way, NOT covered -- the +1 is exactly what nothing checks).
+_PARTICULAR_RE = re.compile(r"\bparticular\s+solution\b", re.I)
+_ANTIDERIV_TYPES = frozenset({"integrate", "diff"})
+
+
+def _entry_holds_formula(entry, ask=""):
+    """Could this entry verify the formula-shaped answer the stem asked for?"""
+    slot = entry.get("slot")
+    if isinstance(slot, str) and _COMPONENT_SLOT_RE.search(slot):
+        return False          # declared a component, not the whole answer
+    etype = entry.get("type")
+    if etype in _ANTIDERIV_TYPES and _PARTICULAR_RE.search(ask):
+        return False          # an antiderivative cannot pin the constant
+    if etype in _FORMULA_TYPES:
+        return True
+    expected = entry.get("expected")
+    if isinstance(expected, str) and "=" in expected:
+        return True
+    if isinstance(expected, list):
+        return any(isinstance(x, str) and "=" in x for x in expected)
+    return False
+
+
+def formula_ask_notes(segments, by_id):
+    """ADVISORY: stems requesting a named formula that no entry can verify.
+
+    Returns (pid, ask, note) triples. Never fails a build on its own -- the
+    caller reports these the way the given-as-answer signature is reported.
+    """
+    notes = []
+    # `segments` is a list of stem strings in problem order, matching the
+    # convention the rest of this module uses; the id is the 1-based position.
+    for pid, seg in enumerate(segments, 1):
+        m = _FORMULA_ASK_RE.search(seg)
+        if not m:
+            continue
+        entries = by_id.get(pid) or []
+        if not entries or any(_entry_holds_formula(e, m.group(0)) for e in entries):
+            continue
+        ask = " ".join(m.group(0).split())
+        notes.append((pid, ask, (
+            f"problem {pid}'s stem asks the student to {ask.lower()}, and no "
+            f"entry on that id can hold a formula (types present: "
+            f"{', '.join(sorted({str(e.get('type')) for e in entries}))}). "
+            "The printed answer bank cannot show what nothing verified, so the "
+            "slot count still balances. ADJUDICATE: if the formula really is a "
+            "requested response, key it -- `equiv` takes an equation directly "
+            "(expr \"y - 2*x**2\", expected \"y = 2*x**2\"). If the stem means "
+            "it as a working step rather than an answer, no change is needed.")))
+    return notes
+
+
 def slot_form_faults(by_id):
     r"""HARD FAIL: a slot label promising a FORM the expected value is not in.
 
@@ -540,6 +647,13 @@ def main():
 
     for note in given_as_answer_notes(segments, data):
         print(f"  ⚠ {note}.")
+
+    # Advisory, and printed AFTER the slot arithmetic on purpose: this is the
+    # one check here that reads the STEM rather than counting what the bank
+    # prints, so a reader needs to see the count balance before being told the
+    # balance is not the whole question.
+    for _pid, _ask, note in formula_ask_notes(segments, by_id):
+        print(f"  ⚠ {note}")
 
     if faults:
         for f in faults:

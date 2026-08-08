@@ -27,6 +27,8 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKER = os.path.join(ROOT, "tests", "check_answer_slots.py")
+sys.path.insert(0, os.path.join(ROOT, "tests"))
+import check_answer_slots as cas  # noqa: E402
 FAILS = []
 
 
@@ -267,6 +269,59 @@ def main():
     check("a 'percent of' slot asking for a COUNT does not fire "
           "(the rejected broad detector was 0-for-23 here)", rc == 0,
           out.strip()[-160:])
+
+
+    # ── Stem-side formula asks (ADVISORY) ───────────────────────────────────
+    # curr-482: "Write the particular solution y = f(x), then evaluate y(1)".
+    # One printed blank, two things asked, verify.json covering the x-integral
+    # and the value. The slot arithmetic balances, so the gate above is silent
+    # by construction — it measures what the BANK PRINTS, not what the STEM
+    # ASKS FOR. Advisory, because on 6,096 corpus problems this fires 20 times
+    # and hand-adjudication read 20 as real: good for a flag, short of the
+    # 100%-precision bar every hard-fail lint here had to clear.
+    print("\nstem-side formula asks:")
+    _fires = lambda seg, ents: bool(cas.formula_ask_notes([seg], {1: ents}))
+
+    check("the curr-482 shape fires",
+          _fires("Solve dy/dx = 2xy, y(0)=5. Write the particular solution "
+                 "$y = f(x)$, then evaluate $y(1)$.",
+                 [{"type": "integrate", "slot": "the x-integral"},
+                  {"type": "approx", "slot": "y(1)"}]))
+    check("so does a recursive formula keyed only by a term value",
+          _fires("Write the recursive formula for $a_n$, then find $a_6$.",
+                 [{"type": "eval", "expected": 40}]))
+
+    # An antiderivative IS the general solution and is NOT the particular one —
+    # the particular solution is the antiderivative with its constant fixed by
+    # an initial condition, which no integrate check ever sees. The same entry
+    # type therefore covers one ask and cannot cover the other, and only the
+    # stem says which. Both directions pinned, because collapsing them is the
+    # obvious "simplification".
+    check("a GENERAL solution keyed by integrate is covered, so silent",
+          not _fires("Find the general solution of dy/dx = 8x^3 - 6x. "
+                     "Include the constant of integration.",
+                     [{"type": "integrate", "expected": "2*x**4-3*x**2"}]))
+    check("the same entry does NOT cover a PARTICULAR solution",
+          _fires("Give the particular solution, then use it to find $y(2)$.",
+                 [{"type": "integrate", "expected": "2*x**4-3*x**2"},
+                  {"type": "eval", "expected": 25}]))
+
+    # Must-not-fire shapes, each measured on the corpus before exclusion.
+    check("an equation keyed AS an equation is covered",
+          not _fires("Write the explicit formula for the nth term.",
+                     [{"type": "equiv", "expected": "a_n = 5 + 7*n"}]))
+    check("a manual entry counts as covering the formula",
+          not _fires("Write the recursive formula for $a_n$.",
+                     [{"type": "manual", "desc": "grade the recursion"}]))
+    check("'Write the equation the explicit rule gives' is not a formula ask "
+          "(the filler gap must not swallow a second formula noun)",
+          not _fires("(a) Write the equation the explicit rule gives, then "
+                     "count the terms.", [{"type": "eval", "expected": 15}]))
+    check("an ordinary set-up-and-solve word problem stays silent",
+          not _fires("Write an equation for the number of pencils in one "
+                     "pack, then solve it.", [{"type": "solve"}]))
+    check("a problem with no entries at all is left to the coverage gate",
+          not _fires("Write the particular solution.", []))
 
     print()
     if FAILS:

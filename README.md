@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.3.2** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.4.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -246,6 +246,9 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.4.0 — 2026-08-08
+- **The curr-482 class is now flagged: a stem that asks for a formula nothing verifies.** The slot gate counts the responses the answer bank PRINTS; this reads what the STEM ASKS FOR, which is the only place the shortfall is visible. `verify.json` covered an antiderivative and an evaluated value while the stem said "Write the particular solution y = f(x), then evaluate y(1)" — so the count balanced and the bank simply never printed the formula. **Advisory, not a hard fail, and the measurement is the reason**: 20 fires over 6,096 corpus problems, all 20 reading as real on adjudication — good for a flag, short of the 100%-on-corpus bar every hard-fail lint here had to clear. The load-bearing distinction is that an antiderivative *is* the general solution and *cannot be* the particular one (its constant is fixed by an initial condition no `integrate` check sees), so the same entry covers one ask and not the other; both directions are pinned. Two shapes were measured and deliberately excluded rather than tolerated: a general solution keyed by `integrate` (genuinely covered), and ordinary set-up-and-solve word problems — a wider noun list including a bare "equation" fired 24 times with over half defensible, and is not shipped.
 
 ### v3.3.2 — 2026-08-08
 - **The version contract is now stated once and enforced.** Four places stated a sympy version, using three different numbers, and nothing checked any of them: CI installed `sympy>=1.12`, the dev setup said `==1.14.0`, the prose said "baselines were established on 1.14", and a changelog line claimed SymPy was "pinned" when no code read a version at all. `verify.py` now refuses to run below **1.12** and prints the version every run — saying explicitly when it is not the **1.14.0** the GSM8K/MATH corpora were measured on, so a run cannot quietly inherit a guarantee nobody measured it under. **The floor is the weaker control and the README says so**: this verifier's sympy surface is small and old, so an out-of-range CAS does not raise `AttributeError` and stop — it computes, and answers differently. No upper bound, deliberately: an author who cannot run the gate ships unverified answers instead.

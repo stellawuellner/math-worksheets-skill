@@ -231,7 +231,7 @@ with contextlib.redirect_stdout(buf):
     verify.print_schema("json")
 machine = json.loads(buf.getvalue())
 check("schema json lists top-level optional fields",
-      machine.get("top_level_optional") == ["facets", "format", "subtitle"])
+      machine.get("top_level_optional") == ["facets", "format", "subtitle", "pages"])
 check("schema json lists the trap-allowed types",
       set(machine.get("traps_allowed_types", [])) == verify._TRAP_TYPES)
 check("facet and traps are universal optional fields",

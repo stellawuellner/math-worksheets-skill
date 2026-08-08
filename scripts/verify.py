@@ -2837,6 +2837,16 @@ def run_verification(json_path):
               '"drill" waives the interleave check; other formats need no '
               "declaration.", file=sys.stderr)
         return 1
+    # "pages" is the study guide's declared page budget (build.sh reads it for
+    # the compile-ss cap; default 2, clamp 1..6). Validated here so a typo'd
+    # declaration fails at verify time, not as a mysterious page-budget number.
+    pages = data.get("pages")
+    if pages is not None and (type(pages) is not int or not 1 <= pages <= 6):
+        print(f'❌ top-level "pages" must be an integer 1..6, got {pages!r} — '
+              "it is the study guide's page budget (default 2; declare more "
+              "only when diagrams need the room or the user asked for a "
+              "longer guide).", file=sys.stderr)
+        return 1
     facets_plan = data.get("facets")
     if facets_plan is not None:
         if (not isinstance(facets_plan, list) or not facets_plan
@@ -3039,7 +3049,7 @@ def print_schema(mode="table"):
                       for t, (req, opt) in sorted(SCHEMAS.items())},
             "universal_required": ["id", "type"],
             "universal_optional": universal,
-            "top_level_optional": ["facets", "format", "subtitle"],
+            "top_level_optional": ["facets", "format", "subtitle", "pages"],
             "traps_allowed_types": sorted(_TRAP_TYPES),
             "traps_allowed_set_types": sorted(_SET_TRAP_TYPES),
             "traps_allowed_expr_types": sorted(_EXPR_TRAP_TYPES),

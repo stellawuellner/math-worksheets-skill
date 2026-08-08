@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.4.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.5.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -46,7 +46,8 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 
 ## Features
 
-- **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary cheat sheet with formula boxes and worked mini-examples (all three verified).
+- **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary study guide (all three verified). The guide can also be built **alone** (`--study-guide-only`) with its full gate chain, for "just make me a reference sheet" requests.
+- **Study guides built on the learning-science results, not just formatted** — worked examples with a mandatory strategy step, retrieval-practice try-its with upside-down answers, optional `\why{}` self-explanation asides, optional `\fadestep{}` completion problems (backwards fading), and a dual-coding rule pairing spatial skills with value-free diagrams. Two pages by default; a declared `"pages"` (1–6) buys room for diagrams or a user-requested longer guide, and `verify.py` validates the declaration.
 - **26 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
 - **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
@@ -246,6 +247,12 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.5.0 — 2026-08-08
+- **Study guides overhauled around the worked-example literature.** New optional macros: `\why{...}` prints a one-line self-explanation aside under a step (the reason the move is legal — a printed model of the habit the research prompts train), and `\fadestep{...}` turns a try-it into a completion problem ("Started for you: … / Finish it:"), implementing backwards fading for multi-step skills. Boxes gained printed title tabs (RULE / EXAMPLE / TRY IT / WATCH OUT) — the signaling principle applied to a reference card, and the tab text keeps the meaning after a grayscale photocopy — plus rounded corners and a unified border weight. SKILL.md now states which learning effect each structural element rides on, and adds a dual-coding rule: spatial skills get a value-free diagram beside the rule.
+- **`--study-guide-only`.** A guide with no worksheet builds via `build.sh <verify_ss_…json> --study-guide-only`: all six guide-integrity gates run for real (template, verify, compile with page cap, answer binding, structure, prose) plus overprint; sheet-relative gates skip by name. Mutually exclusive with `--worksheet-only`; refuses a worksheet JSON with the correct invocation in the error.
+- **Study-guide length is declared, not hard-coded.** Top-level `"pages"` (integer 1–6, default 2) in the verify_ss JSON sets the compile-ss page cap; `verify.py` validates it so a typo fails at verify time with the policy in the message. The 2-page default stays the design — the declaration exists for guides whose skills genuinely need diagram room and for users who ask for a longer guide.
+- Visual baselines re-recorded for the redesign (the documented `--approve` path); the driver suite gained five `--study-guide-only` cases and the preamble suite pins all four tabs and both macros on the rendered page.
 
 ### v3.4.0 — 2026-08-08
 - **The curr-482 class is now flagged: a stem that asks for a formula nothing verifies.** The slot gate counts the responses the answer bank PRINTS; this reads what the STEM ASKS FOR, which is the only place the shortfall is visible. `verify.json` covered an antiderivative and an evaluated value while the stem said "Write the particular solution y = f(x), then evaluate y(1)" — so the count balanced and the bank simply never printed the formula. **Advisory, not a hard fail, and the measurement is the reason**: 20 fires over 6,096 corpus problems, all 20 reading as real on adjudication — good for a flag, short of the 100%-on-corpus bar every hard-fail lint here had to clear. The load-bearing distinction is that an antiderivative *is* the general solution and *cannot be* the particular one (its constant is fixed by an initial condition no `integrate` check sees), so the same entry covers one ask and not the other; both directions are pinned. Two shapes were measured and deliberately excluded rather than tolerated: a general solution keyed by `integrate` (genuinely covered), and ordinary set-up-and-solve word problems — a wider noun list including a bare "equation" fired 24 times with over half defensible, and is not shipped.

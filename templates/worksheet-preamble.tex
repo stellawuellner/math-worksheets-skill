@@ -423,26 +423,34 @@
 \definecolor{tryviolet}{RGB}{110,60,160}
 \definecolor{tryvioletbg}{RGB}{243,236,250}
 
+% \boxtab{color}{LABEL} — the small title tab each study-guide box opens
+% with. A plain colorbox, not an mdframed frametitle: frametitle adds its own
+% vertical furniture (~6pt/box, ~90pt over a full guide) and the 2-page budget
+% is the design. Kept to ONE short word so it labels, never lectures.
+\newcommand{\boxtab}[2]{%
+  \noindent\colorbox{#1}{\textcolor{white}{\footnotesize\bfseries\,#2\,}}\par\nopagebreak\vspace{1.5pt}}
+
 % Formula/rule box
 \newmdenv[
   backgroundcolor=skillbluebg,
-  linecolor=skillblue, linewidth=1.6pt,
+  linecolor=skillblue, linewidth=1.2pt, roundcorner=3pt,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=4pt, skipbelow=3pt, nobreak=true
-]{formulabox}
+]{formulaboxinner}
+\newenvironment{formulabox}{\begin{formulaboxinner}\boxtab{skillblue}{RULE}}{\end{formulaboxinner}}
 
 % Mini example box. The mdframed environment is the INNER shell: examplebox
 % itself is a wrapper that resets the step counter, so \step numbering starts
 % at 1 in every worked example without the author touching the counter.
 \newmdenv[
   backgroundcolor=exgreenbg,
-  linecolor=exgreen, linewidth=0.6pt,
+  linecolor=exgreen, linewidth=1.2pt, roundcorner=3pt,
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt, nobreak=true
 ]{exampleboxinner}
-\newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}}{\end{exampleboxinner}}
+\newenvironment{examplebox}{\setcounter{exstep}{0}\begin{exampleboxinner}\boxtab{exgreen}{EXAMPLE}}{\end{exampleboxinner}}
 
 % \step{...} — one auto-numbered line of a worked example. The FIRST \step of
 % every examplebox is the strategy line: one sentence, in words, naming what
@@ -452,6 +460,25 @@
 % move is what transfers, not the arithmetic.
 \newcounter{exstep}
 \newcommand{\step}[1]{\par\noindent\textbf{Step \stepcounter{exstep}\theexstep.}~#1}
+
+% \why{...} — an OPTIONAL one-line self-explanation after a step: the reason
+% the move is legal, not a restatement of it ("dividing both sides keeps the
+% equality because both sides change together", not "we divide by 3"). Set
+% small and indented so it reads as an aside a student could have said.
+% Self-explanation is one of the best-supported effects in the worked-example
+% literature; a printed model of it teaches the habit the prompts train. Use
+% AT MOST one per worked example — every line costs page budget, and a "why"
+% on a routine move buries the one that matters.
+\newcommand{\why}[1]{\par\noindent\hspace*{1.2em}{\small\textit{\textcolor{exgreen}{why:} #1}}}
+
+% \fadestep{...} — a completion step inside a TRY-IT: the setup shown, the
+% finish left to the student. Backwards-fading (worked example, then a partly
+% worked problem, then the bare try) measurably beats jumping straight from
+% example to problem on multi-step skills. Use it when the section's example
+% needed 3+ computational steps; skip it on one-move skills, where the bare
+% try-it IS the right next step. The shown step's numbers are read by the
+% prose checker like any other prose, so they must come from the entry's expr.
+\newcommand{\fadestep}[1]{\par\noindent{\small\textbf{Started for you:}~#1}\par\noindent{\small\textbf{Finish it:}}~}
 
 % Try-it box (violet): the student's first retrieval attempt, paired with the
 % worked example it re-parameterizes (same skeleton, new givens). Print ONLY
@@ -468,7 +495,8 @@
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt, nobreak=true
-]{tryitbox}
+]{tryitboxinner}
+\newenvironment{tryitbox}{\begin{tryitboxinner}\boxtab{tryviolet}{TRY IT}}{\end{tryitboxinner}}
 
 % Watch-out box
 \newmdenv[
@@ -478,7 +506,8 @@
   innertopmargin=4pt, innerbottommargin=4pt,
   innerleftmargin=9pt, innerrightmargin=9pt,
   skipabove=3pt, skipbelow=3pt, nobreak=true
-]{watchoutbox}
+]{watchoutboxinner}
+\newenvironment{watchoutbox}{\begin{watchoutboxinner}\boxtab{warnorange}{WATCH OUT}}{\end{watchoutboxinner}}
 
 % \ans{...} — the printed final answer of a worked example. check_answer_key.py
 % binds study guides through this macro (and \boxed); a result set in bare

@@ -441,6 +441,54 @@ def main():
                   "check_answer_key.py binds study guides through \\ans, so an "
                   "answer that does not print cannot bind")
 
+
+        # ── 9. The study-guide design system, on the page ────────────────────
+        # The boxes gained title tabs (RULE / EXAMPLE / TRY IT / WATCH OUT) and
+        # two evidence-based macros: \why (a printed self-explanation aside)
+        # and \fadestep (a completion problem inside a try-it — the setup
+        # shown, the finish left to the student; backwards-fading beats the
+        # example-to-bare-problem jump on multi-step skills). Pinned from the
+        # PDF because all four tabs are colorbox text a source lint cannot see
+        # rendered, and because the environments were rewrapped (examplebox ->
+        # exampleboxinner) — the one regression that must never happen is a
+        # document-facing name changing, since check_answer_key.py segments
+        # study guides by exactly these names.
+        print("9. study-guide design system")
+        sg = os.path.join(d, "sgdesign.tex")
+        open(sg, "w").write(
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}\n"
+            "\\input{worksheet-preamble}\n\\ssheader{Design}\n"
+            "\\begin{document}\n\\sstitleblock{Design}\n"
+            "\\begin{formulabox}$a^2+b^2=c^2$\\end{formulabox}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: legs known, hypotenuse wanted.}\n"
+            "\\step{$c = \\sqrt{9+16} = 5$}\n"
+            "\\why{squaring makes both legs positive contributions.}\n"
+            "\\step{So $\\ans{c = 5}$}\n"
+            "\\end{examplebox}\n"
+            "\\begin{tryitbox}\nLegs 6 and 8.\n"
+            "\\fadestep{$c = \\sqrt{36 + 64}$}\n"
+            "\\hfill\\rotatebox{180}{\\footnotesize check: $\\ans{c = 10}$}\n"
+            "\\end{tryitbox}\n"
+            "\\begin{watchoutbox}\nAdd squares, not legs.\n\\end{watchoutbox}\n"
+            "\\end{document}\n")
+        cmd3 = ([engine, "-interaction=nonstopmode", "sgdesign.tex"]
+                if engine.endswith("pdflatex") else [engine, "sgdesign.tex"])
+        subprocess.run(cmd3, cwd=d, capture_output=True)
+        sgpdf = os.path.join(d, "sgdesign.pdf")
+        check("a guide using every box and both new macros compiles",
+              os.path.isfile(sgpdf))
+        if os.path.isfile(sgpdf):
+            body = subprocess.run(["pdftotext", sgpdf, "-"],
+                                  capture_output=True, text=True).stdout
+            for tab in ("RULE", "EXAMPLE", "TRY IT", "WATCH OUT"):
+                check(f"the {tab} tab prints", tab in body)
+            check("the why-aside prints with its label",
+                  "why:" in body and "positive contributions" in body)
+            check("the faded step prints setup and hand-off",
+                  "Started for you:" in body and "Finish it:" in body)
+
     if failures:
         print(f"\n❌ {len(failures)} preamble layout regression(s)")
         return 1

@@ -1,12 +1,12 @@
 # math-worksheets — Agent Skill
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](tests/coverage.sh)
+[![coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](tests/coverage.sh)
 [![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.2.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.3.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -50,7 +50,8 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 - **26 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
 - **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
-- **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
+- **A figure house style, not a snippet pile** — the preamble ships graph styles (`wsgrid` and friends: 7mm pencil-sized unit squares, a gridline at every integer, tick labels white-backed so a curve can never strike a number) and chart styles (`wsbar`, a true `wshist`, `wsboxplot pair`, `\wsdotplot`, stem-and-leaf, scaled pictograms); `figure-macros.tex` ships to-scale triangles, congruence/parallel marks, a CCSS-8 transformation grid, fixed-size solids with nets, and the K-4 model set — ten frames, arrays, proportional base-ten blocks, clock faces, fractions on a number line, tape models, coins. Compile-tested via `tectonic`, with a `pdflatex` fallback. [House style →](references/latex-templates.md)
+- **Figures that survive the photocopier** — black ink with meaning carried by dash pattern, fill pattern, weight and label, never by hue; a measured line-weight hierarchy (minor grid < major grid < axis < data). Figures are space-generous by policy: budget the page for the figure's natural size rather than shrinking it until a student cannot plot on it.
 - **Accessible output** — large-print and dyslexia-friendly modes (`extarticle` at 14/17pt plus `\accessiblemode`): roomier leading, bigger answer blanks, sans-serif prose *and* math, emphasis set bold rather than italic. A student whose IEP entitles them to large print can use the same generator everyone else does. [How →](references/latex-templates.md#accessibility)
 - **Paper and locale** — US Letter, A4, and Legal; `\mwslocale{eu}` prints decimal commas and `\times`. The verify JSON stays canonical, so only the *printed* form is localised and every gate keeps one number format.
 - **Page budget computed from content** — 50 graphing problems that each need a coordinate plane are allowed the ~24 pages they need; a flat cap could only be met by shrinking the work space. `build.sh` prints the ideal page count and the double-sided sheet count, so paper cost is visible before printing. [Details →](references/latex-templates.md#page-budget-measured-not-guessed)
@@ -141,47 +142,69 @@ math-worksheets/
 ├── SKILL.md                          ← workflow and instructions
 ├── LICENSE                           ← MIT
 ├── scripts/
-│   ├── build.sh                     ← ONE command: full gate chain + three compiles, fail-fast
-│   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper (stages templates/)
-│   ├── page_budget.py               ← page budget computed from the problem set (paper-aware)
-│   ├── find_python.sh               ← shared finder: first python3 that can import sympy
-│   ├── run_verify.sh                ← gates compilation on SymPy pass
-│   ├── review_eval_run.py           ← author diagnosis packets and improvement backlog
-│   ├── score_eval_run.py            ← PDF evidence, judge packets, and run scoring
-│   └── verify.py                    ← the fixed, audited verifier (26 check types; --schema)
+│   ├── build.sh                      ← ONE command: full gate chain + three compiles, fail-fast
+│   ├── compile.sh                    ← tectonic/pdflatex wrapper (stages templates/)
+│   ├── verify.py                     ← the fixed, audited verifier (26 check types; --schema)
+│   ├── page_budget.py                ← page budget computed from the problem set (paper-aware)
+│   ├── render_figures.py             ← builds TikZ figures FROM the verify JSON, so a figure
+│   │                                   cannot disagree with the answer it illustrates
+│   ├── render_quick_answers.py       ← generates the answer key's Quick Answers bank
+│   ├── render_meta.py                ← difficulty/effort markers from the JSON tags
+│   ├── check_log.py                  ← reads the LaTeX log for real layout faults
+│   ├── find_python.sh                ← shared finder: first python3 that can import sympy
+│   ├── run_verify.sh                 ← gates compilation on SymPy pass
+│   ├── review_eval_run.py            ← author diagnosis packets and improvement backlog
+│   └── score_eval_run.py             ← PDF evidence, judge packets, and run scoring
 ├── templates/
-│   ├── worksheet-preamble.tex       ← the \input-able preamble (headers, boxes, \problem)
-│   └── figure-macros.tex            ← \rtfig / \trifig / \refrt figure macros
+│   ├── worksheet-preamble.tex        ← the \input-able preamble: headers, boxes, \problem,
+│   │                                   and the figure HOUSE STYLES (wsgrid/wsbar/wshist/
+│   │                                   wsboxplot/\wsdotplot/wsstemleaf …)
+│   └── figure-macros.tex             ← triangles, congruence marks, transformation grid,
+│                                       fixed-size solids + nets, and the K-4 model set
+│                                       (\tenframefig \arrayfig \basetenfig \clockfig
+│                                       \fraclinefig \tapefig \coinrowfig …)
 ├── references/
-│   ├── latex-templates.md           ← LaTeX patterns (planes, figures, charts, answer key)
-│   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC
-│   ├── standards-map.md             ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
-│   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
+│   ├── latex-templates.md            ← figure house style, planes, figures, charts, answer key
+│   ├── problem-library.md            ← problem menu + verification recipes, K → Calc BC
+│   ├── standards-map.md              ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
+│   └── manual-review-aid.md          ← optional LLM-judge pass for open reasoning
 ├── evals/
 │   ├── evals.json                    ← quick 3-prompt skill-on/off smoke subset
-│   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, and coverage map
-│   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus acceptance prompts
-│   ├── curriculum-judge-rubric.md    ← human/independent-agent acceptance procedure
+│   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, coverage map
+│   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus prompts
+│   ├── curriculum-judge-rubric.md    ← v1 acceptance procedure (frozen)
+│   ├── curriculum-judge-rubric-v2.md ← v2 behavioural anchors (shadow-scored)
+│   ├── run_eval.py                   ← start / next / record / status / package a run
+│   ├── repair_artifacts.py           ← deterministic re-gate of stored artifacts
+│   ├── seed_defects.py               ← seeded-defect CALIBRATION runs: plants known defects
+│   │                                   in known-clean sheets, keeps controls, seals the
+│   │                                   manifest outside the run so judging stays blind
+│   ├── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
+│   ├── AUTHORING.md                  ← authoring brief + known-open traps
 │   ├── author-review.md              ← scored-run feedback loop for the author system
 │   ├── scoring-harness.md            ← retained-run layout and two-stage grading workflow
-│   └── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
+│   ├── runs/                         ← recorded runs: artifacts, observations, verdicts
+│   └── analysis/                     ← findings and verdict reviews, OUTSIDE the judge packet
 ├── tests/
-│   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
-│   ├── test_eval_suite.py            ← eval schema, coverage, balance, and smoke-sync contract
-│   ├── test_curriculum_eval_suite.py ← 500-prompt uniqueness, distribution, and judge contract
-│   ├── test_author_review.py         ← author packets, response schema, and backlog contract
-│   ├── test_scoring_harness.py       ← PDF evidence, verdict validation, and aggregation contract
-│   ├── test_page_budget.py           ← page-budget cost model and CLI contract
-│   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
-│   ├── test_visual_environment.py    ← the guard deciding whether baselines apply here
-│   ├── test_preamble_layout.py      ← compiles a PDF and reads it back (answer lines, header, date)
-│   ├── baseline/                    ← approved ink-density signatures, one file per page
-│   │   └── ENVIRONMENT.txt          ← the TeX/poppler stack they were recorded in
-│   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
-│   ├── check_answer_key.py          ← binds printed answer key to verified JSON
-│   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
+│   ├── run_tests.sh                  ← the regression suite (107 fixtures/checks + 7 suites)
+│   ├── coverage.sh                   ← every suite under coverage, floor 90%
+│   ├── check_answer_key.py           ← binds printed answer key to verified JSON
+│   ├── check_answer_slots.py         ← every PRINTED response needs its own verify entry,
+│   │                                   and a slot label must not promise a form the value
+│   │                                   is not in
+│   ├── check_prose_consistency.py    ← binds worksheet prose + figure labels to JSON
+│   ├── check_layout.py               ← figure scope, work space, answer location
+│   ├── check_overprint.py            ← reads rendered word boxes for collisions
+│   ├── check_answer_line.py          ← answer_unit ↔ \answerline pairing
+│   ├── check_ss_coverage.py / check_facet_coverage.py / check_study_guide.py
+│   ├── check_template_use.py         ← the shell must \input the preamble, never hand-roll it
+│   ├── check_artifact_health.py      ← recorded-run artifact integrity
+│   ├── visual_regression.py          ← renders each document, diffs against approved baselines
+│   ├── test_*.py                     ← 27 suites; every one wired into run_tests.sh
+│   ├── baseline/                     ← approved ink-density signatures, one file per page
+│   │   └── ENVIRONMENT.txt           ← the TeX/poppler stack they were recorded in
 │   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
-│   └── fixtures/
+│   └── fixtures/                     ← 62 verify fixtures + LaTeX probes
 └── .github/workflows/
     ├── tests.yml                     ← regression and pinned visual gates
     └── eval-results.yml              ← scored-run intake and author-review packets
@@ -198,9 +221,9 @@ python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
 python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability-, curriculum-, scoring-harness-, and author-review integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and **27 Python suites, every one of them wired**. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
-`coverage.sh` runs those plus the Python suites under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+`coverage.sh` runs the fixtures and **every** `tests/test_*.py` under `coverage` and fails below **90%** (currently **90%**). The suite list is globbed, not hand-maintained: it was hand-maintained once and drifted until eleven wired suites never ran under coverage, so the reported percentage described a shrinking fraction of the tests while reading like a whole-project number. Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_verify.py` (scale-aware numeric comparison, symbolic traps, the equation form, and the defensive branches that keep a malformed key producing a verdict rather than a traceback), `test_answer_slots.py` (per-response coverage and the slot-form contract), `test_tikz_libraries.py` (which compiles every figure snippet the docs print, plus a 7-page probe exercising the whole house style), `test_seed_defects.py` (the calibration seeder's transforms), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
 **Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
 
@@ -213,6 +236,13 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.3.0 — 2026-08-08
+- **Figure house style.** Four parallel reviews rendered real corpus pages and judged them against printed practice books. They found figures that defeat their own pedagogy: a blank grid with gridlines only every 2 units (no line at any odd integer, on the figure whose job is plotting integer points), a bar chart printing each bar's value on the bar — answering the `read_data` question for the student — a two-panel comparison whose panels auto-scaled independently, 3D solids overprinting their own labels, base-ten blocks drawn from three inconsistent units, and a grade-3 fraction comparison distinguishing its two points by red vs blue, which photocopies into two identical dots. Below grade 5 there were essentially no templates at all, so every K-4 sheet hand-rolled its models and the generator visibly avoided whole strands — zero clock faces, zero coins, zero multiplication arrays in the entire corpus. Ships ~20 preamble styles and ~30 macros, each compiled and rendered before merging, plus a 7-page probe pinned as a fixture test.
+- **The verifier stopped failing correct answers it could not express.** Decimal keys are compared scale-aware (five separate authors had rewritten correct mathematics — `4.9t²` became `5t²` — to satisfy exact float comparison); `equiv`/`expand`/`factor` can carry misconception traps, making error analysis reachable on factoring and rewrite sheets; `equiv` accepts the equation the student actually writes (`"expected": "(x-3)**2 + (y+5)**2 = 25"`), with `lhs - rhs` compared as before; divergence, identities and contradictions became answers rather than MANUAL fallthroughs. Re-measured over 1200 verify JSONs and 13,297 entries: **0 verdict changes** — this widened what can be stated, it did not reclassify what was already decided.
+- **The answer bank tells the truth about what is unchecked.** Multiple `manual` responses on one problem used to collapse into a single `---` with their slot labels dropped, so a grader could not see how many judgements were owed; and the marker was appended at the end, reordering parts against the printed page (measured: of 1041 ids with two or more lettered slots, all 1041 declare in ascending order). A new hard gate catches a slot label promising a FORM its value is not in — `the equation` keyed to a slope, `colon form` keyed to a fraction.
+- **Seeded-defect calibration** (`evals/seed_defects.py`). A judge that scores every sheet 4/5 is indistinguishable from a judge that reads nothing, and a 300-case run cannot tell them apart because nobody knows its true defect count. The seeder plants catalogued defects in known-clean sheets, keeps controls for the false-positive denominator, admits a case only if every gate stays **green** (a defect a gate catches says nothing about the territory the judge covers), and seals the manifest outside the run directory.
+- **Coverage measures the whole test suite again.** `coverage.sh` globs `tests/test_*.py` instead of carrying a hand-maintained list that had drifted until eleven wired suites — every suite added for the slot gate, the figure styles and the seeder — never ran under it.
 
 ### v3.2.1 — 2026-08-02
 - **Eval suites** — a 28-task capability suite with hard-gate profiles and a map covering all 26 verifier types, and a 500-prompt curriculum acceptance suite spanning kindergarten counting to AP Calculus BC, generated deterministically so the checked-in manifest cannot drift from its source. Three new integrity suites keep them honest.

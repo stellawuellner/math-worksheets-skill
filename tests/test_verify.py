@@ -19,7 +19,19 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+import sympy   # noqa: E402
 import verify  # noqa: E402
+
+
+def _raises_input(fn):
+    """True when fn() raises VerifyInputError — a rejection, not a crash."""
+    try:
+        fn()
+    except verify.VerifyInputError:
+        return True
+    except Exception:
+        return False
+    return False
 
 FAILS = []
 
@@ -342,6 +354,47 @@ check("the answer bank prints the equation, not the =0 rearrangement",
       _bank._fmt("(x-3)**2 + (y+5)**2 = 16", "equiv").endswith("= 16$"))
 check("an expression answer is still printed as an expression",
       "=" not in _bank._fmt("(x+3)**2 - 4", "equiv"))
+
+
+# ── Defensive branches in the comparison layer ───────────────────────────────
+# These are the fallbacks that keep a malformed key producing a VERDICT rather
+# than a traceback. They are unreachable from any well-formed problem, which is
+# exactly why they need direct tests: a crash here takes down a whole build on
+# input the schema layer is supposed to have already rejected.
+print("\nthe comparison layer degrades instead of crashing:")
+
+check("a trailing disallowed character is named, not swallowed",
+      _raises_input(lambda: verify.safe_parse("2 + 3 @")))
+# _written_precision returns the VALUE when the key is a plain written decimal,
+# and None when it has no written precision to read — "23/3" and "sqrt(3)/2"
+# are exact, and handing either to a rounding comparison would invent a
+# precision the author never wrote.
+check("a key with no written precision reads as None",
+      verify._written_precision("no solution") is None)
+check("a symbolic key has no written precision either",
+      verify._written_precision("sqrt(3)/2") is None)
+check("a written decimal reads back as its value",
+      verify._written_precision("1.400") == 1.4)
+check("an exact Rational rounds to the decimal it was written as",
+      verify.rounds_to(sympy.Rational(7, 5), "1.4"))
+check("and does not round to a different written value",
+      not verify.rounds_to(sympy.Rational(7, 5), "1.5"))
+
+# carries_decimal walks containers, because an expected value may be a list
+# (roots), a dict (a system's solution) or a bare string.
+check("carries_decimal sees a decimal inside a list",
+      verify.carries_decimal([sympy.Float("1.5"), sympy.Integer(2)]))
+check("carries_decimal sees a decimal inside a dict",
+      verify.carries_decimal({"x": sympy.Float("0.25")}))
+check("carries_decimal is False when every part is exact",
+      not verify.carries_decimal([sympy.Rational(1, 2), sympy.Integer(3)]))
+
+# relative_equal is the last line before a verdict: infinities and NaN have no
+# meaningful difference, so they compare structurally.
+check("relative_equal compares infinities structurally",
+      verify.relative_equal(sympy.oo, sympy.oo))
+check("relative_equal rejects opposite infinities",
+      not verify.relative_equal(sympy.oo, -sympy.oo))
 
 
 # ── The shipped documentation is generated from the enforced rules ───────────

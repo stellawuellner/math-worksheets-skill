@@ -83,6 +83,92 @@ CROWDED_VERTEX_CM = 1.0
 VERTEX_STANDOFF_PT = 3.0
 RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
 
+# ── Label metrics, CALIBRATED from TeX rather than estimated ────────────────
+# Placement decisions are made here, in Python, before LaTeX ever runs, so the
+# widths cannot be asked for at typeset time. The previous attempt guessed them
+# from a character count and was measured 44% under on a single letter, which
+# made a box model useless: it computed clear paper exactly where the page had
+# none. These numbers come from \settowidth on the shipped preamble at \small,
+# the size every one of these labels is set at:
+#
+#     \settowidth{\l}{\small$C$}        ->  8.6094pt
+#     \settowidth{\l}{\small$b = 26$}   -> 30.2493pt
+#     \settowidth{\l}{\small$50^\circ$} -> 15.7001pt
+#
+# The structure is exactly linear — a digit is 5.475pt whether it stands alone
+# or sits in "1234" — so the shapes this renderer emits ($X$, $X_n$, $x = N$,
+# $N^\circ$, $?$) are reproduced to better than a tenth of a point. Checked
+# against the rendered page: this model puts "b = 26" at 1.0632cm and
+# pdftotext -bbox measures 1.063cm.
+# tests/test_ssa_figure_labels.py re-derives them from a compile, so a preamble
+# font change fails loudly instead of silently degrading the placement.
+PT_CM = 0.0351459804                      # one TeX point in centimetres
+_W_DIGIT = 5.475                          # any digit, at \small
+_W_EQUALS = 14.6                          # " = " including both thick spaces
+_W_DEGREE = 4.75                          # the ^\circ suffix
+_W_SUBSCRIPT = 4.2                        # a subscript digit
+_W_POINT = 3.04                           # a decimal point
+_W_QUERY = 5.17                           # "?"
+_W_LETTER = {"A": 8.21, "B": 8.86, "C": 8.61, "a": 5.79, "b": 4.70, "c": 4.74}
+_W_LETTER_DEFAULT = 6.8                   # any other italic letter
+_H_LINE = 7.6                             # cap height of every one of these
+
+
+def label_extent_cm(text):
+    """(half-width, half-height) in cm for a figure label, from TeX metrics.
+
+    `text` is the node body as emitted, e.g. "$b = 26$" or "$B_2$".
+    """
+    body = text.strip("$")
+    w = 0.0
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if body.startswith("^\\circ", i):
+            w += _W_DEGREE
+            i += 6
+        elif body.startswith(" = ", i):
+            w += _W_EQUALS
+            i += 3
+        elif ch == "_":
+            w += _W_SUBSCRIPT
+            i += 2                        # the subscript digit goes with it
+        elif ch.isdigit():
+            w += _W_DIGIT
+            i += 1
+        elif ch == ".":
+            w += _W_POINT
+            i += 1
+        elif ch == "?":
+            w += _W_QUERY
+            i += 1
+        elif ch.isalpha():
+            w += _W_LETTER.get(ch, _W_LETTER_DEFAULT)
+            i += 1
+        else:
+            i += 1                        # braces, backslashes, stray spaces
+    return (w * PT_CM / 2.0, _H_LINE * PT_CM / 2.0)
+
+
+def label_box(pos, text, out_dir):
+    """Box centre and half-extents for a label anchored `out_dir` from pos.
+
+    A TikZ node placed "above" sits with its lower edge on the point, so the
+    centre is one half-extent along the outward direction.
+    """
+    hw, hh = label_extent_cm(text)
+    ux, uy = out_dir if out_dir else (0.0, 0.0)
+    return (pos[0] + ux * hw, pos[1] + uy * hh, hw, hh)
+
+
+def box_gap(a, b):
+    """Clear distance between two label boxes; negative when they overlap."""
+    dx = abs(a[0] - b[0]) - (a[2] + b[2])
+    dy = abs(a[1] - b[1]) - (a[3] + b[3])
+    if dx < 0 and dy < 0:
+        return max(dx, dy)
+    return math.hypot(max(0.0, dx), max(0.0, dy))
+
 # THE right-triangle labelling convention, shared with the shipped \rtfig and
 # \refrt macros (templates/figure-macros.tex): the right angle sits at vertex
 # C, so side c (= AB, opposite C) is the hypotenuse. A worksheet places the
@@ -354,12 +440,17 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
         bis = _unitv(ua[0] + ub[0], ua[1] + ub[1])
         return (vertex[0] + bis[0] * radius_cm, vertex[1] + bis[1] * radius_cm)
 
-    crowd = [_arc_label_pos(p0, w1, fp)]              # the given angle, always drawn
+    # (position, TEXT) — the text is what gives an obstacle its WIDTH, and the
+    # angle value is the widest thing in the middle of the figure. Two of the
+    # five collisions that survived the point-based pass were the angle label
+    # against a side label, which a model without widths cannot even see.
+    ang_text = _angle_label(raw[ang_name], unit)
+    crowd = [(_arc_label_pos(p0, w1, fp), ang_text)]   # given angle, always drawn
     if w_ang in solve_fors:
-        crowd.append(_arc_label_pos(w1, fp, p0))
-        crowd.append(_arc_label_pos(w2, fp, p0))
+        crowd.append((_arc_label_pos(w1, fp, p0), "$?$"))
+        crowd.append((_arc_label_pos(w2, fp, p0), "$?$"))
     if f_ang in solve_fors:
-        crowd.append(_arc_label_pos(fp, p0, w1))
+        crowd.append((_arc_label_pos(fp, p0, w1), "$?$"))
     # THE VERTEX LABELS ARE IN THE CROWD TOO. They were not, and they are the
     # dominant collision: swept across 33 ambiguous-SSA geometries, 12 collide
     # and the causes are "C" on the fixed side's own label (A = 15, 20 — 63%
@@ -368,22 +459,74 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
     # clear the arcs while ignoring the vertex letters is choosing between two
     # obstacles with one eye shut, which is the likeliest reason three previous
     # attempts at this moved the swing labels and made the count worse.
-    crowd += [p0, w1, w2, fp]
+    crowd += [(p0, "$" + ang_name + "$"), (w1, "$" + w_ang + "_1$"),
+              (w2, "$" + w_ang + "_2$"), (fp, "$" + f_ang + "$")]
+    # Each obstacle as a BOX, offset outward the way its own node is anchored.
+    crowd_boxes = [label_box(pos, text, _unitv(pos[0] - cx, pos[1] - cy))
+                   for pos, text in crowd]
 
-    def _clearance(frac):
-        pos = (p0[0] + frac * (fp[0] - p0[0]), p0[1] + frac * (fp[1] - p0[1]))
-        return min(math.hypot(pos[0] - c[0], pos[1] - c[1]) for c in crowd)
+    def _outward(p_from, p_to, frac, away_from):
+        """The position and normal _side_node will use — same maths, reused so
+        the search scores exactly what the renderer is about to emit."""
+        pos = (p_from[0] + frac * (p_to[0] - p_from[0]),
+               p_from[1] + frac * (p_to[1] - p_from[1]))
+        ex, ey = p_to[0] - p_from[0], p_to[1] - p_from[1]
+        nx, ny = -ey, ex
+        if nx * (pos[0] - away_from[0]) + ny * (pos[1] - away_from[1]) < 0:
+            nx, ny = -nx, -ny
+        return pos, _unitv(nx, ny)
+
+    def _clear(p_from, p_to, frac, away_from, text, obstacles):
+        pos, nu = _outward(p_from, p_to, frac, away_from)
+        box = label_box(pos, text, nu)
+        return min(box_gap(box, o) for o in obstacles)
 
     # 0.55 stays FIRST so every figure that was already clean is unchanged —
     # this only moves the label on the geometries where it was landing on
     # something. Candidates walk outward from there along the same side.
-    fixed_frac = max((0.55, 0.65, 0.45, 0.72, 0.38, 0.80, 0.30),
-                     key=lambda f: (_clearance(f) >= 1.0, _clearance(f)))
-    lines.append(_side_node(p0, fp, fixed_frac, w1,
-                            "$" + other + " = " + _disp(raw[other]) + "$"))
+    CANDS = (0.55, 0.65, 0.45, 0.72, 0.38, 0.80, 0.30)
+    ROOMY = 0.10                       # cm of clear paper: reads as two things
+    fixed_text = "$" + other + " = " + _disp(raw[other]) + "$"
+    fixed_frac = max(CANDS, key=lambda f: (
+        _clear(p0, fp, f, w1, fixed_text, crowd_boxes) >= ROOMY,
+        _clear(p0, fp, f, w1, fixed_text, crowd_boxes)))
+    lines.append(_side_node(p0, fp, fixed_frac, w1, fixed_text))
+
+    # Each label placed becomes an obstacle for the next. The swing labels sat
+    # at flat fractions with nothing checked at all; they now search the same
+    # candidates against everything already on the page, including the
+    # fixed-side label and each other. Their default stays FIRST in the
+    # candidate list, so a figure that was already clean does not move —
+    # every previous attempt to place these regressed the count by moving them
+    # unconditionally.
+    pos, nu = _outward(p0, fp, fixed_frac, w1)
+    placed = crowd_boxes + [label_box(pos, fixed_text, nu)]
     swing_text = "$" + opp + " = " + _disp(raw[opp]) + "$"
-    lines.append(_side_node(w1, fp, 0.45, p0, swing_text))
-    lines.append(_side_node(w2, fp, 0.30, p0, swing_text, extra_shift=3.0))
+    for p_from, frac0, shift0 in ((w1, 0.45, 0.0), (w2, 0.30, 3.0)):
+        frac = max((frac0,) + CANDS, key=lambda f: (
+            _clear(p_from, fp, f, p0, swing_text, placed) >= ROOMY,
+            _clear(p_from, fp, f, p0, swing_text, placed)))
+        spos, snu = _outward(p_from, fp, frac, p0)
+        shift = shift0 if shift0 else (7.0 if thin else 0.0)
+        # SLIDING ALONG THE SIDE IS NOT ALWAYS AVAILABLE. On a flat triangle the
+        # W2 side passes straight through the given angle's arc-label region, so
+        # every candidate fraction overlaps it and the search above returns the
+        # least-bad one — which still collides. Then the only free direction is
+        # OFF the side, along the normal the label is already offset on. Escalate
+        # that offset until the box clears, up to a bound past which the label
+        # stops reading as belonging to its own side.
+        while shift < 22.0:
+            box = (spos[0] + snu[0] * shift * PT_CM,
+                   spos[1] + snu[1] * shift * PT_CM)
+            if min(box_gap(label_box(box, swing_text, snu), o)
+                   for o in placed) >= ROOMY:
+                break
+            shift += 2.0
+        lines.append(_side_node(p_from, fp, frac, p0, swing_text,
+                                extra_shift=shift))
+        placed.append(label_box((spos[0] + snu[0] * shift * PT_CM,
+                                 spos[1] + snu[1] * shift * PT_CM),
+                                swing_text, snu))
     if base in solve_fors:
         lines.append(_side_node(p0, w1, 0.5, fp, "$" + base + " = ?$"))
     lines.append(_pic_at(n_p0, p0, (n_w1, w1), (n_f, fp),

@@ -110,81 +110,55 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
-- **KNOWN, PARTLY OPEN: the SSA figure crowds its labels, and the given angle
-  does NOT bound it.** Swept over 33 ambiguous-SSA geometries (A from 15 to 70
-  degrees, four side-ratio families), rendered and read with `check_overprint`:
-  **12 of 33 collided.** Halved to 6 by the fix below. What remains, and the
-  corrected diagnosis, are both worth reading before touching this again.
+- **The SSA figure's label crowding is largely CLOSED: 12 of 33 -> 3.** Swept
+  over 33 ambiguous-SSA geometries (A from 15 to 70 degrees, four side-ratio
+  families), rendered and read with `check_overprint`. Three fixes, in the
+  order they were measured:
+  1. **Vertex labels joined the crowd model** (they were in nobody's), and
+     `B_2` is pushed away from `A` once the two vertices are within
+     `CROWDED_VERTEX_CM`. 12 -> 6. Two vertex labels on each other was the
+     commonest fault, in 10 of the 12 — not the swing-side labels the note
+     used to blame.
+  2. **Vertex letters go along the outward angle BISECTOR** and stand off
+     along it. 6 -> 5, and it closed the apex adjacency the gate cannot see:
+     `26` against `C` went from -0.63pt (reading "b = 26C") to +0.67pt clear.
+  3. **Label boxes from CALIBRATED TeX METRICS.** 5 -> 3.
 
-  **The swing-side labels were never the main cause.** Earlier notes here said
-  the renderer computes the fixed side's position and leaves the swing sides at
-  flat fractions, so the swing sides were the thing to fix. The sweep says
-  otherwise — the 12 collisions were:
-  - **two VERTEX labels on each other** (`A` on `B_2`) — in 10 of the 12. `B_2`
-    slides toward `A` as the triangle thins and the direction-from-centroid
-    anchor then points its label down-LEFT, straight onto `A`.
-  - **a vertex label on a side label** (`C` on the `b = 26` it sits beside) —
-    63% overlap at A = 15, 51% at A = 20.
-  - **an arc label on a swing-side label** (`'?'` on `'310'`, 54%, at A = 44) —
-    the only case the old note described, and the least common.
+  **The metrics are the reason (3) worked where an earlier box model failed.**
+  Placement happens in Python before LaTeX runs, so widths cannot be asked for
+  at typeset time; the first attempt guessed them from a character count and
+  was 44% under on a single letter, which made the model worse than useless —
+  it computed clear paper exactly where the page had none, and extending it to
+  the swing labels took the count from 6 to 7. `\settowidth` on the shipped
+  preamble at `\small` gives the real numbers, and their structure is exactly
+  linear (a digit is 5.475pt standing alone or inside "1234"), so the shapes
+  this renderer emits are reproduced to better than a tenth of a point:
+  `$b = 26$` models 1.0632cm against 1.063cm measured off the page. With real
+  widths the same swing-label search that regressed the count now improves it.
+  `tests/test_ssa_figure_labels.py` re-derives the constants from a compile, so
+  a preamble font change fails loudly instead of quietly degrading placement.
 
-  Vertex labels were in nobody's crowd model: the fixed side's placement search
-  avoided the ARC labels and nothing else. That is the likeliest reason three
-  earlier attempts at "compute the swing placement" each made things worse
-  (collisions 0 of 15 → 4 → 7) — they moved the minority cause, into obstacles
-  the model could not see.
+  **Sliding along a side is not always available**, which is the other half of
+  (3): on a flat triangle the W2 side passes straight through the given angle's
+  arc-label region, so every candidate fraction overlaps and a
+  best-of-candidates search still emits a collision. The only free direction is
+  then OFF the side, so the normal offset escalates until the box clears, up to
+  a bound past which the label stops reading as belonging to its own side.
 
-  **Fixed:** vertex positions joined `crowd`, and `B_2`'s label is pushed away
-  from `A` along the base once the two vertices are within `CROWDED_VERTEX_CM`.
-  Above that gap nothing changes, so every already-clean figure is identical.
-  12 → 6, and the `A`/`B_2` collision is gone from the rendered page.
+  **Still open: 3 of 33**, all the angle-arc label against a side label
+  (`15` on `a` at two flat geometries, `=` on `?` at one). The arc label's
+  position is TikZ's — `angle radius=7mm, angle eccentricity=1.6` — so
+  clearing it means either shrinking the arc on thin figures or moving the side
+  label somewhere the geometry does not offer. Neither is free; both change
+  figures that are currently fine.
 
-  **Then the standard TikZ polygon-labelling idioms, which did close the
-  apex case.** Two changes, both measured:
-  - A vertex letter goes along the OUTWARD ANGLE BISECTOR of its own two
-    edges, not the direction from the centroid, and stands off along it
-    (`VERTEX_STANDOFF_PT`). The bisector is the one direction guaranteed to
-    lead away from both edges, so a stand-off along it cannot walk the label
-    back into the figure. Centroid direction fails precisely here: on a flat
-    triangle the centroid sits almost ON the base, so vertex A's outward
-    direction comes out nearly horizontal, pointing along the base at `B_2`.
-  - A thin figure's side labels stand further off their own side (2pt → 7pt).
-
-  Together: **6 of 33 → 5**, and — the part the gate cannot report — the
-  apex adjacency is gone. `26` against `C` went from **−0.63pt (overlapping,
-  reading as "b = 26C") to +0.67pt clear with 8.6pt of vertical daylight**;
-  A = 20 likewise, −0.41pt → +1.29pt. That is pinned by a test asserting the
-  measured GAP, since the verdict cannot express it.
-
-  **An ESTIMATED box model, by contrast, does nothing — recorded so the next
-  attempt skips it.** Giving every label a width and scoring positions
-  against boxes rather than points was built and measured:
-  - Fixed side scored against estimated boxes: **6 of 33, unchanged**, and
-    the rendered page byte-identical.
-  - The same search extended to the swing labels: **7 of 33 — worse.** That
-    is the fourth time moving the swing labels has made things worse.
-  - Why an estimate cannot work: character-count widths are far too coarse
-    here. Against `pdftotext -bbox`, `$b = 26$` estimates 0.930cm and
-    measures 1.063cm (12% under), but `$C$` estimates 0.155cm and measures
-    0.275cm — **44% under**. The model computes 0.44cm of clear paper
-    exactly where the page has none.
-
-  The lesson is that standoff geometry beat extent modelling: moving labels
-  reliably AWAY needs only a correct direction, while deciding whether they
-  FIT needs a width nobody has before typesetting.
-
-  **Still open:** five survivors, all the angle label against a side label
-  (`35` on `a`, `50°` on `a`) or the arc-on-swing-label case at A = 44. And
-  `check_overprint` still under-reports adjacency in general — a 45% overlap
-  rule cannot see two boxes that merely touch. Render an SSA page and look at
-  it; the gate's silence is not evidence.
-
-  A measurement warning, learned twice while producing the numbers above: a
-  geometric "label is within N cm of a drawn segment" proxy does NOT track
-  visible collision. It rates 22 of 33 figures faulty, including ones that are
-  clean on the page, because a side label lies on its own side by construction
-  and is offset away from it. Rendered word boxes are the measure; distance to
-  a path is not.
+  A measurement warning that cost two wrong readings: a geometric "label within
+  N cm of a drawn segment" proxy does NOT track visible collision. It rates 25
+  of 33 figures faulty including ones that are clean on the page, because a
+  side label lies on its own side by construction. Rendered word boxes are the
+  measure. And `check_overprint` under-reports adjacency in general — a 45%
+  overlap rule cannot see two boxes that merely touch — so render an SSA page
+  and look at it; the gate's silence is not evidence.
 
 - **A word answer inside `\ans{}` needs `\text{}` — a box is math mode.**
   `\ans{no solution}` reaches the student as "nosolution": it compiles clean and

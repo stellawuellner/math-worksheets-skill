@@ -173,9 +173,17 @@ SSA_MEASURED = (
 
 # The same two givens, as scripts/render_figures.py takes them, for the
 # end-to-end render below. A = 44 must flag; A = 15 must not.
+# A = 44 (a=310, b=400) was the case the KNOWN-OPEN note was written around:
+# the "?" arc at the swing apex landing on the "310" of its side label, 54%
+# overlap. It now RENDERS CLEAN, so asserting it still flags would be pinning
+# a defect rather than a capability. The overlap geometry itself is still
+# pinned above, from the boxes measured off the page it produced, because the
+# detector's ability to see that shape is what must not regress. What the
+# end-to-end probe checks now is that neither of the documented geometries
+# ships a collision.
 SSA_CASES = [
-    ({"A": 44, "a": 310, "b": 400}, True,
-     "A = 44 deg — label ON label at the swing apex, above the 'prefer A >= 30' bound"),
+    ({"A": 44, "a": 310, "b": 400}, False,
+     "A = 44 deg — was the swing-apex collision; the placement model now clears it"),
     ({"A": 15, "a": 30, "b": 20}, False,
      "A = 15 deg — label on the base PATH, which no word-box gate can see"),
 ]

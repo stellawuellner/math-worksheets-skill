@@ -249,6 +249,131 @@ check("a unit macro beside a number is fine",
 check("a polynomial is not prose", lost_spaces("y = 2x + 3") == [])
 
 print()
+print("The JSON's SHAPE must not decide whether an answer is symbolic:")
+# `verify.py` accepts "18 - 3*x/2" and ["18 - 3*x/2"] identically, and
+# `--schema` prints the LIST form for `solve`. The old test read the top level
+# only — isinstance(expected, str) — so the list form was "not symbolic", the
+# magnitude branch never ran, and a key boxing y = -3/2 x + 18 tokenised to
+# {-1.5, 18} against JSON numbers {18, 3, 2}. Eight binding failures on one
+# recorded sheet, every one reading "the boxed value is wrong" at a correct
+# answer key; unwrapping the list in the JSON cleared all eight without
+# touching the key. That is a gate asking an author to edit verified data.
+_LINE_BARE = [{"id": 1, "type": "solve", "equation": "Eq(3*x/2 + y, 18)",
+               "var": "y", "expected": "18 - 3*x/2"}]
+_LINE_LIST = [{"id": 1, "type": "solve", "equation": "Eq(3*x/2 + y, 18)",
+               "var": "y", "expected": ["18 - 3*x/2"]}]
+_KEY = r"\problem{$y = \ans{-\tfrac{3}{2}x + 18}$}"
+
+check("the bare-string form binds (it always did)", binds(_LINE_BARE, _KEY))
+check("the LIST form binds too — same mathematics, same verdict",
+      binds(_LINE_LIST, _KEY))
+# The widening must not swallow a real error in either form.
+check("a wrong intercept still fails in the list form",
+      not binds(_LINE_LIST, r"\problem{$y = \ans{-\tfrac{3}{2}x + 19}$}"))
+check("a wrong slope still fails in the list form",
+      not binds(_LINE_LIST, r"\problem{$y = \ans{-\tfrac{5}{2}x + 18}$}"))
+# The walk goes to any depth, the way json_expected_nums already does.
+check("a dict-valued expected is read the same way",
+      binds([{"id": 1, "type": "system", "equations": ["Eq(y, 2*t)"],
+              "vars": ["y"], "expected": {"y": "2*t"}}],
+            r"\problem{$y = \ans{2t}$}"))
+# ...and a list of purely NUMERIC strings stays non-symbolic, so strict sign
+# still holds where a sign error IS the wrong answer.
+_ROOTS = [{"id": 1, "type": "solve", "equation": "Eq(x**2 - 49, 0)",
+           "var": "x", "expected": [7, -7]}]
+check("a numeric solution set still rejects a key that boxes one sign only",
+      not binds(_ROOTS, r"\problem{$x = \ans{7}$}"))
+
+print()
+print("\\pm prints BOTH signs, so a box holding it offers both values:")
+# ["7*I", "-7*I"] boxed as \ans{x = \pm 7i} failed with "verified value -7 is
+# boxed as 7 without its sign" — a sign complaint against the one notation that
+# prints both signs. The symbolic fix above covers the complex case by
+# magnitude; the REAL case keeps strict sign, so \pm has to be readable or the
+# false failure is unavoidable.
+_COMPLEX = [{"id": 1, "type": "solve", "equation": "Eq(x**2 + 49, 0)",
+             "var": "x", "expected": ["7*I", "-7*I"]}]
+check("a complex solution set binds to \\pm", binds(_COMPLEX, r"\problem{$x = \ans{\pm 7i}$}"))
+check("the spelled-out form binds too",
+      binds(_COMPLEX, r"\problem{$x = \ans{7i \text{ or } -7i}$}"))
+check("a real solution set binds to \\pm", binds(_ROOTS, r"\problem{$x = \ans{\pm 7}$}"))
+check("a \\pm fraction binds both readings",
+      binds([{"id": 1, "type": "solve", "equation": "Eq(4*x**2 - 9, 0)",
+              "var": "x", "expected": [1.5, -1.5]}],
+            r"\problem{$x = \ans{\pm\tfrac{3}{2}}$}"))
+check("\\pm does not excuse a wrong magnitude",
+      not binds(_ROOTS, r"\problem{$x = \ans{\pm 8}$}"))
+# A ± PAIR IS TWO ANSWERS. Magnitude matching would otherwise let a key print
+# either root and pass: on the complex set above, changing the boxed 7i to 0i
+# left the surviving -7i covering for it. Measured on the 600 recorded keys —
+# a flat magnitude collapse lost 17 planted defects, all of this shape.
+check("a solution set must print BOTH roots, not one of them",
+      not binds(_COMPLEX, r"\problem{$x = \ans{0i \text{ or } x = -7i}$}"))
+code, out = bind_msg(_COMPLEX, r"\problem{$x = \ans{7i}$}")
+check("a half-printed solution set is named as a ± pair, not a wrong value",
+      code == 1 and "± pair" in out and "only one sign is boxed" in out)
+# ...but "the merged values happen to hold both signs" is NOT a ± pair. Both of
+# these are real recorded entries that the merged-set reading false-failed.
+check("a single expression yielding both signs is not a ± pair",
+      binds([{"id": 1, "type": "diff", "expr": "sqrt(25 - x**2)", "order": 2,
+              "expected": "-25/(25 - x**2)**(3/2)"}],
+            r"\problem{$\ans{-\dfrac{25}{(25-x^2)^{3/2}}}$}"))
+check("two entries that happen to disagree in sign are not a ± pair",
+      binds([{"id": 1, "type": "equiv", "expr": "2*x + 8", "expected": "2*(x + 4)"},
+             {"id": 1, "type": "solve", "expr": "2*x + 8", "var": "x",
+              "expected": [-4]}],
+            r"\problem{$\ans{2(x + 4)}$, $x = \ans{-4}$}"))
+
+print()
+print("Interval bookkeeping is not algebra:")
+# `inequality` stores its answer as ["-oo", 18, "loopen"], and every one of
+# those markers contains a letter. Reading them as "this answer is an
+# expression" switches the boundary to magnitude matching — and an inequality's
+# boundary sign IS its answer: b <= 18 and b <= -18 are different answers.
+# Measured: counting them as symbolic lost 14 planted sign defects across the
+# 600 keys and 600 study guides, every one an inequality.
+_INEQ = [{"id": 1, "type": "inequality", "expr": "25*b - 450", "relation": "<=",
+          "var": "b", "expected": ["-oo", 18, "loopen"]}]
+check("a correct inequality boundary binds", binds(_INEQ, r"\problem{$\ans{b \leq 18}$}"))
+check("a flipped boundary sign is still caught",
+      not binds(_INEQ, r"\problem{$\ans{b \leq -18}$}"))
+
+print()
+print("An `equiv` answer is an EXPRESSION, and is reported as one:")
+# expected "(x-4)**2 + (y+1)**2 - 25" boxed as \ans{25} produced THREE faults
+# reading "verified value 1 ... 2 ... 4 is in the worked steps but NOT in the
+# box — the boxed value is wrong". The boxed value was not wrong; the rule is
+# that the whole rewritten form goes in the box. The author hunts an arithmetic
+# error that does not exist, once per literal.
+_EQUIV = [{"id": 1, "type": "equiv", "expr": "x**2 - 8*x + y**2 + 2*y - 8",
+           "expected": "(x-4)**2 + (y+1)**2 - 25"}]
+
+code, out = bind_msg(_EQUIV, r"\problem{Complete the square. $r^2 = \ans{25}$}")
+check("a part-boxed equiv answer still fails", code == 1)
+check("the message names the TYPE, not a wrong value",
+      '"equiv"' in out and "EXPRESSION, not a value" in out)
+check("it teaches the actual rule — box the whole rewritten form",
+      "rewritten form" in out)
+check("it does not accuse the box of holding a wrong value",
+      "the boxed value is wrong" not in out)
+check("one fault for the entry, not one per literal in the expression",
+      out.count("❌ problem 1") == 1 and "1 binding failure" in out)
+check("a correctly boxed rewritten form passes",
+      binds(_EQUIV, r"\problem{$\ans{(x-4)^2 + (y+1)^2 = 25}$}"))
+check("a dropped constant in the rewritten form still fails",
+      not binds(_EQUIV, r"\problem{$\ans{(x-4)^2 + (y+1)^2 = 16}$}"))
+check("a wrong centre in the rewritten form still fails",
+      not binds(_EQUIV, r"\problem{$\ans{(x-3)^2 + (y+1)^2 = 25}$}"))
+# A value another entry also claims keeps the ordinary diagnosis: the equiv
+# rewording must not swallow a genuine numeric miss sitting beside it.
+_MIXED_ENTRY = _EQUIV + [{"id": 1, "type": "approx", "expr": "sqrt(25)",
+                          "expected": 5}]
+code, out = bind_msg(_MIXED_ENTRY,
+                     r"\problem{$\ans{(x-4)^2 + (y+1)^2 = 25}$, $r = \ans{9}$}")
+check("a numeric answer beside an equiv answer is still diagnosed numerically",
+      code == 1 and "verified value 5" in out)
+
+print()
 if FAILS:
     print(f"❌ {len(FAILS)} binding test(s) failed")
     sys.exit(1)

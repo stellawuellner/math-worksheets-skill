@@ -1218,6 +1218,266 @@ if shutil.which("pdftotext"):
 else:
     print("  skip  pdftotext is not available")
 
+# ── A calibration run must be scored by ONE judge model ─────────────────────
+# The first seeded-defect calibration split its 25 verdicts across two models,
+# 9 by gpt-5 and 16 by gpt-5.6-sol, and the split was uneven BY DEFECT CLASS:
+# all five ramp-inversions went to one model, four of five vague-rubrics to the
+# other. Every per-class rate it produced was therefore an estimate over 4-5
+# cases from a mixed instrument, measuring neither model. That is a property of
+# the run, so seed_defects.py stamps calibration=true into run.json and scoring
+# refuses rather than leaving it to whoever reads the report later.
+print("\ncalibration runs need one instrument:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    dump(temp / "suite.json", {"suite": {"name": "t"}, "judge_protocol": SE_DIMS})
+    run_dir = temp / "runs" / "cal-t"
+    for tid in ("c-001", "c-002"):
+        td = run_dir / "tasks" / tid
+        td.mkdir(parents=True)
+        dump(td / "task.json", {"id": tid, "band": "b", "domain": "d"})
+        dump(td / "verify.json", {"topic": "t", "problem_count": 1,
+                                  "problems": [{"id": 1, "type": "eval",
+                                                "expr": "20+7", "expected": 27}]})
+        (td / "worksheet.tex").write_text(
+            "\\problem[2cm]{Add 20 + 7.\\ansline}\n", encoding="utf-8")
+        mk_pdf(td / "answer_key.pdf",
+               ["Quick Answers", "", "1. 27", "", "Worked Solutions"])
+
+    def write_run(calibration, models):
+        dump(run_dir / "run.json", dict(
+            run_id="cal-t", suite="t", suite_file="suite.json", shard="t",
+            repo_commit="deadbeef",
+            generator={"agent": "gen", "model": "gen-model"},
+            task_ids=["c-001", "c-002"],
+            **({"calibration": True} if calibration else {})))
+        vd = run_dir / "verdicts"
+        vd.mkdir(exist_ok=True)
+        for tid, model in zip(("c-001", "c-002"), models):
+            dump(vd / f"{tid}.json", se_verdict(
+                tid, judge={"agent": "test-judge", "model": model}))
+
+    def run_scoring(*argv):
+        original = se.ROOT, se.RUNS
+        se.ROOT, se.RUNS = str(temp), str(temp / "runs")
+        try:
+            return se.main(["--run", "cal-t", *argv])
+        finally:
+            se.ROOT, se.RUNS = original
+
+    write_run(True, ("judge-a", "judge-b"))
+    check("a calibration run judged by two models is refused", run_scoring() == 1)
+    check("--allow-mixed-judges scores it anyway, deliberately",
+          run_scoring("--allow-mixed-judges") == 0)
+
+    write_run(True, ("judge-a", "judge-a"))
+    check("one model across every verdict scores normally", run_scoring() == 0)
+
+    # Ordinary runs are NOT blocked: a 300-case acceptance run split across
+    # three graders is how run 2 was judged, and its headline is an aggregate,
+    # not a per-class rate. The flag exists for the case that needs it.
+    write_run(False, ("judge-a", "judge-b"))
+    check("a NON-calibration run with two models is reported, not blocked",
+          run_scoring() == 0)
+    check("--require-single-judge blocks it on demand",
+          run_scoring("--require-single-judge") == 1)
+
+
+# ── The finding emitters, lit deliberately ──────────────────────────────────
+# prepare_task carries ~15 findings.append(...) branches for defective inputs,
+# and the suite above exercised almost none of them: every fixture case was
+# well-formed. An emitter that has never run can emit garbage silently, and
+# these findings feed the judge packet and the machine cross-check table — the
+# things the whole scoring pipeline is trusted for. One "defect zoo" case
+# lights the independent ones together; conflicting defects get their own case.
+print("\nDefect-zoo prepare (each emitter fires and is well-formed):")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    suite_path = temp / "suite.json"
+    tiny_suite(suite_path)
+    run_dir = temp / "run"
+    case = create_case(run_dir)
+
+    # (a) declared problem_count disagrees with the task expectation
+    bad_verify = json.loads((case / "verify_worksheet.json").read_text())
+    bad_verify["problem_count"] = 6
+    dump(case / "verify_worksheet.json", bad_verify)
+    # (b) the study guide overruns the eval prompt's 1-2 pages
+    # (c) worksheet text extraction misses problem numbers
+    def zoo_inspector(path, role, rendered_dir, render_dpi):
+        info, findings = fake_pdf_inspector(path, role, rendered_dir, render_dpi)
+        if role == "study_guide":
+            info["page_count"] = 3
+            info["page_text_character_counts"] = [64] * 3
+        if role == "student_worksheet":
+            info["extracted_text"] = "1. problem\n2. problem\n7. problem"
+        return info, findings
+    # (d) the delivery message surfaces nothing by name
+    (case / "final_response.md").write_text("All done!", encoding="utf-8")
+    # (e) the gate log records a failure
+    (case / "gate.log").write_text(
+        "gate summary\n❌ BUILD FAILED — gate: compile-ws\n", encoding="utf-8")
+
+    grading = temp / "grading"
+    score.prepare_run(suite_path, run_dir, grading, rerun=False,
+                      pdf_inspector=zoo_inspector)
+    machine = json.loads(
+        (grading / "tasks" / "curr-001" / "machine.json").read_text())
+    kinds = {f["code"] for f in machine["findings"]}
+    for kind in ("worksheet_count_mismatch", "study_guide_page_count"):
+        check(f"defect zoo fires {kind}", kind in kinds, sorted(kinds))
+    check("the missing problem-number sequence demands visual confirmation",
+          "problem_count_needs_visual_confirmation" in kinds, sorted(kinds))
+    check("an unsurfaced artifact is recorded, not credited",
+          any(v.get("basis") != "declared_filename"
+              for v in machine["artifact_surfacing"].values()),
+          repr(machine.get("artifact_surfacing")))
+    check("the failed gate chain lands in the hard failures",
+          machine["machine_hard_failures"], "expected at least one")
+    check("every fired finding is well-formed (code/severity/message)",
+          all(f.get("code") and f.get("severity") and f.get("message")
+              for f in machine["findings"]),
+          repr(machine["findings"][:2]))
+
+print("\nMissing and duplicate artifacts:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    suite_path = temp / "suite.json"
+    tiny_suite(suite_path)
+    run_dir = temp / "run"
+    case = create_case(run_dir)
+    (case / "study_guide.pdf").unlink()          # a required PDF is absent
+    (case / "verify_worksheet.json").write_text("{not json", encoding="utf-8")
+    grading = temp / "grading"
+    score.prepare_run(suite_path, run_dir, grading, rerun=False,
+                      pdf_inspector=fake_pdf_inspector)
+    machine = json.loads(
+        (grading / "tasks" / "curr-001" / "machine.json").read_text())
+    kinds = {f["code"] for f in machine["findings"]}
+    check("a missing required PDF is a hard finding",
+          any("missing" in k for k in kinds), sorted(kinds))
+    check("an unparsable verify.json is a finding, not a crash",
+          any("verification" in k or "json" in k for k in kinds), sorted(kinds))
+    check("both land in machine_hard_failures",
+          len(machine["machine_hard_failures"]) >= 1)
+
+
+# ── Verdict validation refusals + the CLI door ──────────────────────────────
+# The aggregate step's verdict validator is the wall between a sloppy judge
+# and the report; its refusal branches were dark. Each malformed verdict must
+# be NAMED in the aggregate errors, not averaged in.
+print("\nMalformed verdicts are named, not averaged:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    suite_path = temp / "suite.json"
+    tiny_suite(suite_path)
+    run_dir = temp / "run"
+    create_case(run_dir)
+    grading = temp / "grading"
+    score.prepare_run(suite_path, run_dir, grading, rerun=False,
+                      pdf_inspector=fake_pdf_inspector)
+    task_dir = grading / "tasks" / "curr-001"
+
+    def aggregate_with(tag, **mutations):
+        verdict = completed_verdict(task_dir / "verdict.template.json")
+        verdict.update(mutations)
+        dump(task_dir / "verdict.json", verdict)
+        results = temp / f"results-{tag}"
+        rc = score.aggregate_run(grading, results, require_complete=True)
+        summary = json.loads((results / "summary.json").read_text())
+        # the invalid_verdicts block is the named record; a malformed verdict
+        # must land there, per task, with the field named in its errors
+        errs = " ".join(
+            e for item in summary.get("invalid_verdicts", [])
+            for e in item.get("errors", []))
+        return rc, errs
+
+    rc, errs = aggregate_with("hf", hard_failures="not a list")
+    check("hard_failures that is not a list is refused by name",
+          rc != 0 and "hard_failures" in errs, errs[:120])
+    rc, errs = aggregate_with("mir", manual_items_reviewed=-3)
+    check("a negative manual_items_reviewed is refused by name",
+          rc != 0 and "manual_items_reviewed" in errs, errs[:120])
+    rc, errs = aggregate_with("tot", total_score=99)
+    check("a total that is not the sum is refused by name",
+          rc != 0 and "total_score" in errs, errs[:120])
+    rc, errs = aggregate_with("rat", rationale="   ")
+    check("a blank rationale is refused by name",
+          rc != 0 and "rationale" in errs, errs[:120])
+    rc, errs = aggregate_with("af", artifact_findings=[""])
+    check("empty artifact_findings entries are refused by name",
+          rc != 0 and "artifact_findings" in errs, errs[:120])
+    rc, errs = aggregate_with("dim", dimension_scores={"only": 4},
+                              total_score=None)
+    check("wrong dimension set is refused by name",
+          rc != 0 and "dimension_scores" in errs, errs[:120])
+
+print("\nThe scoring CLI door:")
+import contextlib as _ctx
+import io as _io
+
+
+def cli(*argv):
+    out, err = _io.StringIO(), _io.StringIO()
+    with _ctx.redirect_stdout(out), _ctx.redirect_stderr(err):
+        rc = score.main(list(argv))
+    return rc, out.getvalue() + err.getvalue()
+
+
+rc, text = cli("prepare", "--suite", "/no/suite.json", "--run-dir", "/no/run",
+               "--output-dir", "/no/out", "--render-dpi", "500")
+check("an out-of-range --render-dpi is a named harness error, exit 2",
+      rc == 2 and "render-dpi" in text)
+rc, text = cli("aggregate", "--grading-dir", "/no/grading",
+               "--output-dir", "/no/out")
+check("aggregate over a missing grading dir is a harness error, not a crash",
+      rc == 2 and "error" in text.lower())
+
+
+# ── The REAL pdf inspector, on a real PDF ───────────────────────────────────
+# Every prepare test above injects fake_pdf_inspector, so inspect_pdf itself —
+# the function that actually reads pdftotext/pdftoppm output in production —
+# had never run under test. mk_pdf writes a genuine (minimal) PDF, so the real
+# inspector can be exercised wherever poppler exists.
+if shutil.which("pdftotext") and shutil.which("pdftoppm"):
+    print("\nReal inspect_pdf:")
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        pdf = temp / "ws.pdf"
+        mk_pdf(pdf, ["1. problem", "2. problem", "Answer: ____"])
+        info, findings = score.inspect_pdf(
+            pdf, "student_worksheet", temp / "rendered", 72)
+        check("the real inspector reads the page count",
+              info.get("page_count") == 1, repr(info)[:200])
+        check("and extracts the text it will be judged on",
+              "1. problem" in info.get("extracted_text", ""))
+        check("and renders at least one page image",
+              info.get("rendered_pages"), repr(findings))
+        # a corrupt PDF must produce findings, not an exception
+        bad = temp / "bad.pdf"
+        bad.write_bytes(b"this is not a pdf at all")
+        try:
+            info2, findings2 = score.inspect_pdf(
+                bad, "study_guide", temp / "rendered2", 72)
+            check("a corrupt PDF yields findings, not a crash",
+                  findings2 or not info2.get("page_count"),
+                  repr((info2, findings2))[:200])
+        except Exception as exc:  # noqa: BLE001
+            check("a corrupt PDF yields findings, not a crash", False,
+                  f"{type(exc).__name__}: {exc}")
+
+print("\nThe CLI prepare door, happy path:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    tiny_suite(temp / "suite.json")
+    create_case(temp / "run")
+    rc, text = cli("prepare", "--suite", str(temp / "suite.json"),
+                   "--run-dir", str(temp / "run"),
+                   "--output-dir", str(temp / "grading"),
+                   "--no-rerun-verifier")
+    check("main() prepare exits 0 and reports the packet",
+          rc == 0 and (temp / "grading" / "tasks" / "curr-001"
+                       / "judge-packet.json").is_file(), text[-200:])
+
 if FAILS:
     print(f"\nFAIL: {len(FAILS)} scoring-harness check(s)")
     for failure in FAILS:

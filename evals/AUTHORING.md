@@ -110,34 +110,55 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
-- **KNOWN, OPEN: the SSA swing figure mislays its swing-side labels, and the
-  given angle does NOT bound the defect.** The renderer computes the FIXED
-  side's label position and still places the two swing-side labels at flat
-  fractions, so where they land moves with the whole shape of the triangle.
-  There are two collisions, and they behave differently at the gate:
-  - **Label over the base LINE**, on a flat triangle: with A small the swing
-    side is nearly parallel to the base and its `a = N` label lands on it. No
-    gate sees this one — `check_overprint` reads word boxes, and a label over a
-    TikZ path leaves nothing to overlap. Confirmed on rendered pages at
-    (15,30,20), (15,26,25) and (25,40,27).
-  - **Label over another LABEL**, at the swing apex: the `?` arc label lands on
-    the `a = N` label. `check_overprint` DOES catch this one, and hard-fails the
-    build. Reproduced at `a=310, b=400, A=44`, which reports
-    `'?' and '310' overlap by 54% of the smaller`.
+- **The SSA figure's label crowding is largely CLOSED: 12 of 33 -> 3.** Swept
+  over 33 ambiguous-SSA geometries (A from 15 to 70 degrees, four side-ratio
+  families), rendered and read with `check_overprint`. Three fixes, in the
+  order they were measured:
+  1. **Vertex labels joined the crowd model** (they were in nobody's), and
+     `B_2` is pushed away from `A` once the two vertices are within
+     `CROWDED_VERTEX_CM`. 12 -> 6. Two vertex labels on each other was the
+     commonest fault, in 10 of the 12 — not the swing-side labels the note
+     used to blame.
+  2. **Vertex letters go along the outward angle BISECTOR** and stand off
+     along it. 6 -> 5, and it closed the apex adjacency the gate cannot see:
+     `26` against `C` went from -0.63pt (reading "b = 26C") to +0.67pt clear.
+  3. **Label boxes from CALIBRATED TeX METRICS.** 5 -> 3.
 
-  An earlier version of this note said the defect is avoided by preferring
-  A >= 30 degrees. That is WRONG and was removed: 44 degrees is well above the
-  threshold and still collides, while the same sides at A = 30, 35 and 50 are
-  clean. The angle alone does not predict it. Render a page and look at it; if
-  the overprint gate names `'?'` against a side length, the figure is the cause
-  and different givens are the only lever you have.
+  **The metrics are the reason (3) worked where an earlier box model failed.**
+  Placement happens in Python before LaTeX runs, so widths cannot be asked for
+  at typeset time; the first attempt guessed them from a character count and
+  was 44% under on a single letter, which made the model worse than useless —
+  it computed clear paper exactly where the page had none, and extending it to
+  the swing labels took the count from 6 to 7. `\settowidth` on the shipped
+  preamble at `\small` gives the real numbers, and their structure is exactly
+  linear (a digit is 5.475pt standing alone or inside "1234"), so the shapes
+  this renderer emits are reproduced to better than a tenth of a point:
+  `$b = 26$` models 1.0632cm against 1.063cm measured off the page. With real
+  widths the same swing-label search that regressed the count now improves it.
+  `tests/test_ssa_figure_labels.py` re-derives the constants from a compile, so
+  a preamble font change fails loudly instead of quietly degrading placement.
 
-  Three attempts to fix it by computing the swing placement each made things
-  worse — they pushed labels into the arc labels, which IS gated, taking
-  collisions from 0 of 15 to 4 and then 7. The fixed-side computation stands;
-  the swing sides need a placement model validated against what \_side_node
-  actually does with its anchor and shift, which is the work that has not
-  been done.
+  **Sliding along a side is not always available**, which is the other half of
+  (3): on a flat triangle the W2 side passes straight through the given angle's
+  arc-label region, so every candidate fraction overlaps and a
+  best-of-candidates search still emits a collision. The only free direction is
+  then OFF the side, so the normal offset escalates until the box clears, up to
+  a bound past which the label stops reading as belonging to its own side.
+
+  **Still open: 3 of 33**, all the angle-arc label against a side label
+  (`15` on `a` at two flat geometries, `=` on `?` at one). The arc label's
+  position is TikZ's — `angle radius=7mm, angle eccentricity=1.6` — so
+  clearing it means either shrinking the arc on thin figures or moving the side
+  label somewhere the geometry does not offer. Neither is free; both change
+  figures that are currently fine.
+
+  A measurement warning that cost two wrong readings: a geometric "label within
+  N cm of a drawn segment" proxy does NOT track visible collision. It rates 25
+  of 33 figures faulty including ones that are clean on the page, because a
+  side label lies on its own side by construction. Rendered word boxes are the
+  measure. And `check_overprint` under-reports adjacency in general — a 45%
+  overlap rule cannot see two boxes that merely touch — so render an SSA page
+  and look at it; the gate's silence is not evidence.
 
 - **A word answer inside `\ans{}` needs `\text{}` — a box is math mode.**
   `\ans{no solution}` reaches the student as "nosolution": it compiles clean and
@@ -523,10 +544,83 @@ could actually learn the skill from rather than a formula dump.
 - **Stale-rubric lint (hard fail).** A `manual` desc that names a person or
   thing absent from its printed problem fails. Write the desc against the stem
   you actually shipped, not the draft you started from.
-- **The Quick Answers bank now has three states** (value / `---` for
+- **The Quick Answers bank now has three states** (value / `$\spadesuit$` for
   instructor-judged / `[unchecked]`), a "What is verified" tally, and it
   preserves your written form (`9/12` stays `9/12`, factored stays factored).
   Relations print as relations. If your bank row looks wrong, fix the JSON —
   the bank is generated, and it now agrees with the slot gate by construction.
 - **Multi-entry ids: give each entry a `"slot"` label** ("AC", "the ones
   digit", "(b)") so the bank can say which value answers which question.
+
+## New gates and capabilities since 2026-08-08 — build against these too
+
+- **Slot-form lint (`answer-slots-ws`, hard fail).** A slot label is a promise
+  about the FORM of its value, and three narrow rules now hold you to it, each
+  measured 100%-precise over 2953 slotted entries before shipping:
+  - A slot whose **head noun is "equation"** must have `=` in its value. The
+    defect it catches shipped twice: a bank row reading `the equation = 6` where
+    the student writes `y = 6x` and the check verified the slope. Fix it by
+    keying the equation itself — see the equiv equation form below — or by
+    renaming the slot to what the check actually verifies. Slots naming a *part*
+    of an equation are exempt and correct: "both solutions **of the** equation",
+    "right-hand side of the equation", "equation **value** at 4", "litres
+    **from the** equation".
+  - A **`colon form`** slot must contain `:`, and a **`word form`** slot must
+    contain a word. These name transcriptions the expression grammar cannot
+    hold (`3:5`, "three fifths"). Declare that response `manual` with the
+    printed form in the desc and let the fraction-form entry carry the machine
+    check. One shipped sheet gave `word form` / `colon form` / `fraction form`
+    all the identical value `3/5`, so two of its three printed answers were
+    wrong for the label above them.
+- **`equiv` accepts an equation.** Where the student's answer IS an equation,
+  write it as one — `"expr": "y - 6*x"`, `"expected": "y = 6*x"`, or
+  `"expected": "(x-3)**2 + (y+5)**2 = 25"` — and the check compares `lhs - rhs`
+  exactly as before. Use it whenever the ask is "write it in ⟨form⟩" for a
+  locus. Before this existed the only way to key such a problem was to verify
+  some component of it and label the slot as the whole, which is the defect
+  above.
+- **Decimal comparison is scale-aware, so stop rewriting the mathematics.**
+  A decimal literal on either side is compared at the precision the expected
+  value is *written* to. Five separate authors in the 300-case review changed
+  correct mathematics to satisfy exact float comparison — `9.4−0.4x` became
+  `9.5−0.5x`, the physical constant `4.9t²` became `5t²`. Write the numbers the
+  problem calls for. Two exact values are still compared exactly.
+- **Use the figure HOUSE STYLES before raw TikZ** (`references/latex-templates.md`
+  → "Figure house style"). The preamble ships `wsgrid`/`wsgridwide`/`wsgridq1`/
+  `wstrig`/`wsfuntall` for graphs, `wsbar`/`wshist`/`wsboxplot`/`wsboxplot pair`/
+  `\wsdotplot`/`wsstemleaf`/`\wspictorow` for data displays, and
+  `figure-macros.tex` ships the geometry marks, solids-with-nets and the K-4
+  model set (`\tenframefig`, `\arrayfig`, `\basetenfig`, `\clockfig`,
+  `\fraclinefig`, `\tapefig`, `\coinrowfig`, …). Four rendered-page reviews found
+  the raw-TikZ route producing grids with no gridline at any odd integer on the
+  sheet whose job is plotting integer points, bar charts printing each bar's
+  value and answering their own `read_data` question, solids overprinting their
+  own labels, and a fraction comparison distinguishing two points by red vs blue
+  — two identical dots after photocopying. Below grade 5 there were essentially
+  no templates, so every K-4 sheet hand-rolled its models. The styles encode all
+  of that once.
+- **The box-plot quartile trap, which no gate can see.** Hand pgfplots raw data
+  and it computes quartiles by an interpolating convention; `verify.py`'s `stats`
+  type uses school median-of-halves. On `[4, 6, 7, 9, 11, 12, 18]` verify says
+  median 9, q1 6, q3 12 while pgfplots draws median 8 with a box from 5 to 11.5.
+  The sheet would print a figure contradicting its own answer key and every gate
+  would stay green — nothing reads inside a plot. Declare the five-number
+  summary as `stats` entries and pass those values with `boxplot prepared`.
+- **Figures are space-generous by policy.** Budget `workspace_cm` for the
+  style's natural size rather than scaling the figure down. The page budget is
+  computed from the problem set, not capped at a flat number, so a sheet that
+  genuinely needs the pages is allowed them — reduce the PROBLEM COUNT if the
+  total is more than intended, never the work space.
+
+## Answer-key layout since 2026-08-08 (v3.6)
+
+- The key reads: header → Quick Answers → worked solutions → a FINAL page
+  carrying "Verification & Curriculum Summary" (what-is-verified, curriculum,
+  common wrong answers). The generated bank emits that page via
+  `\AtEndDocument`; you write nothing extra, and the single
+  `\input{qa_...}` contract is unchanged.
+- The hand-judged mark is `$\spadesuit$`, not `---`. The dash sat one glyph
+  from a minus sign; the spade appears nowhere else, so it carries one
+  meaning. The legend on the summary page explains it.
+- `\akheader` gives the key rubber inter-problem space and \raggedbottom.
+  Do not fight it with hand \vspace between problems.

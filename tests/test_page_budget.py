@@ -98,7 +98,11 @@ try:
     check("--max-pages prints only the ceiling", rc == 0 and out.strip() == "3" and not err)
 
     rc, out, err = run_main([path, "--doc", "ak", "--max-pages"])
-    check("answer-key ceiling has its own formula", rc == 0 and out.strip() == "3")
+    # +1 since v3.6: the generated bank claims the key's LAST page for the
+    # verification/curriculum summary (\AtEndDocument\clearpage), so every
+    # ak ceiling carries one page the solutions themselves never fill.
+    check("answer-key ceiling has its own formula (+1 summary page)",
+          rc == 0 and out.strip() == "4")
 
     rc, out, err = run_main([path, "--paper", "A4"])
     check("paper names are case-insensitive", rc == 0 and "(ws, a4)" in out)

@@ -14,6 +14,9 @@ So this pins:
     and punctuation kerning into its neighbour
   - a FIGURE LABEL printed on top of another figure label is caught, and the
     innocent same-column stacks it must not be confused with stay silent
+  - the AMBIGUOUS-SSA coverage boundary, in both directions: the label-over-
+    label collision at the swing apex is caught, and the label-over-PATH one at
+    a flat angle is not (see SSA_MEASURED and the SSA section of main())
 
 Calibration record: across 450 PDFs this repository had already produced and
 gated, the tuned detector fires on exactly one, and that one has a genuine
@@ -47,6 +50,7 @@ both confirmed by eye. Before it, the detector fired on none of them.
 
 Requires pdflatex/tectonic and pdftotext; skips cleanly without them.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -143,6 +147,50 @@ GEOMETRY = [
 ]
 
 
+# ── the ambiguous-SSA coverage boundary ──────────────────────────────────────
+# evals/AUTHORING.md carries a KNOWN-OPEN note saying the SSA swing label defect
+# is ungated and is bounded by "prefer A >= 30 degrees on ambiguous-SSA
+# problems". An author hit a genuine collision at A = 44 degrees, so neither
+# half holds. Re-measured here by rendering:
+#
+#   A = 44, a = 310, b = 400   the "?" arc label at the near apex B_2 lands on
+#                              the "0" of the swing side's "a = 310" label. Two
+#                              WORD boxes, 54% overlap of the smaller — above
+#                              the 0.45 prose threshold, so the ORDINARY rule
+#                              catches it. Confirmed by rendering the page to
+#                              PNG: the label reads "a = 310?".
+#   A = 15/25 (the AUTHORING.md cases)  the swing label lands on the BASE LINE,
+#                              a TikZ path. No second word box exists, so this
+#                              gate is silent — correctly, and permanently.
+#
+# The two look identical on the page and are opposite here. That is the fact
+# the docs have to state, and it is what these boxes pin. Copied verbatim from
+# `pdftotext -bbox` on the rendered probe.
+SSA_MEASURED = (
+    (320.917828, 229.391085, 337.281478, 239.078365, "310"),
+    (334.368, 229.011085, 339.519277, 238.698365, "?"),
+)
+
+# The same two givens, as scripts/render_figures.py takes them, for the
+# end-to-end render below. A = 44 must flag; A = 15 must not.
+# A = 44 (a=310, b=400) was the case the KNOWN-OPEN note was written around:
+# the "?" arc at the swing apex landing on the "310" of its side label, 54%
+# overlap. It now RENDERS CLEAN, so asserting it still flags would be pinning
+# a defect rather than a capability. The overlap geometry itself is still
+# pinned above, from the boxes measured off the page it produced, because the
+# detector's ability to see that shape is what must not regress. What the
+# end-to-end probe checks now is that neither of the documented geometries
+# ships a collision.
+SSA_CASES = [
+    ({"A": 44, "a": 310, "b": 400}, False,
+     "A = 44 deg — was the swing-apex collision; the placement model now clears it"),
+    ({"A": 15, "a": 30, "b": 20}, False,
+     "A = 15 deg — label on the base PATH, which no word-box gate can see"),
+]
+
+SSA_DOC_HEAD = HEAD + "\\input{figs_ssa.tex}\n"
+
+
 def check(label, cond, detail=""):
     print(f"  {'✅' if cond else '❌'} {label}")
     if not cond:
@@ -169,6 +217,40 @@ def faults(pdf):
     for w, h, words in op.words_by_page(pdf):
         out += op.page_faults(w, h, words, op.OVERLAP)
     return out
+
+
+def ssa_probe(given, workdir, name):
+    r"""Render ONE ambiguous-SSA swing figure from its givens and compile it.
+
+    The figure is built by scripts/render_figures.py from the same `given` dict
+    verify.py checks, so this probe is the real renderer's output rather than a
+    hand-placed imitation of it — the point is what authors actually get.
+    Returns the PDF path, or None when the renderer cannot run (no sympy).
+    """
+    d = os.path.join(workdir, name)
+    os.makedirs(d, exist_ok=True)
+    for f in os.listdir(TEMPLATES):
+        if f.endswith(".tex"):
+            shutil.copy(os.path.join(TEMPLATES, f), d)
+    vj = os.path.join(d, "verify_ssa.json")
+    with open(vj, "w") as fh:
+        json.dump({"topic": "ssa", "problem_count": 1,
+                   "problems": [{"id": 1, "type": "triangle", "given": given,
+                                 "solve_for": "B", "expected": 0}]}, fh)
+    r = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "render_figures.py"),
+         vj, os.path.join(d, "figs_ssa.tex")], capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.isfile(os.path.join(d, "figs_ssa.tex")):
+        return None
+    open(os.path.join(d, "p.tex"), "w").write(
+        SSA_DOC_HEAD + "\\problem[3cm]{Solve the triangle. \\probfig{1}}\n"
+        "\\end{document}\n")
+    eng = shutil.which("pdflatex") or shutil.which("tectonic")
+    cmd = ([eng, "-interaction=nonstopmode", "p.tex"] if eng.endswith("pdflatex")
+           else [eng, "p.tex"])
+    subprocess.run(cmd, cwd=d, capture_output=True)
+    pdf = os.path.join(d, "p.pdf")
+    return pdf if os.path.isfile(pdf) else None
 
 
 def main():
@@ -237,6 +319,75 @@ def main():
             f = faults(marker)
             check("a marker printed on a figure label is caught", len(f) >= 1,
                   "the detector saw nothing")
+
+        print("ambiguous-SSA coverage, on geometry measured off a rendered page")
+        a, b = SSA_MEASURED
+        frac = op.overlap_fraction(a[:4], b[:4])
+        check(f"the A = 44 deg swing-apex collision is above the PROSE "
+              f"threshold, so the ordinary rule catches it — it is not an "
+              f"unseen figure defect ({frac * 100:.0f}% >= "
+              f"{op.OVERLAP * 100:.0f}%)",
+              frac >= op.OVERLAP, f"measured {frac:.3f}")
+        check("and it is reported as a page fault",
+              any(k == "overprint" for k, _ in
+                  op.page_faults(612.0, 792.0, [a, b], op.OVERLAP)))
+
+        print("...and end to end, through the real figure renderer")
+        for given, must_flag, why in SSA_CASES:
+            pdf = ssa_probe(given, tmp, "ssa%s" % given["A"])
+            if pdf is None:
+                print(f"  ·  skipped ({why}): renderer unavailable")
+                continue
+            got = bool(faults(pdf))
+            check(f"{'flagged' if must_flag else 'silent'}: {why}",
+                  got == must_flag,
+                  f"faults: {faults(pdf)}")
+
+        # The vertex-crowding fix, pinned on the geometry that motivated it.
+        # A = 15, a = 25, b = 26 collided TWICE before it: "C" on the "26" of
+        # its own fixed-side label (63% of the smaller) and "A" on "B_2" (66%).
+        # The second was the commonest fault in the whole figure — 10 of the 12
+        # collisions in a 33-geometry sweep — because B_2 slides toward A on a
+        # thin triangle and the centroid anchor aims its label down-LEFT, onto
+        # A. Both are VERTEX labels, which no placement rule modelled.
+        print("...and the vertex-crowding fix holds on the geometry that "
+              "motivated it")
+        thin = ssa_probe({"A": 15, "a": 25, "b": 26}, tmp, "ssathin")
+        if thin is None:
+            print("  ·  skipped: renderer unavailable")
+        else:
+            f = faults(thin)
+            check("A = 15, a = 25, b = 26 no longer overprints its vertex "
+                  "labels", not f, "; ".join(m for _, m in f)[:200])
+            # A gate that has stopped seeing a fault and a fault that is gone
+            # look identical from here, so assert the fix moved the LABEL, not
+            # just the verdict: B_2 must now be placed away from A along the
+            # base rather than back toward it.
+            fig = open(os.path.join(tmp, "ssathin", "figs_ssa.tex")).read()
+            b2 = [ln for ln in fig.splitlines() if "B_2" in ln]
+            check("B_2's label is shifted away from A, not toward it",
+                  bool(b2) and "xshift=6.0pt" in b2[0], b2[0] if b2 else "")
+
+            # ADJACENCY, which this gate is structurally unable to report.
+            # The page used to read "b = 26C": "26" ended at 301.85pt and "C"
+            # started at 301.23 — 0.6pt of overlap, 8% of the C, against a 45%
+            # rule. So assert the measured GAP, not the verdict. Standing the
+            # vertex letters off along the outward angle bisector and pushing a
+            # thin figure's side labels further off their own side opens it to
+            # about +0.7pt with 8.6pt of vertical daylight.
+            box = {}
+            for _pw, _ph, words in op.words_by_page(thin):
+                for x0, y0, x1, y1, t in words:
+                    box.setdefault(t, []).append((x0, y0, x1, y1))
+            if "26" in box and "C" in box:
+                lab, vert = box["26"][0], box["C"][0]
+                check("the apex letter and the side label it sits beside do "
+                      "not touch — measured, because the 45% rule cannot see "
+                      "a 0.6pt overlap",
+                      vert[0] - lab[2] > 0.0,
+                      f"'26' ends {lab[2]:.2f}, 'C' starts {vert[0]:.2f}")
+            else:
+                check("the probe printed both '26' and 'C'", False, str(sorted(box)[:12]))
 
         good = build(CLEAN, tmp, "clean")
         if not good:

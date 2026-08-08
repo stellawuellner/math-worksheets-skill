@@ -231,7 +231,7 @@ with contextlib.redirect_stdout(buf):
     verify.print_schema("json")
 machine = json.loads(buf.getvalue())
 check("schema json lists top-level optional fields",
-      machine.get("top_level_optional") == ["facets", "format", "subtitle"])
+      machine.get("top_level_optional") == ["facets", "format", "subtitle", "pages"])
 check("schema json lists the trap-allowed types",
       set(machine.get("traps_allowed_types", [])) == verify._TRAP_TYPES)
 check("facet and traps are universal optional fields",
@@ -295,6 +295,104 @@ msg = schema_error({"id": 1, "type": "eval", "expr": "2+2", "expected": 4,
                     "traps": [{"desc": "d", "exprs": ["5"]}]})
 check("exprs on a scalar type is still rejected",
       msg is not None)
+
+# ── Symbolic traps ────────────────────────────────────────────────────────
+# equiv/expand/factor were excluded on the same reasoning as the solution-set
+# types, and it is wrong for the same reason: on a rewrite task the wrong
+# REWRITE is the misconception. Every polynomial, long-division and factoring
+# sheet in the run therefore shipped with no "Common wrong answers" block,
+# although x^4·x^3 = x^12 is as mechanical an error as any trigonometry one.
+print("Symbolic traps (equiv / expand / factor):")
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "equiv", "expr": "x**4*x**3", "expected": "x**7",
+     "traps": [{"desc": "multiplied the exponents", "exprs": ["x**12"],
+                "value": ["x**12"]}]})
+check("a wrong rewritten form is a distinguishable trap",
+      ok and any("x**12" in ln for ln in info))
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "factor", "expr": "x**2 - 9",
+     "expected": "(x-3)*(x+3)",
+     "traps": [{"desc": "reordered the factors", "exprs": ["(x+3)*(x-3)"]}]})
+check("a form equivalent to the answer fails with change-the-givens",
+      not ok and "cannot distinguish" in info)
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "expand", "expr": "(x+2)*(x-5)",
+     "expected": "x**2 - 3*x - 10",
+     "traps": [{"desc": "first and last only", "exprs": ["x**2 - 10"],
+                "value": ["x**2 - 11"]}]})
+check("a printed form drifting from its own exprs fails",
+      not ok and "not the same expression" in info)
+
+msg = schema_error({"id": 1, "type": "equiv", "expr": "x**4*x**3",
+                    "expected": "x**7",
+                    "traps": [{"desc": "d", "expr": "x**12"}]})
+check("a scalar expr on a symbolic type is rejected, naming exprs",
+      msg is not None and "'exprs'" in msg)
+
+msg = schema_error({"id": 1, "type": "equiv", "expr": "x**4*x**3",
+                    "expected": "x**7",
+                    "traps": [{"desc": "d", "exprs": []}]})
+check("an empty exprs list on a symbolic type is rejected",
+      msg is not None and "at least one wrong form" in msg)
+
+# ── Trap values a JSON number cannot hold ─────────────────────────────────
+# "value" demanded a plain number, so four of seven planted results on a
+# complex-arithmetic error-analysis sheet could not be declared and the printed
+# wrong number was hand-typed — the drift this field exists to prevent.
+print("Trap values that are not plain numbers:")
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "eval", "expr": "(2+I)*(1-2*I)", "at": {"x": 0},
+     "expected": "4 - 3*I",
+     "traps": [{"desc": "treated i^2 as +1", "expr": "2 - 4*I + I - 2",
+                "value": "-3*I"}]})
+check("a complex trap value is accepted and checked against its expr", ok)
+
+ok, info = verify.check_traps(
+    {"id": 1, "type": "eval", "expr": "(2+I)*(1-2*I)", "at": {"x": 0},
+     "expected": "4 - 3*I",
+     "traps": [{"desc": "treated i^2 as +1", "expr": "2 - 4*I + I - 2",
+                "value": "1 - 3*I"}]})
+check("a complex trap value that drifts from its expr still fails",
+      not ok and "does not match" in info)
+
+msg = schema_error({"id": 1, "type": "approx", "expr": "9*tan(35*pi/180)",
+                    "expected": 6.30, "tol": 0.01,
+                    "traps": [{"desc": "d", "expr": "9*cos(35*pi/180)",
+                               "value": [7.37]}]})
+check("a list value on a SCALAR trap is still rejected", msg is not None)
+
+# ── --schema is the only always-current field reference ───────────────────
+# The trap field shapes were reported as undocumented FIVE times (R06, R10,
+# R12, R14, R16): "that set as printed" reads as a scalar, so authors wrote
+# "value": 5 and exprs [5, -2] and got a rejection that never stated the rule.
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    verify.print_schema("table")
+table = buf.getvalue()
+print("--schema states each trap shape in JSON-type words:")
+check("solution-set exprs are named as a LIST of STRINGS",
+      "LIST of expression STRINGS" in table)
+check("the exact rejected form is shown",
+      '["5", "-2"], NOT [5, -2]' in table)
+check("solution-set value is named as a LIST",
+      "the same set as printed, also a LIST" in table)
+check("the symbolic trap shape is documented",
+      "wrong REWRITTEN FORM" in table)
+check("a complex trap value is documented",
+      "STRING for a value a number cannot hold" in table)
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    verify.print_schema("json")
+machine2 = json.loads(buf.getvalue())
+check("schema json lists the symbolic trap types",
+      set(machine2.get("traps_allowed_expr_types", [])) == verify._EXPR_TRAP_TYPES)
+check("schema json states the three trap field shapes",
+      set(machine2.get("traps_field_shapes", {})) ==
+      {"scalar", "solution_set", "symbolic"})
 
 print()
 if FAILS:

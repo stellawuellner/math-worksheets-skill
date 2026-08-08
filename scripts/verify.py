@@ -28,9 +28,24 @@ Input format: verify_TOPIC_DATE.json
     ]
   }
 
+Numeric comparison: exact wherever both sides are exact. As soon as a DECIMAL
+literal appears on either side the two values live in binary floating point,
+so the comparison becomes scale-aware (rounds-to at the precision the expected
+value is written with, otherwise a 1e-9 relative band) — 9.4 - 0.4*x at x=20
+is 1.4000000000000004, and comparing that exactly against a JSON 1.4 (which
+parses to the exact Rational 7/5) is a statement about binary representation,
+not about the mathematics.
+
+Answers that are not values: solve/zeros take "expected": "no solution" (a
+contradiction) or "all real numbers" (an identity) — sympy.solve returns []
+for BOTH, so an empty list cannot state either; system takes "expected": []
+for an inconsistent system and "infinitely many" for a dependent one.
+
 Supported types:
   solve          — roots of expr=0 over ℂ; non-real roots are NOT dropped —
-                   if any exist, "domain":"real"/"complex" must be declared
+                   if any exist, "domain":"real"/"complex" must be declared.
+                   With free symbols besides "var" it is a literal equation
+                   (solve for y in terms of x) and every root is kept
   zeros          — like solve but duplicates collapse (multiplicity ignored)
   factor/expand  — checks expected is equivalent to expr
   eval           — evaluates expr at given values (complex ok via I)
@@ -98,6 +113,61 @@ except ImportError as e:
         f"Fix: {sys.executable} -m pip install sympy\n"
         "Or run via scripts/run_verify.sh, which picks a python that has sympy.\n")
     sys.exit(1)
+
+# ── CAS version: a floor, and the version the guarantee was measured on ──────
+# These are two different controls and only one of them is load-bearing.
+#
+# MIN_SYMPY is a floor against the genuinely ancient. It buys less than it
+# looks like it should: this file's sympy surface is small and old (Symbol,
+# simplify, trigsimp, nsimplify, solve/integrate/limit via attribute access,
+# lambdify with the mpmath backend), so an out-of-range sympy does not raise
+# AttributeError and stop — it computes, and answers differently. A floor
+# catches the loud failure. The dangerous one is silent.
+#
+# MEASURED_SYMPY is therefore the control that matters. "0 false accepts on
+# 6,993 corpus checks" is a statement about a CAS, not about this script, and
+# it was measured on 1.14.0. Running elsewhere does not make the verifier
+# wrong, but it does mean the number no longer describes the run — so the run
+# says so, on stdout and in the header of every report, rather than inheriting
+# a guarantee it was not measured under. Deliberately NOT a hard failure:
+# refusing to run on a newer sympy would age the skill into uselessness, and
+# an author who cannot run the gate at all ships unverified answers instead.
+MIN_SYMPY = (1, 12)
+MEASURED_SYMPY = "1.14.0"
+
+
+def _version_tuple(v):
+    """('1.14.0rc1') -> (1, 14, 0). Leading digits of each part, stopping at
+    the first part that has none — NOT every digit in the part. Deleting the
+    non-digits instead reads '0rc1' as 1, so a release candidate sorts above
+    the release it precedes. Harmless against a two-component floor and wrong
+    anywhere else, which is the kind of thing that stays wrong."""
+    out = []
+    for part in str(v).split("."):
+        m = re.match(r"\d+", part)
+        if not m:
+            break
+        out.append(int(m.group()))
+    return tuple(out)
+
+
+if _version_tuple(sympy.__version__)[:2] < MIN_SYMPY:
+    sys.stderr.write(
+        f"Error: sympy {sympy.__version__} is older than the "
+        f"{'.'.join(map(str, MIN_SYMPY))} this verifier requires.\n"
+        "Below that floor the results are not the ones any corpus here "
+        "measured, and the failures are silent rather than loud.\n"
+        f"Fix: {sys.executable} -m pip install --upgrade "
+        f'"sympy>={".".join(map(str, MIN_SYMPY))}"\n')
+    sys.exit(1)
+
+
+def sympy_stamp():
+    """The version line every run prints. Names the drift when there is any."""
+    if sympy.__version__ == MEASURED_SYMPY:
+        return f"SymPy {sympy.__version__}"
+    return (f"SymPy {sympy.__version__} (corpus baselines were measured on "
+            f"{MEASURED_SYMPY} — results here are not covered by that run)")
 
 
 class VerifyInputError(Exception):
@@ -213,6 +283,16 @@ def safe_parse(expr_str):
     names = []
     for m in _TOKEN_RE.finditer(expr_str):
         if m.start() != pos:
+            if expr_str[pos] == "=":
+                # "disallowed character '='" reads as a typo and sends the
+                # author hunting a syntax error. It is a schema fact: only
+                # `equiv` takes an equation, because only there is the answer
+                # one. Everywhere else the field holds the value's own side.
+                raise VerifyInputError(
+                    f"{expr_str!r} contains '=', which only the 'equiv' type "
+                    "accepts (its answer is an equation the student writes, "
+                    "e.g. \"(x-3)**2 + (y+5)**2 = 25\"). On every other type "
+                    "the field holds one side: write the expression alone.")
             raise VerifyInputError(
                 f"disallowed character {expr_str[pos]!r} in {expr_str!r}")
         tok = m.group()
@@ -232,6 +312,51 @@ def safe_parse(expr_str):
         return sympy.sympify(normalized, locals=_SYMPY_LOCALS)
     except Exception as e:
         raise VerifyInputError(f"could not parse {expr_str!r}: {e}")
+
+
+def split_equation(raw):
+    """'lhs = rhs' → ('lhs', 'rhs'); a plain expression → None.
+
+    Only `equiv` uses this, and only because `equiv`'s answer is the one place
+    in the schema where the thing the student writes is an EQUATION and the
+    thing the checker compares is an expression. Asked for centre-radius form,
+    a student writes (x-3)^2 + (y+5)^2 = 25; the check needs the =0 rearrangement
+    (x-3)^2 + (y+5)^2 - 25. Both were the same JSON string, so the answer bank
+    printed a subtraction where the student wrote an equation — faithful to the
+    JSON, and still misleading to a grader scanning the column.
+
+    The obvious repair — split a trailing constant off the =0 form when printing
+    — was measured and rejected. 253 of the corpus's 479 `equiv` answers have a
+    bare numeric term at top level, and nearly all of them are ordinary
+    simplifications ("4*x + 12", "8*x + 5") that print correctly today and would
+    be corrupted into equations. There is no structural signal separating "this
+    expression is a rearranged equation" from "this expression is the answer",
+    because there isn't one: it is the author's intent. So the author states it.
+    """
+    if not isinstance(raw, str) or "=" not in raw:
+        return None
+    parts = raw.split("=")
+    if len(parts) != 2:
+        raise VerifyInputError(
+            f"{raw!r} has more than one '=' — an equation has exactly two sides")
+    lhs, rhs = parts[0].strip(), parts[1].strip()
+    if not lhs or not rhs:
+        raise VerifyInputError(f"{raw!r} has an empty side")
+    return lhs, rhs
+
+
+def parse_equation(raw):
+    """Parse an `equiv` side: an equation becomes lhs - rhs, else the value.
+
+    Falls through to parse_value, NOT safe_parse: an `equiv` expected may be a
+    bare JSON number ({"expr": "25 + 5*w - (18 + 5*w)", "expected": 7}), and
+    routing that to the string-only parser turned 10 corpus entries into
+    "expression must be a string, got int".
+    """
+    sides = split_equation(raw)
+    if sides is None:
+        return parse_value(raw)
+    return safe_parse(sides[0]) - safe_parse(sides[1])
 
 
 def parse_value(value):
@@ -366,13 +491,14 @@ def sym_equal(a, b):
     return numeric_equal(a, b)
 
 
-def multiset_equal(computed, expected):
+def multiset_equal(computed, expected, eq=None):
+    eq = eq or sym_equal
     if len(computed) != len(expected):
         return False
     remaining = list(computed)
     for e in expected:
         for i, c in enumerate(remaining):
-            if sym_equal(c, e):
+            if eq(c, e):
                 remaining.pop(i)
                 break
         else:
@@ -380,10 +506,11 @@ def multiset_equal(computed, expected):
     return True
 
 
-def dedupe(values):
+def dedupe(values, eq=None):
+    eq = eq or sym_equal
     unique = []
     for v in values:
-        if not any(sym_equal(v, u) for u in unique):
+        if not any(eq(v, u) for u in unique):
             unique.append(v)
     return unique
 
@@ -525,10 +652,149 @@ def default_tol(expected_raw):
         return 1e-6
 
 
-def compare_value(computed, expected, tol):
-    """Exact symbolic comparison, or numeric within tol when tol is given."""
+# ── Decimal literals: exactness where it is meaningful, tolerance where it
+# ── is not ───────────────────────────────────────────────────────────────────
+# A JSON number 1.4 parses to Rational(7, 5) (parse_value → nsimplify) while an
+# expression written with decimals evaluates to a binary Float, so
+# 9.4 - 0.4*x at x=20 produced 1.4000000000000004 and was compared EXACTLY
+# against 7/5. It failed. 1.2*10 passed and 1.2*6 failed — by which value
+# happened to land on a representable binary float. Three eval batches reported
+# it independently (R07, R08, R16) and FOUR separate authors changed correct
+# mathematics to get a green build: a trend line 9.4−0.4x → 9.5−0.5x, the
+# free-fall model 4.9t² → 5t², a rate 1.2 → 1.25, and a root
+# sqrt(9.8*d) − 70 → 499.999999999999 rejected against 500. That is problem
+# design bent by a tool, which is the one outcome this pipeline exists to
+# prevent.
+#
+# The rule: exactness is only meaningful when BOTH sides are exact. As soon as
+# a decimal literal appears on either side the two values live in binary
+# floating point, where "equal" is a statement about a tolerance and never
+# about identity — so the comparison uses the same scale-aware rounds-to /
+# tolerance logic `approx` has always used. Where both sides are exact nothing
+# changes: a wrong answer still fails, and sqrt(2) keyed 1.41 still fails,
+# because a root LIST carries no written precision to round to (see
+# sym_equal_decimal's note).
+_DECIMAL_LITERAL_RE = re.compile(r"\d*\.\d")
+
+# Binary rounding noise on school-scale arithmetic is ~1e-16 relative. A wrong
+# answer is never within 1e-9 relative of the right one. The band sits seven
+# orders of magnitude clear of both.
+FLOAT_NOISE_REL = 1e-9
+
+
+def carries_decimal(*sides):
+    """True when any side is written with, or evaluates through, a decimal
+    literal — i.e. an exact comparison would be comparing rounding noise."""
+    for s in sides:
+        if s is None or isinstance(s, bool):
+            continue
+        if isinstance(s, float):
+            return True
+        if isinstance(s, str):
+            if _DECIMAL_LITERAL_RE.search(s):
+                return True
+        elif isinstance(s, (list, tuple)):
+            if carries_decimal(*s):
+                return True
+        elif isinstance(s, dict):
+            if carries_decimal(*s.values()):
+                return True
+        elif isinstance(s, sympy.Basic):
+            try:
+                if s.atoms(sympy.Float):
+                    return True
+            except (TypeError, AttributeError):
+                pass
+    return False
+
+
+def relative_equal(a, b, rel=FLOAT_NOISE_REL):
+    """|a - b| <= rel · max(1, |a|, |b|), over the complex numbers."""
+    try:
+        av = complex(sympy.N(a, 25))
+        bv = complex(sympy.N(b, 25))
+    except (TypeError, ValueError):
+        return a == b
+    if not (cmath.isfinite(av) and cmath.isfinite(bv)):
+        return a == b            # ±oo / nan compare structurally
+    return abs(av - bv) <= rel * max(1.0, abs(av), abs(bv))
+
+
+_PLAIN_DECIMAL_RE = re.compile(r"[+-]?\d*\.\d+")
+
+
+def _written_precision(expected_raw):
+    """The raw expected value when it is a plain number written to a fixed
+    number of decimal places — the only shape rounds_to() can safely read.
+    A string like "23/3" or "sqrt(3)/2" has no written precision, and handing
+    it to rounds_to() would silently widen the band to half a unit."""
+    if isinstance(expected_raw, bool):
+        return None
+    if isinstance(expected_raw, (int, float)):
+        return expected_raw if _decimals_of(expected_raw) > 0 else None
+    if isinstance(expected_raw, str) \
+            and _PLAIN_DECIMAL_RE.fullmatch(expected_raw.strip()):
+        return float(expected_raw.strip())
+    return None
+
+
+def sym_equal_decimal(computed, expected, expected_raw=None):
+    """sym_equal, EXCEPT that a decimal literal on either side makes the
+    comparison scale-aware instead of exact.
+
+    Three bands, in the order they are tried:
+      1. sym_equal — unchanged. Both-exact pairs never reach anything else.
+      2. rounds-to at the precision the author WROTE, when 'expected' is a
+         plain decimal number. This is exactly `approx`'s default and exactly
+         what check_traps has always modelled as "the problem's own check", so
+         after this change the trap gate and the real check finally agree.
+      3. a relative band otherwise (integer-written expected, or an expression
+         string) — 1e-9, which is float noise and nothing else.
+    Symbolic pairs (free symbols on either side) go to the sampling grid with
+    the same relative band, so 0.2*x + 0.010000000000000002 matches
+    0.2*x + 0.01 without softening any exact comparison.
+
+    expected_raw is OPTIONAL and deliberately omitted where there is no single
+    written precision to round to — root multisets, for one: matching sqrt(2)
+    against a key of 1.41 is an author rounding an irrational, not a
+    representation artefact, and it still fails.
+    """
+    if sym_equal(computed, expected):
+        return True
+    if not carries_decimal(computed, expected, expected_raw):
+        return False            # both sides exact — a wrong answer still fails
+    free = set(getattr(computed, "free_symbols", ()) or ()) | \
+        set(getattr(expected, "free_symbols", ()) or ())
+    if free:
+        return numeric_equal(computed, expected, tol=FLOAT_NOISE_REL)
+    raw = _written_precision(expected_raw)
+    if raw is not None:
+        try:
+            if rounds_to(computed, raw):
+                return True
+        except (TypeError, ValueError):
+            pass                # complex computed value: fall through
+    # The relative band is always available underneath, so the two never
+    # disagree in the direction of a false FAIL: rounds-to is the wider of the
+    # two for every ordinary scale, but not for a value written to many places.
+    return relative_equal(computed, expected)
+
+
+def decimal_note(computed, expected, expected_raw, ok):
+    """Detail-line suffix that names the COMPARISON when a decimal-carrying
+    check still fails. The old report printed "(expected 7/5)" for a JSON 1.4
+    and sent the author to edit a correct answer key; the cause was never the
+    expected value, it was that one side was a binary float."""
+    if ok or not carries_decimal(computed, expected, expected_raw):
+        return ""
+    return (" — decimal literals present, so this was compared with "
+            "scale-aware tolerance, not exactly: the difference is real")
+
+
+def compare_value(computed, expected, tol, expected_raw=None):
+    """Exact symbolic comparison (decimal-aware), or numeric within tol."""
     if tol is None:
-        return sym_equal(computed, expected)
+        return sym_equal_decimal(computed, expected, expected_raw)
     return approx_equal(computed, expected, tol)
 
 
@@ -591,6 +857,73 @@ def count_real_roots(expr, var, lo, hi, n=2000):
             if absy[i] <= absy[i - 1] and absy[i] <= absy[i + 1] and absy[i] < 1e-3:
                 refine(xs[i])
     return sorted(roots)
+
+
+def snap_pi_endpoint(raw):
+    """A radian interval endpoint written as a decimal approximation of a
+    multiple of π, read as the exact multiple. Returns (exact, label) or None.
+
+    `[0, 6.2832]` is the reported case. solve_interval builds a RIGHT-OPEN
+    interval precisely so that a root at 2π is excluded from [0, 2π) — but
+    6.2832 is LARGER than 2π, so the root landed strictly inside and a key that
+    correctly omitted it was reported as incomplete. Writing 6.28 instead moves
+    the same boundary the other way and silently drops a legitimate root just
+    below 2π. NO decimal gets this right: which roots are in the interval ends
+    up decided by the author's typing precision.
+
+    Rejecting the decimal outright was measured first: it hard-failed 10
+    entries across 6 previously-green sheets in the 1200-file corpus, every one
+    of them a correct sheet whose only fault was writing 6.283185307 for 2π.
+    Trading the reported false-fail for a different false-fail is not a fix, so
+    the endpoint is READ as the exact value it is approximating and the detail
+    line says so. Verdicts are preserved; the ambiguity is not.
+    """
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, str):
+        if not _PLAIN_DECIMAL_RE.fullmatch(raw.strip()):
+            return None
+        value = float(raw)
+    elif isinstance(raw, float):
+        value = raw
+    else:
+        return None               # an integer endpoint means integer radians
+    # 1e-3 rad is 0.016% of a full turn: wide enough for every decimal an
+    # author would write for 2π (6.2832, 6.283185307, 6.283185307179586 all
+    # appear in the corpus), tight enough that a genuine decimal endpoint is
+    # never mistaken for one.
+    for denom in (1, 2, 3, 4, 6):
+        for num in range(-24, 25):
+            if num == 0:
+                continue
+            if abs(value - num * math.pi / denom) <= 1e-3:
+                label = f"{num}*pi" if denom == 1 else f"{num}*pi/{denom}"
+                return (sympy.Rational(num, denom) * sympy.pi, label)
+    return None
+
+
+def _kink_points(expr, var, a, b):
+    """Interior points where `expr` is continuous but not smooth: the zeros of
+    every Abs()/sign() argument inside it. These are quadrature PANEL
+    BOUNDARIES, not evidence of divergence. Bounded and solver-only — no
+    sampling — so it can neither hang nor invent a point."""
+    pts = set()
+    args = [f.args[0] for f in expr.atoms(sympy.Abs, sympy.sign)]
+    for arg in args[:8]:
+        try:
+            sols = sympy.solveset(arg, var, sympy.Interval(a, b))
+        except Exception:
+            continue
+        if not isinstance(sols, sympy.FiniteSet):
+            continue
+        for s in sols:
+            try:
+                v = float(sympy.N(s))
+            except (TypeError, ValueError):
+                continue
+            if a < v < b:
+                pts.add(v)
+    return sorted(pts)[:16]
 
 
 def parse_interval_spec(spec):
@@ -861,6 +1194,20 @@ EXAMPLES = {
 _RELATIONS = {"<": sympy.StrictLessThan, "<=": sympy.LessThan,
               ">": sympy.StrictGreaterThan, ">=": sympy.GreaterThan}
 
+# ── Answers that are not values ───────────────────────────────────────────────
+# "no solution", "all real numbers" and "infinitely many" are ANSWERS — on a
+# linear-equations sheet they are frequently the answers being taught — and the
+# schema could only express a list of roots or a solution dict. Worse,
+# sympy.solve() returns [] for an identity (x + 2 = x + 2, every real works)
+# AND for a contradiction (x + 2 = x + 3, none does), so an empty key silently
+# passed BOTH: the one type where the two answers are the point could not tell
+# them apart. These phrases give each its own name and each its own verdict.
+_NO_SOLUTION_KEYS = {"no solution", "no solutions", "none"}
+_ALL_REALS_KEYS = {"all reals", "all real numbers", "all real values",
+                   "infinitely many", "infinitely many solutions"}
+_INFINITE_KEYS = {"infinitely many", "infinitely many solutions",
+                  "infinite", "dependent"}
+
 
 # ── Facet tags & misconception traps ──────────────────────────────────────────
 # Facet values are lowercase-kebab so histograms, plans, and prose stay
@@ -884,6 +1231,19 @@ _TRAP_TYPES = {"approx", "eval", "triangle", "distance", "slope",
 # distinguishable when that set differs from the expected set.
 _SET_TRAP_TYPES = {"solve", "zeros", "solve_interval"}
 
+# Traps on a type whose expected is a symbolic EXPRESSION. Same exclusion, same
+# reasoning error: "there is nothing to be distinguishable from" is false for a
+# rewrite, because the wrong rewrite IS the misconception. x^4·x^3 = x^12
+# (multiplied the exponents), an undistributed subtraction in long division, a
+# candidate-root list written without the fractions — these are as mechanical
+# as the trigonometry errors that always got traps, and every polynomial,
+# long-division and factoring sheet in the run shipped with no "Common wrong
+# answers" block because the only faithful type refused to carry one (R04,
+# R13). A symbolic trap declares the wrong FORM in "exprs" and is
+# distinguishable when that form is not equivalent to `expected` — the same
+# rule as the set types, one rung further up the type ladder.
+_EXPR_TRAP_TYPES = {"equiv", "expand", "factor"}
+
 
 def validate_traps(p, ptype):
     """Shape-check the optional "traps" list (called from check_schema).
@@ -898,11 +1258,12 @@ def validate_traps(p, ptype):
     if traps is None:
         return
     is_set = ptype in _SET_TRAP_TYPES
-    if ptype not in _TRAP_TYPES and not is_set:
+    is_expr = ptype in _EXPR_TRAP_TYPES
+    if ptype not in _TRAP_TYPES and not is_set and not is_expr:
         raise VerifyInputError(
             f"type {ptype!r} cannot carry traps — a trap needs a comparable "
             f"answer to be distinguishable from (allowed types: "
-            f"{' '.join(sorted(_TRAP_TYPES | _SET_TRAP_TYPES))})")
+            f"{' '.join(sorted(_TRAP_TYPES | _SET_TRAP_TYPES | _EXPR_TRAP_TYPES))})")
     if not isinstance(traps, list) or not traps:
         raise VerifyInputError(
             '"traps" must be a non-empty list of objects like '
@@ -915,39 +1276,62 @@ def validate_traps(p, ptype):
             raise VerifyInputError(
                 f"trap has unknown field(s) {sorted(unknown)} — a trap is "
                 '{"desc": str, "expr": str (or "exprs": [str] on a '
-                'solution-set type), optional "value"}')
+                'solution-set or symbolic type), optional "value"}')
         if not isinstance(t.get("desc"), str) or not t["desc"].strip():
             raise VerifyInputError(
                 "trap 'desc' must be a non-empty string naming the "
                 "misconception (e.g. \"used cos instead of sin\")")
-        if is_set:
+        if is_set or is_expr:
+            what = ("the list of roots the wrong method produces (e.g. "
+                    '["3"] where the correct set is [3, -3])' if is_set else
+                    'the wrong REWRITTEN FORM (e.g. ["x**12"] on a problem '
+                    'whose answer is "x**7" — the student multiplied the '
+                    "exponents)")
             if "exprs" not in t or "expr" in t:
                 raise VerifyInputError(
-                    f"a trap on {ptype!r} declares 'exprs' — the list of "
-                    "roots the wrong method produces (e.g. [\"3\"] where the "
-                    "correct set is [3, -3]) — and never a scalar 'expr'. The "
-                    "answer is a set, so the wrong answer is a set too.")
-            if "exprs" in t:
-                if (not isinstance(t["exprs"], list)
-                        or not all(isinstance(x, str) for x in t["exprs"])):
-                    raise VerifyInputError(
-                        "trap 'exprs' must be a list of expression strings, "
-                        "one per root the wrong method yields (an empty list "
-                        'means the error is "found no solutions")')
-                if "value" in t and not isinstance(t["value"], list):
-                    raise VerifyInputError(
-                        "on a solution-set trap, 'value' is the wrong set as "
-                        "printed in the planted work, so it must be a list")
-                continue
+                    f"a trap on {ptype!r} declares 'exprs' — {what} — and "
+                    f"never a scalar 'expr'. Every entry is a STRING.")
+            if (not isinstance(t["exprs"], list)
+                    or not all(isinstance(x, str) for x in t["exprs"])):
+                raise VerifyInputError(
+                    f"trap 'exprs' must be a LIST of expression STRINGS — "
+                    f"{what}"
+                    + (' (an empty list means the error is "found no '
+                       'solutions")' if is_set else ""))
+            if is_expr and not t["exprs"]:
+                raise VerifyInputError(
+                    f"a trap on {ptype!r} needs at least one wrong form in "
+                    "'exprs' — the answer is one expression, so an empty list "
+                    "declares no misconception at all")
+            if "value" in t and (not isinstance(t["value"], list)
+                                 or not all(isinstance(x, (str, int, float))
+                                            and not isinstance(x, bool)
+                                            for x in t["value"])):
+                raise VerifyInputError(
+                    "on a solution-set or symbolic trap, 'value' is the wrong "
+                    "answer AS PRINTED in the planted work, so it must be a "
+                    'LIST matching \'exprs\' — e.g. "exprs": ["5", "-2"] with '
+                    '"value": ["5", "-2"]')
+            continue
         if not isinstance(t.get("expr"), str):
             raise VerifyInputError(
                 "trap 'expr' must be an expression string — the wrong-method "
                 "arithmetic the misconception produces")
-        if "value" in t and (isinstance(t["value"], bool)
-                             or not isinstance(t["value"], (int, float))):
-            raise VerifyInputError(
-                "trap 'value' must be a plain number — the wrong result as "
-                "printed in the worksheet's planted work")
+        # 'value' used to demand a JSON number, so "3 - 4*I" was rejected as
+        # "must be a plain number" and four of seven planted results on a
+        # complex-arithmetic error-analysis sheet could not be declared at all —
+        # the printed wrong number was then hand-typed, which is the exact drift
+        # this field exists to prevent (R13). A string is accepted and checked
+        # against the trap's own expr like any other value.
+        if "value" in t:
+            v = t["value"]
+            if isinstance(v, bool) or not isinstance(v, (int, float, str)):
+                raise VerifyInputError(
+                    "trap 'value' must be the wrong result as printed in the "
+                    "worksheet's planted work: a plain number, or a string for "
+                    'a value a JSON number cannot hold ("3 - 4*I", "sqrt(2)/2")')
+            if isinstance(v, str) and not v.strip():
+                raise VerifyInputError("trap 'value' string must not be empty")
 
 
 def _root_set(values, what, pid, desc):
@@ -1021,6 +1405,88 @@ def _check_set_traps(p, pid, expected_raw):
     return (True, lines)
 
 
+def _trap_value_matches(computed, raw):
+    """Does the PRINTED planted value `raw` match what the declared wrong
+    method computes? Complex- and expression-safe.
+
+    rounds_to() calls float(), which raises on a complex value — and this test
+    sat on the path that gates every printed trap value, so a complex trap
+    could not be declared even once the shape check let it through.
+    """
+    if isinstance(raw, str):
+        want = safe_parse(raw)
+        if want.free_symbols:
+            raise VerifyInputError(
+                f"trap 'value' {raw!r} must be fully numeric or a closed form "
+                f"— it still contains {sorted(map(str, want.free_symbols))}")
+        return sym_equal_decimal(computed, want) or relative_equal(computed, want)
+    n = sympy.N(computed, 20)
+    if sympy.im(n) != 0:
+        return False       # a complex result cannot print as a real number
+    return rounds_to(sympy.re(n), raw)
+
+
+def _check_expr_traps(p, pid, expected_raw):
+    """Distinguishability for a symbolic answer.
+
+    The scalar path asks "would this problem's own check accept the wrong
+    number?"; here the answer is an expression and the check accepts anything
+    EQUIVALENT to it, so a trap is distinguishable exactly when its declared
+    wrong form is not equivalent to `expected`. x^4·x^3 keyed "x**7" with a
+    trap of "x**12" is distinguishable; a trap of "x**4*x**3" is not, and
+    saying so is the point — that "wrong" answer is the right one rewritten.
+    """
+    try:
+        # equation form is legal here for the same reason it is on the answer
+        # itself: the trap is the wrong form of what the student writes.
+        expected = parse_equation(expected_raw)
+    except VerifyInputError as e:
+        return (False, f"problem {pid} declares traps but its 'expected' "
+                       f"({expected_raw!r}) does not parse — {e}")
+    lines = []
+    for t in p["traps"]:
+        desc = t["desc"]
+        forms = []
+        for raw in t["exprs"]:
+            try:
+                forms.append((raw, parse_equation(raw)))
+            except VerifyInputError as e:
+                return (False,
+                        f"problem {pid} trap {desc!r}: bad exprs entry "
+                        f"{raw!r} — {e}")
+        for raw, form in forms:
+            if sym_equal_decimal(form, expected, expected_raw):
+                return (False,
+                        f"problem {pid} trap {desc!r}: the declared wrong form "
+                        f"{raw} is EQUIVALENT to the correct answer "
+                        f"{expected_raw!r}, so this problem's own check would "
+                        "accept it — it cannot distinguish the error it "
+                        "targets. Change the givens, or declare the form the "
+                        "misconception really produces.")
+        if "value" in t:
+            if len(t["value"]) != len(forms):
+                return (False,
+                        f"problem {pid} trap {desc!r}: 'value' lists "
+                        f"{len(t['value'])} printed form(s) but 'exprs' "
+                        f"declares {len(forms)} — derive the printed form from "
+                        "exprs.")
+            for printed, (raw, form) in zip(t["value"], forms):
+                try:
+                    shown = safe_parse(str(printed))
+                except VerifyInputError as e:
+                    return (False, f"problem {pid} trap {desc!r}: bad 'value' "
+                                   f"entry {printed!r} — {e}")
+                if not sym_equal_decimal(shown, form):
+                    return (False,
+                            f"problem {pid} trap {desc!r}: the printed planted "
+                            f"form {printed!r} is not the same expression as "
+                            f"the declared wrong-method result {raw!r} — derive "
+                            "the printed form from exprs.")
+        lines.append(f"trap {desc!r}: {', '.join(r for r, _ in forms)} "
+                     f"≢ {expected_raw} (rejected by the problem's own check)")
+    return (True, lines)
+
+
 def check_traps(p):
     """Gate declared misconception traps: each trap's wrong-method expr must
     compute to a value the problem's OWN comparison rejects, along the same
@@ -1039,6 +1505,8 @@ def check_traps(p):
     expected_raw = p.get("expected")
     if p.get("type") in _SET_TRAP_TYPES:
         return _check_set_traps(p, pid, expected_raw)
+    if p.get("type") in _EXPR_TRAP_TYPES:
+        return _check_expr_traps(p, pid, expected_raw)
     try:
         expected = parse_value(expected_raw)
     except VerifyInputError:
@@ -1074,7 +1542,10 @@ def check_traps(p):
             return (False,
                     f"problem {pid} trap {desc!r}: expr must be fully numeric "
                     f"(found {sorted(map(str, tv.free_symbols))})")
-        if decimal_written and tol is None:
+        # rounds_to() calls float(), so a complex trap value crashed the gate
+        # here rather than being judged. Complex results take the tolerance
+        # path, which approx_equal already handles over ℂ.
+        if decimal_written and tol is None and sympy.im(sympy.N(tv, 20)) == 0:
             accepted = rounds_to(tv, expected_raw)
         else:
             accepted = compare_value(
@@ -1086,12 +1557,17 @@ def check_traps(p):
                     f"{_num_str(tv)}, which this problem's own "
                     "check would accept as correct — this problem cannot "
                     "distinguish the error it targets; change the givens.")
-        if "value" in t and not rounds_to(tv, t["value"]):
-            return (False,
-                    f"problem {pid} trap {desc!r}: the printed planted result "
-                    f"{t['value']} does not match the declared wrong-method "
-                    f"arithmetic {t['expr']} = {_num_str(tv)} — "
-                    "derive the printed number from the expr.")
+        if "value" in t:
+            try:
+                matched = _trap_value_matches(tv, t["value"])
+            except VerifyInputError as e:
+                return (False, f"problem {pid} trap {desc!r}: {e}")
+            if not matched:
+                return (False,
+                        f"problem {pid} trap {desc!r}: the printed planted "
+                        f"result {t['value']} does not match the declared "
+                        f"wrong-method arithmetic {t['expr']} = {_num_str(tv)} "
+                        "— derive the printed number from the expr.")
         lines.append(f"trap {desc!r}: {t['expr']} → "
                      f"{_num_str(tv)} (rejected by the "
                      "problem's own check)")
@@ -1396,6 +1872,54 @@ def check_schema(p):
     return ptype
 
 
+def _read_data_categories(table):
+    return ", ".join(repr(k) for k in list(table)[:8]) + \
+        (", …" if len(table) > 8 else "")
+
+
+def _read_data_key(p, table):
+    """The single category a 'value' query reads, validated against the data.
+
+    Both this and the pair form below exist because the raw code said
+    `table[p["key"]]` and `a, b = p["key"]`, so a missing or wrongly-shaped key
+    surfaced as a bare KeyError or "too many values to unpack (expected 2)" —
+    a Python message naming neither the field nor the rule, attributed to the
+    author's mathematics. Every other misuse path in this schema teaches its
+    fix; these two did not (R04, tested).
+    """
+    if "key" not in p:
+        raise VerifyInputError(
+            "read_data query 'value' needs \"key\": the category to read, one "
+            f"of the data's own keys ({_read_data_categories(table)})")
+    key = p["key"]
+    if not isinstance(key, str):
+        raise VerifyInputError(
+            f"read_data query 'value' needs \"key\" as a single category "
+            f"string, got {key!r}")
+    if key not in table:
+        raise VerifyInputError(
+            f"read_data \"key\": {key!r} is not a category in 'data' "
+            f"({_read_data_categories(table)})")
+    return key
+
+
+def _read_data_key_pair(p, table):
+    """The ordered [minuend, subtrahend] pair a 'difference' query reads."""
+    key = p.get("key")
+    if not isinstance(key, list) or len(key) != 2:
+        raise VerifyInputError(
+            "read_data query 'difference' needs \"key\" as a two-element list "
+            "naming the categories to subtract, in order — "
+            '"key": ["Fri", "Thu"] computes Fri − Thu. Got '
+            f"{key!r}. Data categories: {_read_data_categories(table)}")
+    for k in key:
+        if not isinstance(k, str) or k not in table:
+            raise VerifyInputError(
+                f"read_data \"key\" entry {k!r} is not a category in 'data' "
+                f"({_read_data_categories(table)})")
+    return key[0], key[1]
+
+
 def get_var(p):
     v = p.get("var", "x")
     if v not in _VARS:
@@ -1417,10 +1941,11 @@ def check_problem(p, ptype):
         computed = sympy.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         expected = parse_value(p["expected"])
         tol = get_tol(p)
-        ok = compare_value(computed, expected, tol)
+        ok = compare_value(computed, expected, tol, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"distance{tuple(p['points'])} → {computed} "
-                f"(expected {p['expected']}{_tol_note(tol)})")
+                f"(expected {p['expected']}{_tol_note(tol)})"
+                + decimal_note(computed, expected, p["expected"], ok))
 
     if ptype == "midpoint":
         (x1, y1), (x2, y2) = parse_points(p["points"], exactly=2)
@@ -1428,7 +1953,8 @@ def check_problem(p, ptype):
             raise VerifyInputError("midpoint 'expected' must be an [x, y] pair")
         mx, my = (x1 + x2) / 2, (y1 + y2) / 2
         ex, ey = parse_value(p["expected"][0]), parse_value(p["expected"][1])
-        ok = sym_equal(mx, ex) and sym_equal(my, ey)
+        ok = (sym_equal_decimal(mx, ex, p["expected"][0])
+              and sym_equal_decimal(my, ey, p["expected"][1]))
         return ("PASS" if ok else "FAIL",
                 f"midpoint{tuple(p['points'])} → ({mx}, {my}) (expected {p['expected']})")
 
@@ -1446,10 +1972,12 @@ def check_problem(p, ptype):
                     f"(expected {expected_raw})")
         computed = (y2 - y1) / (x2 - x1)
         tol = get_tol(p)
-        ok = compare_value(computed, parse_value(expected_raw), tol)
+        expected = parse_value(expected_raw)
+        ok = compare_value(computed, expected, tol, expected_raw)
         return ("PASS" if ok else "FAIL",
                 f"slope{tuple(p['points'])} → {computed} "
-                f"(expected {expected_raw}{_tol_note(tol)})")
+                f"(expected {expected_raw}{_tol_note(tol)})"
+                + decimal_note(computed, expected, expected_raw, ok))
 
     if ptype == "polygon_area":
         pts = parse_points(p["points"], at_least=3)
@@ -1459,10 +1987,11 @@ def check_problem(p, ptype):
         computed = sympy.Abs(shoelace) / 2
         expected = parse_value(p["expected"])
         tol = get_tol(p)
-        ok = compare_value(computed, expected, tol)
+        ok = compare_value(computed, expected, tol, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"polygon_area({len(pts)} points) → {computed} "
-                f"(expected {p['expected']}{_tol_note(tol)})")
+                f"(expected {p['expected']}{_tol_note(tol)})"
+                + decimal_note(computed, expected, p["expected"], ok))
 
     if ptype == "triangle":
         given = p["given"]
@@ -1513,7 +2042,23 @@ def check_problem(p, ptype):
         # Every solution must assign ALL vars (audit #3: a key listing only x
         # must not pass on an unchecked y).
         exp_raw = p["expected"]
-        exp_list = exp_raw if isinstance(exp_raw, list) else [exp_raw]
+        # "infinitely many" is a THIRD answer, not a missing one. A dependent
+        # system's correct printed answer is "infinitely many solutions", and
+        # the type could only express a listed point or nothing — so the sheet
+        # fell to MANUAL, and check_answer_key then demanded a listed value in
+        # a box whose correct content is the words. Two gates wanting different
+        # things on a correct sheet (R07). The empty list, already accepted,
+        # is the inconsistent case; this names the other one.
+        want_infinite = (isinstance(exp_raw, str)
+                         and exp_raw.strip().lower() in _INFINITE_KEYS)
+        if isinstance(exp_raw, str) and not want_infinite:
+            raise VerifyInputError(
+                f"system 'expected' must be a solution object like "
+                f'{{"x": 3, "y": 2}}, a list of them, [] for an inconsistent '
+                f'system with no solution, or "infinitely many" for a '
+                f"dependent one — got {exp_raw!r}")
+        exp_list = [] if want_infinite else \
+            (exp_raw if isinstance(exp_raw, list) else [exp_raw])
         want_list = []
         for sol in exp_list:
             if not isinstance(sol, dict) or set(sol) != set(vars_raw):
@@ -1522,8 +2067,11 @@ def check_problem(p, ptype):
             want_list.append({_VARS[k]: parse_value(v) for k, v in sol.items()})
         # VALIDITY: each claimed solution must satisfy every equation (handles
         # infinite families correctly — a valid particular point substitutes to 0).
+        # Decimal-aware: 0.1*x + 0.2*y - 0.5 at the exact solution substitutes
+        # to 5.55e-17, not to 0, and that is arithmetic noise, not a wrong key.
         def satisfies(assign):
-            return all(sym_equal(e.subs(assign), sympy.Integer(0)) for e in eqs)
+            return all(sym_equal_decimal(e.subs(assign), sympy.Integer(0))
+                       for e in eqs)
         if not all(satisfies(a) for a in want_list):
             return ("FAIL", f"system{eqs_raw}: a listed solution does not satisfy "
                     f"all equations (expected {exp_raw})")
@@ -1541,6 +2089,11 @@ def check_problem(p, ptype):
         # solution" and "infinitely many" are the two answers being taught apart.
         # Found by an eval author writing parallel lines on purpose.
         if not sols:
+            if want_infinite:
+                return ("FAIL",
+                        f"system{eqs_raw}: the key states infinitely many "
+                        "solutions, but the system is inconsistent — there are "
+                        'none. Use "expected": [] for no solution.')
             if want_list:
                 return ("FAIL",
                         f"system{eqs_raw}: the system is inconsistent — no "
@@ -1550,6 +2103,10 @@ def check_problem(p, ptype):
         finite = all(
             all(not v.free_symbols for v in sol.values()) for sol in sols)
         if finite:
+            if want_infinite:
+                return ("FAIL",
+                        f"system{eqs_raw}: the key states infinitely many "
+                        f"solutions, but exactly {len(sols)} exist(s): {sols}")
             if not want_list:
                 return ("FAIL",
                         f"system{eqs_raw}: the key states no solution, but "
@@ -1559,13 +2116,18 @@ def check_problem(p, ptype):
                         f"system{eqs_raw}: {len(sols)} solution(s) exist but key "
                         f"lists {len(want_list)} — verify completeness by hand")
             return ("PASS", f"system{eqs_raw} → all {len(sols)} solution(s) verified")
+        if want_infinite:
+            return ("PASS",
+                    f"system{eqs_raw} → dependent: infinitely many solutions "
+                    f"({sols}), as the key states")
         if not want_list:
             return ("FAIL",
                     f"system{eqs_raw}: the key states no solution, but the system "
                     f"is dependent — it has infinitely many")
         return ("MANUAL",
                 f"system{eqs_raw}: listed solution(s) valid but the system has a "
-                "parametric/infinite family — verify completeness by hand")
+                'parametric/infinite family — verify completeness by hand, or '
+                'state the answer as "expected": "infinitely many"')
 
     if ptype == "stats":
         data = p["data"]
@@ -1618,10 +2180,11 @@ def check_problem(p, ptype):
         elif measure in ("mean", "variance", "stdev", "q1", "q3", "iqr"):
             ok = rounds_to(result, p["expected"])   # precise rounds-to (audit #6)
         else:
-            ok = compare_value(result, expected, None)
+            ok = compare_value(result, expected, None, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"{measure}({data}) → {result} "
-                f"(expected {p['expected']}{_tol_note(tol)})")
+                f"(expected {p['expected']}{_tol_note(tol)})"
+                + decimal_note(result, expected, p["expected"], ok))
 
     if ptype == "probability":
         fav, tot = parse_value(p["favorable"]), parse_value(p["total"])
@@ -1701,10 +2264,11 @@ def check_problem(p, ptype):
                     f"an 'eval' that divides by the exact divisor — which is "
                     f"also the two steps the answer key shows.")
         expected = parse_value(p["expected"])
-        ok = sym_equal(result, expected)
+        ok = sym_equal_decimal(result, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"estimate({p['expr']} @ {place} → {rounded_str}) → {result} "
-                f"(expected {p['expected']})")
+                f"(expected {p['expected']})"
+                + decimal_note(result, expected, p["expected"], ok))
 
     if ptype == "compare":
         vals_raw = p["values"]
@@ -1748,7 +2312,7 @@ def check_problem(p, ptype):
         if isinstance(data, dict):          # category → value (bar/pictogram/table)
             table = {k: parse_value(v) for k, v in data.items()}
             if query == "value":
-                result = table[p["key"]]
+                result = table[_read_data_key(p, table)]
             elif query == "total":
                 result = sum(table.values())
             elif query in ("max_value", "min_value"):
@@ -1766,7 +2330,7 @@ def check_problem(p, ptype):
                         f"{query}({data}) → {sorted(winners)} "
                         f"(expected {p['expected']})")
             elif query == "difference":
-                a, b = p["key"]
+                a, b = _read_data_key_pair(p, table)
                 result = table[a] - table[b]
             else:
                 raise VerifyInputError(
@@ -1788,10 +2352,11 @@ def check_problem(p, ptype):
             raise VerifyInputError("read_data 'data' must be an object or a list")
         expected = parse_value(p["expected"])
         tol = get_tol(p)
-        ok = compare_value(result, expected, tol)
+        ok = compare_value(result, expected, tol, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"{query}({data}) → {result} "
-                f"(expected {p['expected']}{_tol_note(tol)})")
+                f"(expected {p['expected']}{_tol_note(tol)})"
+                + decimal_note(result, expected, p["expected"], ok))
 
     if ptype == "definite_integral":
         var = get_var(p)
@@ -1805,12 +2370,26 @@ def check_problem(p, ptype):
         # unreliable for oscillatory integrands (audit #1). If numerics don't
         # converge, return MANUAL rather than trust a wrong number.
         exact = None
+        val = None
         try:
             val = sympy.integrate(integrand, (var, lo, hi))
             if val.is_finite and not val.has(sympy.Integral):
                 exact = val
         except Exception:
-            exact = None
+            val = None
+        # DIVERGENCE IS AN ANSWER. SymPy answers ∫₀³ dx/x² with oo — which
+        # `val.is_finite` rejected, so the check fell through to quadrature and
+        # reported whatever finite number the panels happened to accumulate
+        # (9.19e18 on one run, 1.38e19 on the next). A key that correctly says
+        # "oo" was measured against a sampling artefact.
+        if val is not None and not val.has(sympy.Integral) \
+                and (val.is_infinite or val is sympy.zoo):
+            ok = sym_equal(val, expected)
+            return ("PASS" if ok else "FAIL",
+                    f"∫[{p['from']},{p['to']}] {p['expr']} d{var} DIVERGES "
+                    f"({val}) (expected {p['expected']})"
+                    + ("" if ok else " — the integral does not converge, so no "
+                       'finite value can be correct; key it as "oo"/"-oo"'))
         if exact is not None:
             ok = abs(float(sympy.N(exact)) - float(sympy.N(expected))) <= tol
             return ("PASS" if ok else "FAIL",
@@ -1818,10 +2397,20 @@ def check_problem(p, ptype):
                     f"(expected {p['expected']})")
         f = sympy.lambdify(var, integrand, modules="mpmath")
         a, b = float(sympy.N(lo)), float(sympy.N(hi))
+        # Panel boundaries at the integrand's KINKS. ∫₀³|t²−4| is 23/3 exactly;
+        # SymPy leaves it as an unevaluated Integral of a Piecewise, and
+        # Gaussian panels straddling the corner at t=2 disagreed at the 4th
+        # decimal, so a problem with an exact rational answer returned MANUAL.
+        # An Abs/sign corner is not a convergence failure, it is a panel
+        # boundary — and it is the only place a school integrand is non-smooth.
+        # The oscillatory guard below is untouched: it fires on integrands whose
+        # panels disagree for the reason it was written for (audit #1).
+        breaks = _kink_points(integrand, var, a, b)
         try:
-            coarse = mpmath.quad(f, [a, (a + b) / 2, b])
+            coarse = mpmath.quad(f, sorted({a, *breaks, (a + b) / 2, b}))
             mid = (2 * a + b) / 3, (a + 2 * b) / 3
-            fine = mpmath.quad(f, [a, mid[0], (a + b) / 2, mid[1], b])
+            fine = mpmath.quad(
+                f, sorted({a, *breaks, mid[0], (a + b) / 2, mid[1], b}))
         except Exception:
             return ("MANUAL", f"∫ {p['expr']}: numeric integration failed — verify by hand")
         if abs(coarse - fine) > max(tol, 1e-6):
@@ -1840,12 +2429,13 @@ def check_problem(p, ptype):
         hi = parse_value(p["to"])
         total = sympy.summation(term, (var, lo, hi))
         expected = parse_value(p["expected"])
-        ok = sym_equal(total, expected)
+        ok = sym_equal_decimal(total, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"sum({p['term']}, {var}={p['from']}..{p['to']}) → {total} "
-                f"(expected {p['expected']})")
+                f"(expected {p['expected']})"
+                + decimal_note(total, expected, p["expected"], ok))
 
-    expr = safe_parse(p["expr"])
+    expr = parse_equation(p["expr"]) if ptype == "equiv" else safe_parse(p["expr"])
 
     if ptype == "approx":
         if expr.free_symbols:
@@ -1861,6 +2451,45 @@ def check_problem(p, ptype):
 
     if ptype in ("solve", "zeros"):
         var = get_var(p)
+        expected_raw = p["expected"]
+        want_all = (isinstance(expected_raw, str)
+                    and expected_raw.strip().lower() in _ALL_REALS_KEYS)
+        want_none = (isinstance(expected_raw, str)
+                     and expected_raw.strip().lower() in _NO_SOLUTION_KEYS)
+        # sympy.solve() RETURNS [] FOR AN IDENTITY AND FOR A CONTRADICTION.
+        # x + 2 = x + 2 (every real number is a solution) and x + 2 = x + 3 (no
+        # number is) both arrive here as the empty list, so an empty key passed
+        # both and neither answer could be stated at all — on a linear-equations
+        # sheet where telling the two apart IS the lesson. Decide it from the
+        # expression instead of from the solver's return value.
+        residual = None
+        try:
+            residual = sympy.simplify(expr)
+        except Exception:
+            residual = None
+        if residual is not None and not residual.free_symbols:
+            if residual == 0:
+                ok = want_all
+                return ("PASS" if ok else "FAIL",
+                        f"{ptype}({p['expr']}) is an IDENTITY — it holds for "
+                        f"every value of {var}, so the solution set is all real "
+                        f"numbers (expected {expected_raw!r})"
+                        + ("" if ok else ' — key it as "all real numbers". '
+                           "Note that sympy.solve returns [] for an identity "
+                           "AND for a contradiction, so [] cannot mean either."))
+            ok = want_none or (isinstance(expected_raw, list)
+                               and not expected_raw)
+            return ("PASS" if ok else "FAIL",
+                    f"{ptype}({p['expr']}) is a CONTRADICTION — {p['expr']} "
+                    f"simplifies to the nonzero constant {residual}, so no "
+                    f"value of {var} solves it (expected {expected_raw!r})"
+                    + ("" if ok else ' — key it as "no solution" or []'))
+        if want_all or want_none:
+            return ("FAIL",
+                    f"{ptype}({p['expr']}): the key says {expected_raw!r}, but "
+                    f"the expression is not constant in {var} — it genuinely "
+                    f"has roots. Those phrases are only for an identity "
+                    f"(all real numbers) or a contradiction (no solution).")
         # Solve over ℂ with an unrestricted symbol so non-real roots are not
         # silently dropped (audit 1a: x**4-1 keyed [1,-1] must not pass).
         z = sympy.Dummy("z")
@@ -1896,6 +2525,19 @@ def check_problem(p, ptype):
         domain = p.get("domain", "real")
         if domain not in ("real", "complex"):
             raise VerifyInputError("'domain' must be 'real' or 'complex'")
+        # A LITERAL EQUATION IS NOT A DOMAIN QUESTION. Solving x*y = 5 for y
+        # gives 5/x, whose realness SymPy cannot decide (x could be 0), so
+        # `r.is_real` is None, the real filter dropped it, and the report said
+        # "→ [] (expected [5/x])" — which reads as "your expected answer is
+        # wrong" on a correct inverse. The documented escape was
+        # "domain":"complex", which is counter-intuitive (nothing here is
+        # complex) and written down nowhere. When the expression carries free
+        # symbols BESIDES var, the answer is an expression in those symbols and
+        # the real/complex split is not what is being asked, so every root is
+        # kept and the report says which symbols it solved in terms of. The
+        # audit-1a guarantee is untouched: it is about expressions in var alone,
+        # where this branch never fires.
+        extra = sorted(expr.free_symbols - {var}, key=str)
         if real_only and domain == "complex":
             return ("MANUAL",
                     f"{ptype}({p['expr']}) is solvable only over the reals here "
@@ -1905,30 +2547,50 @@ def check_problem(p, ptype):
                     f"exist was never enumerated")
         # When non-real roots exist the intent is ambiguous — force an explicit
         # decision instead of quietly comparing against reals only.
-        if nonreal and "domain" not in p:
+        if nonreal and "domain" not in p and not extra:
             return ("FAIL",
                     f"{ptype}({p['expr']}) has non-real roots {nonreal}; set "
                     f'"domain":"complex" to require all roots or "domain":"real" '
                     "to restrict — refusing to guess intent")
-        roots = all_roots if domain == "complex" else real_roots
-        expected = parse_value_list(p["expected"])
+        if extra:
+            roots = all_roots
+        else:
+            roots = all_roots if domain == "complex" else real_roots
+        expected = parse_value_list(expected_raw)
+        # Decimal-aware root matching: sqrt(9.8*d) − 70 solves to
+        # 499.999999999999 and was rejected against a key of 500, and an author
+        # changed the model to get a green build. expected_raw is deliberately
+        # NOT threaded through — a root multiset has no single written
+        # precision, so sqrt(2) keyed as 1.41 still fails, as it should.
         if ptype == "zeros":
-            roots = dedupe(roots)
-            expected = dedupe(expected)
-        ok = multiset_equal(roots, expected)
+            roots = dedupe(roots, eq=sym_equal_decimal)
+            expected = dedupe(expected, eq=sym_equal_decimal)
+        ok = multiset_equal(roots, expected, eq=sym_equal_decimal)
         # Say when the solve was restricted, so a reader of the report can see
         # which guarantee they actually have. Over ℝ this is exact; it simply
         # is not the ℂ-complete enumeration the unrestricted path gives.
-        how = "domain=real, solved over ℝ" if real_only else f"domain={domain}"
+        if extra:
+            how = ("solved for " + str(var) + " in terms of "
+                   + ", ".join(map(str, extra)) + " — a literal equation, so "
+                   "'domain' does not apply")
+        else:
+            how = "domain=real, solved over ℝ" if real_only else f"domain={domain}"
         return ("PASS" if ok else "FAIL",
                 f"{ptype}({p['expr']}, {how}) → {roots} "
-                f"(expected {expected})")
+                f"(expected {expected})"
+                + decimal_note(sympy.Tuple(*roots), sympy.Tuple(*expected),
+                               None, ok))
 
     if ptype in ("factor", "expand", "equiv"):
-        expected = parse_value(p["expected"])
-        ok = sym_equal(expr, expected)
+        # equiv only: either side may be written as an equation, and lhs - rhs
+        # is what gets compared — so the JSON can say what the student writes
+        # without changing what is checked. See split_equation.
+        expected = (parse_equation(p["expected"]) if ptype == "equiv"
+                    else parse_value(p["expected"]))
+        ok = sym_equal_decimal(expr, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
-                f"{ptype}({p['expr']}) ≟ {p['expected']}")
+                f"{ptype}({p['expr']}) ≟ {p['expected']}"
+                + decimal_note(expr, expected, p["expected"], ok))
 
     if ptype == "eval":
         if not isinstance(p["at"], dict) or not p["at"]:
@@ -1940,9 +2602,15 @@ def check_problem(p, ptype):
             subs[_VARS[name]] = parse_value(val)
         result = expr.subs(subs)
         expected = parse_value(p["expected"])
-        ok = sym_equal(result, expected)
+        ok = sym_equal_decimal(result, expected, p["expected"])
+        # Print the expected value AS WRITTEN. The old line printed the parsed
+        # form, so a JSON 1.4 was reported as "(expected 7/5)" — the author's
+        # own key, restated in a notation they never used, on a failure whose
+        # cause was on the other side of the comparison entirely.
         return ("PASS" if ok else "FAIL",
-                f"eval({p['expr']} at {p['at']}) → {result} (expected {expected})")
+                f"eval({p['expr']} at {p['at']}) → {result} "
+                f"(expected {p['expected']})"
+                + decimal_note(result, expected, p["expected"], ok))
 
     if ptype == "diff":
         var = get_var(p)
@@ -1951,10 +2619,11 @@ def check_problem(p, ptype):
             raise VerifyInputError("'order' must be an integer between 1 and 6")
         derivative = sympy.diff(expr, var, order)
         expected = parse_value(p["expected"])
-        ok = sym_equal(derivative, expected)
+        ok = sym_equal_decimal(derivative, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"d^{order}/d{var}^{order}({p['expr']}) → {derivative} "
-                f"(expected {expected})")
+                f"(expected {p['expected']})"
+                + decimal_note(derivative, expected, p["expected"], ok))
 
     if ptype == "integrate":
         # Verified in reverse: d/dvar(expected antiderivative) must equal the
@@ -1962,7 +2631,7 @@ def check_problem(p, ptype):
         var = get_var(p)
         expected = parse_value(p["expected"])
         back = sympy.diff(expected, var)
-        ok = sym_equal(back, expr)
+        ok = sym_equal_decimal(back, expr, p["expr"])
         # Domain guard (audit 1b): ln(x) is NOT a valid antiderivative of 1/x
         # over the reals — it is undefined where 1/x is fine (x<0). Reject an
         # antiderivative that is non-real at a point where the integrand is real.
@@ -1992,10 +2661,11 @@ def check_problem(p, ptype):
             raise VerifyInputError("'dir' must be '+', '-', or '+-'")
         value = sympy.limit(expr, var, to, dir=direction)
         expected = parse_value(p["expected"])
-        ok = sym_equal(value, expected)
+        ok = sym_equal_decimal(value, expected, p["expected"])
         return ("PASS" if ok else "FAIL",
                 f"limit({p['expr']}, {var}→{p['to']}, dir={direction}) → {value} "
-                f"(expected {expected})")
+                f"(expected {p['expected']})"
+                + decimal_note(value, expected, p["expected"], ok))
 
     if ptype == "solve_interval":
         var = get_var(p)
@@ -2007,6 +2677,22 @@ def check_problem(p, ptype):
         # In degree mode the interval and expected roots are degrees; solve in
         # radians and convert, so pi/6 compares exactly against 30.
         unit = get_unit(p, default="rad")
+        snapped = []
+        if unit != "deg":
+            for i, bound in enumerate(interval):
+                hit = snap_pi_endpoint(bound)
+                if hit is None:
+                    continue
+                exact, label = hit
+                if i == 0:
+                    lo = exact
+                else:
+                    hi = exact
+                snapped.append(f"{bound} read as {label}")
+        snap_note = ("" if not snapped else
+                     " [" + "; ".join(snapped) + " — a decimal endpoint would "
+                     "decide a root ON the boundary by rounding; write it "
+                     "exactly]")
         if unit == "deg":
             scale = sympy.pi / 180
             lo, hi = lo * scale, hi * scale
@@ -2052,7 +2738,7 @@ def check_problem(p, ptype):
                 return ("PASS",
                         f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
                         f"→ {in_unit(expected)} (completeness numerically "
-                        f"confirmed: {len(numeric)} roots)")
+                        f"confirmed: {len(numeric)} roots)" + snap_note)
             return ("MANUAL",
                     f"roots of {p['expr']} on [{interval[0]}, {interval[1]}): key "
                     f"lists {len(exp_floats)} but numeric enumeration found "
@@ -2077,10 +2763,11 @@ def check_problem(p, ptype):
                     f"the CAS solution is INCOMPLETE for this form. Restate the "
                     f"expression in factored form, or review by hand. Do NOT treat "
                     f"the short list as the answer key.")
-        ok = multiset_equal(computed, expected)
+        ok = multiset_equal(computed, expected, eq=sym_equal_decimal)
         return ("PASS" if ok else "FAIL",
                 f"roots of {p['expr']} on [{interval[0]}, {interval[1]}) "
-                f"→ {in_unit(computed)} (expected {in_unit(expected)})")
+                f"→ {in_unit(computed)} (expected {in_unit(expected)})"
+                + snap_note)
 
     if ptype == "inequality":
         var = get_var(p)
@@ -2097,7 +2784,7 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"solve {p['expr']} {rel} 0 → {computed} (expected {expected_set})")
 
-    raise VerifyInputError(f"unhandled type {ptype!r}")  # unreachable
+    raise VerifyInputError(f"unhandled type {ptype!r}")  # pragma: no cover — check_schema validates ptype against SCHEMAS before dispatch ever runs; reaching this line requires editing one table without the other
 
 
 # ── Driver ────────────────────────────────────────────────────────────────────
@@ -2149,6 +2836,16 @@ def run_verification(json_path):
         print(f'❌ top-level "format" must be "drill" or absent, got {fmt!r} — '
               '"drill" waives the interleave check; other formats need no '
               "declaration.", file=sys.stderr)
+        return 1
+    # "pages" is the study guide's declared page budget (build.sh reads it for
+    # the compile-ss cap; default 2, clamp 1..6). Validated here so a typo'd
+    # declaration fails at verify time, not as a mysterious page-budget number.
+    pages = data.get("pages")
+    if pages is not None and (type(pages) is not int or not 1 <= pages <= 6):
+        print(f'❌ top-level "pages" must be an integer 1..6, got {pages!r} — '
+              "it is the study guide's page budget (default 2; declare more "
+              "only when diagrams need the room or the user asked for a "
+              "longer guide).", file=sys.stderr)
         return 1
     facets_plan = data.get("facets")
     if facets_plan is not None:
@@ -2204,7 +2901,7 @@ def run_verification(json_path):
         return 1
 
     print(f"Verifying: {topic} ({len(problems)} problems) · "
-          f"SymPy {sympy.__version__}\n")
+          f"{sympy_stamp()}\n")
 
     results = []
     trap_details = []      # (pid, line) for every distinguishable trap
@@ -2352,9 +3049,22 @@ def print_schema(mode="table"):
                       for t, (req, opt) in sorted(SCHEMAS.items())},
             "universal_required": ["id", "type"],
             "universal_optional": universal,
-            "top_level_optional": ["facets", "format", "subtitle"],
+            "top_level_optional": ["facets", "format", "subtitle", "pages"],
             "traps_allowed_types": sorted(_TRAP_TYPES),
             "traps_allowed_set_types": sorted(_SET_TRAP_TYPES),
+            "traps_allowed_expr_types": sorted(_EXPR_TRAP_TYPES),
+            "traps_field_shapes": {
+                "scalar": {"desc": "str", "expr": "str",
+                           "value": "number or str (complex/exact ok)"},
+                "solution_set": {"desc": "str", "exprs": "list of str",
+                                 "value": "list of str"},
+                "symbolic": {"desc": "str", "exprs": "list of str",
+                             "value": "list of str"},
+            },
+            "non_value_answers": {
+                "solve/zeros": ["no solution", "all real numbers"],
+                "system": ["[]", "infinitely many"],
+            },
             "functions": sorted(_FUNCS),
             "constants": sorted(_CONSTS),
             "variables": sorted(_VARS),
@@ -2374,17 +3084,49 @@ def print_schema(mode="table"):
           '"subtitle" (bound verbatim to the worksheet title block by '
           'tests/check_facet_coverage.py), "format" ("drill" waives the '
           "interleave check).")
+    # THE TRAP SHAPES WERE REPORTED AS UNDOCUMENTED FIVE TIMES (R06, R10, R12,
+    # R14, R16). "that set as printed" reads as a scalar, so authors wrote
+    # "value": 5 and [5, -2] and were rejected with no statement of the rule.
+    # Every shape below now says its JSON type in words.
     print('"traps" (universal): [{"desc": str, "expr": wrong-method '
-          'expression, optional "value": printed wrong number}] on types with '
-          "a single comparable answer "
+          'expression STRING, optional "value": the printed wrong result — a '
+          'JSON number, or a STRING for a value a number cannot hold '
+          '("3 - 4*I", "sqrt(2)/2")}] on types with a single comparable answer '
           f"({', '.join(sorted(_TRAP_TYPES))}) — each must compute to a value "
           "the problem's own check REJECTS.")
     print('"traps" on a solution-set type '
           f"({', '.join(sorted(_SET_TRAP_TYPES))}): "
-          '[{"desc": str, "exprs": [the roots the wrong method yields], '
-          'optional "value": that set as printed}] — distinguishable when the '
-          "set differs from expected, so a dropped root, an extraneous root "
-          "and finding nothing at all are all declarable.")
+          '[{"desc": str, "exprs": a LIST of expression STRINGS, one per root '
+          'the wrong method yields (["5", "-2"], NOT [5, -2]), optional '
+          '"value": the same set as printed, also a LIST}] — distinguishable '
+          "when the set differs from expected, so a dropped root, an "
+          "extraneous root and finding nothing at all are all declarable.")
+    print('"traps" on a symbolic type '
+          f"({', '.join(sorted(_EXPR_TRAP_TYPES))}): "
+          '[{"desc": str, "exprs": a LIST of expression STRINGS holding the '
+          'wrong REWRITTEN FORM (["x**12"] where the answer is "x**7"), '
+          'optional "value": the same form(s) as printed, also a LIST}] — '
+          "distinguishable when the form is NOT equivalent to expected, which "
+          "is what makes error analysis reachable on factoring, expansion and "
+          "rewrite sheets.")
+    print('Answers that are not values: "solve"/"zeros" accept '
+          '"expected": "no solution" (a contradiction) and "all real numbers" '
+          "(an identity) — sympy.solve returns [] for BOTH, so [] alone cannot "
+          'state either; "system" accepts "expected": [] for an inconsistent '
+          'system and "infinitely many" for a dependent one.')
+    print("Decimal literals: when either side of a comparison carries one, the "
+          "check is scale-aware (rounds-to at the precision the expected value "
+          "is written with, else a 1e-9 relative band) instead of exact — an "
+          "expression written with decimals evaluates to a binary float, and "
+          "9.4 - 0.4*x at x=20 is 1.4000000000000004, not 7/5. Comparisons "
+          "where BOTH sides are exact are unchanged.")
+    print('Equations: "equiv" is the only type whose fields accept a \'=\' — '
+          'write "expected": "(x-3)**2 + (y+5)**2 = 25" where the student\'s '
+          "answer IS an equation (centre-radius form, standard form of a "
+          "conic) and lhs - rhs is what gets compared, so the answer bank "
+          "prints an equation instead of a subtraction. Leave it an expression "
+          "where the answer is one (vertex form, a simplified expression). "
+          "Every other type holds one side of the equation in its own field.")
     print(f"Allowed functions: {' '.join(sorted(_FUNCS))}")
     print(f"Allowed constants: {' '.join(sorted(_CONSTS))}")
     print(f"Allowed variables: {' '.join(sorted(_VARS))}")

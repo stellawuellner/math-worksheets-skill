@@ -79,7 +79,7 @@ from sympy.parsing.sympy_parser import parse_expr
 # an inequality's [-oo, -3, "open"] shipped that repr into a delivered key.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import verify  # noqa: E402
-from verify import safe_parse, VerifyInputError  # noqa: E402
+from verify import safe_parse, split_equation, VerifyInputError  # noqa: E402
 
 # safe_parse is the GATE; these locals only pin name -> sympy object for the
 # second, printing parse. If verify ever renames the table, the printer keeps
@@ -91,7 +91,12 @@ _LOCALS = getattr(verify, "_SYMPY_LOCALS", {})
 # solution". It used to double as the fallback for anything sympify could not
 # swallow, which made a VERIFIED relation ("<") and an unchecked proof print the
 # SAME glyph — the one distinction the bank exists to draw.
-MANUAL = "---"
+# The hand-judged mark. Was "---": an em dash reads as "nothing here" and
+# lives one glyph away from a minus sign, exactly the neighbourhood a maths
+# answer key crowds. A card suit appears nowhere else in these documents, so
+# it can carry ONE meaning — this answer is yours to judge — and the legend
+# on the summary page says so. amssymb (always loaded) supplies the glyph.
+MANUAL = r"$\spadesuit$"
 
 # An answer nobody checked must not look like an answer somebody checked. The
 # bank had exactly two states — a value, or "---" — so a printed response with
@@ -187,6 +192,15 @@ def _math(s):
     3*(x-3)*(x+3) into (x+3)(3x-9) on a sheet whose directions say "Factor
     completely", and shipped a wrong answer.
     """
+    # An `equiv` answer may be written as the equation the student writes
+    # ("(x-3)**2 + (y+5)**2 = 25"); verify.py compares lhs - rhs, and the bank
+    # prints the equation, because a grader scanning this column for a
+    # centre-radius answer should see one. Each side is typeset by the same
+    # form-preserving path, so the guarantee below holds on both.
+    sides = split_equation(s)
+    if sides is not None:
+        lhs, rhs = (_math(side).strip("$") for side in sides)
+        return f"${lhs} = {rhs}$"
     safe_parse(s)                      # validate — raises VerifyInputError
     normalized = s.replace("^", "**")
     try:
@@ -301,11 +315,18 @@ def _fmt_unit(unit):
 
 
 def _render_expected(entry):
-    """One JSON entry -> its text, with its declared slot label and unit."""
-    text = _fmt(entry["expected"], entry.get("type"))
-    unit = entry.get("answer_unit")
-    if isinstance(unit, str) and unit.strip():
-        text = f"{text} {_fmt_unit(unit.strip())}"
+    """One JSON entry -> its text, with its declared slot label and unit.
+
+    A manual entry has no `expected`; it renders as the MANUAL marker under its
+    own slot label, so an id with three unscored parts shows three of them.
+    """
+    if "expected" not in entry:
+        text = MANUAL
+    else:
+        text = _fmt(entry["expected"], entry.get("type"))
+        unit = entry.get("answer_unit")
+        if isinstance(unit, str) and unit.strip():
+            text = f"{text} {_fmt_unit(unit.strip())}"
     slot = entry.get("slot")
     if isinstance(slot, str) and slot.strip():
         # Which value is which. Unlabelled, a two-entry id printed in verify.json
@@ -324,21 +345,18 @@ def render_entry(entries, uncovered=0):
     that is missing an entry — so it comes from counting the worksheet's own
     answer slots (see slot_gap).
     """
-    vals, has_manual = [], False
-    for e in entries:
-        if not isinstance(e, dict):
-            continue
-        if "expected" in e:
-            vals.append(_render_expected(e))
-        else:                     # manual: the worked solution is the answer
-            has_manual = True
-    text = ", ".join(vals)
+    # ONE rendering pass in DECLARATION ORDER, machine values and manual
+    # markers alike. Manual entries used to be reduced to a single trailing
+    # bool, so an id with three unscored parts printed one "---" and dropped
+    # all three slot labels: 30 ids across 21 sheets, one of them a
+    # three-part always/sometimes/never item whose row read "---". A grader
+    # cannot see how many judgements are owed, or which. Rendering each in
+    # place also puts the parts in the order the sheet asks them, which is
+    # what makes the labels usable at a glance.
+    vals = [_render_expected(e) for e in entries if isinstance(e, dict)]
+    text = ", ".join(v for v in vals if v)
     if not text:
         text = MANUAL if (entries or not uncovered) else ""
-    elif has_manual:
-        # A PARTIALLY manual id used to hide its manual half completely,
-        # because the marker was guarded by "no machine values at all".
-        text = f"{text}, {MANUAL}"
     if uncovered:
         mark = UNCHECKED if not text else f"{text}~{UNCHECKED}"
         return mark
@@ -562,7 +580,7 @@ def render(data, level="", ws_tex=""):
         "\\raggedright\\sloppy\\noindent",
     ]
     for i, t in enumerate(entries, 1):
-        sep = " \\\\" if i < len(entries) else ""
+        sep = " \\\\[2pt]" if i < len(entries) else ""
         lines.append(f"{i}.~{t}{sep}")
     lines += [
         "\\end{multicols}",
@@ -581,9 +599,36 @@ def render(data, level="", ws_tex=""):
     total = machine + sum(1 for e in data.get("problems", [])
                           if isinstance(e, dict) and e.get("type") == "manual")
     total += sum(gap.values())          # printed responses nothing covers
-    lines += coverage_note(n, unchecked_ids, manual_ids, scratch, machine, total)
-    lines += curriculum_block(by_id, n, level)
-    lines += common_errors(by_id, n)
+    # The verification and curriculum summaries are the ADULT's metadata, and
+    # printed between the bank and the worked solutions they pushed the actual
+    # answers a page down on busy sheets. They now claim the LAST page for
+    # themselves, via \AtEndDocument so the ak_ author changes nothing and the
+    # single-\input contract preflight enforces stays exactly as it was. The
+    # common-wrong-answers block travels with them: it is a reference table,
+    # and the worked solution is where a grader already lands when a student's
+    # answer is off. Blank lines cannot appear inside the hook's argument
+    # (\AtEndDocument's token list ends a paragraph at a stray \par from a
+    # blank line mid-brace), so the sections are joined with explicit \par.
+    summary = (coverage_note(n, unchecked_ids, manual_ids, scratch, machine,
+                             total)
+               + curriculum_block(by_id, n, level)
+               + common_errors(by_id, n))
+    # The blocks separate themselves with blank lines, and inline those blank
+    # lines ARE the \par between a closing rule and the next block's heading.
+    # Dropping them fused rule and heading onto one line — "Curriculum"
+    # overfull by exactly its own width. Inside the hook a blank line is the
+    # hazard and \par is the same token, so swap rather than filter.
+    summary = [ln if ln.strip() else r"\par" for ln in summary]
+    while summary and summary[-1] == r"\par":
+        summary.pop()
+    if summary:
+        lines += [
+            r"\AtEndDocument{\clearpage",
+            r"\noindent{\large\textbf{Verification \& Curriculum "
+            r"Summary}}\par\nopagebreak",
+            r"\vspace{2pt}\noindent\rule{\linewidth}{1pt}\par\nopagebreak",
+            r"\vspace{4pt plus 2pt}",
+        ] + summary + ["}"]
     return "\n".join(lines)
 
 

@@ -82,6 +82,37 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_overprint.py"; then
 fi
 overprint_ran=1
 
+# Asks whether every suite on disk runs somewhere it can assert something. Four
+# render-and-read-back suites were invoked only in a CI job with no TeX, where
+# they printed "skipped" and exited 0 on every push. Pure text-reading, so it
+# runs everywhere and needs no engine of its own.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_suite_wiring.py"; then
+  echo "❌ test_suite_wiring.py failed"
+  exit 1
+fi
+wiring_ran=1
+
+# The shell-facing contracts: usage text, exit codes, and file-error messages
+# of every CLI build.sh calls by path. runpy-based, so the __main__ dispatch
+# runs in-process and under coverage.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_cli_contracts.py"; then
+  echo "❌ test_cli_contracts.py failed"
+  exit 1
+fi
+cli_ran=1
+
+# The version contract: sympy floor + measured baseline + the pgfplots compat
+# floor, checked against every file that states a version. Four statements,
+# three numbers and zero enforcement is what this replaced.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_dependency_versions.py"; then
+  echo "❌ test_dependency_versions.py failed"
+  exit 1
+fi
+versions_ran=1
+
 # A recorded run is a snapshot; the code moves on. This asks whether the stored
 # artifacts still look like what the skill produces TODAY — dead workarounds for
 # fixed faults, printed defects no gate catches, content a reference file could
@@ -469,7 +500,8 @@ echo "✅ test_check_log.py (page-budget and log-fault contract)"
 # noticing, because no runner called it. Any tests/test_*.py not named in this
 # file is dead weight pretending to be coverage.
 for suite in test_answer_key_binding test_audit_fixes test_branches \
-             test_error_paths test_pipeline_fixes test_preamble_layout; do
+             test_error_paths test_pipeline_fixes test_preamble_layout \
+             test_seed_defects test_tikz_libraries test_verify; do
   output=$("$PYTHON" "$SCRIPT_DIR/$suite.py" 2>&1)
   if [ $? -ne 0 ]; then
     echo "❌ $suite.py failed"
@@ -1241,6 +1273,46 @@ EOS
     echo "❌ build.sh no-ss --worksheet-only: should have passed"; exit 1
   fi
 
+  # --study-guide-only: a guide with no worksheet at all builds, runs the
+  # guide's OWN integrity gates for real, and skips the sheet-relative ones by
+  # name. The invocation is on the SS json — a guide-only request has no
+  # verify_<stem>.json to point at.
+  dir="$WORK/ss-only"; mkdir -p "$dir"
+  cp tests/fixtures/trio/ss_build_demo.tex "$dir/ss_build_demo.tex"
+  cp tests/fixtures/trio/verify_ss_build_demo.json "$dir/verify_ss_build_demo.json"
+  export TECTONIC_MARKER="$dir/compile_calls"
+  out=$(PATH="$WORK/bin:$PATH" bash scripts/build.sh "$dir/verify_ss_build_demo.json" \
+        --study-guide-only --outdir "$dir/out" 2>&1)
+  if [ $? -eq 0 ]; then
+    echo "✅ build.sh ss-only: a study guide builds with no worksheet present"
+  else
+    echo "❌ build.sh ss-only: should have passed"
+    echo "$out" | tail -20 | sed 's/^/     /'; exit 1
+  fi
+  for must_run in template-ss verify-ss compile-ss answer-key-ss ss-structure prose-ss; do
+    if ! echo "$out" | grep -q "$must_run *PASS"; then
+      echo "❌ build.sh ss-only: gate $must_run did not PASS"; exit 1
+    fi
+  done
+  echo "✅ build.sh ss-only: all six guide gates ran for real"
+  if echo "$out" | grep -q "coverage-ss *SKIPPED(--study-guide-only)"; then
+    echo "✅ build.sh ss-only: sheet-relative gates skip BY NAME"
+  else
+    echo "❌ build.sh ss-only: coverage-ss should be a named skip"; exit 1
+  fi
+  # the two modes are mutually exclusive
+  if PATH="$WORK/bin:$PATH" bash scripts/build.sh "$dir/verify_ss_build_demo.json" \
+       --study-guide-only --worksheet-only --outdir "$dir/out" >/dev/null 2>&1; then
+    echo "❌ build.sh ss-only: --worksheet-only + --study-guide-only accepted"; exit 1
+  fi
+  echo "✅ build.sh ss-only: the two --only modes are mutually exclusive"
+  # and the flag refuses a worksheet JSON, teaching the right invocation
+  if PATH="$WORK/bin:$PATH" bash scripts/build.sh "$WORK/green/verify_build_demo.json" \
+       --study-guide-only --outdir "$dir/out" >/dev/null 2>&1; then
+    echo "❌ build.sh ss-only: accepted a ws JSON"; exit 1
+  fi
+  echo "✅ build.sh ss-only: refuses a worksheet JSON (wants verify_ss_*.json)"
+
   # ambiguous discovery (two ws_ candidates) must be a named error
   dir="$WORK/ambig"; mkdir -p "$dir"
   cp tests/fixtures/trio/ws_build_demo.tex "$dir/ws_build_demo.tex"
@@ -1357,4 +1429,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard · $versions_ran version-contract guard · $cli_ran CLI-contract suite"

@@ -38,7 +38,9 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import re                     # noqa: E402
 import check_overprint as op  # noqa: E402
+import render_figures as rf   # noqa: E402
 
 TEMPLATES = os.path.join(ROOT, "templates")
 RENDERER = os.path.join(ROOT, "scripts", "render_figures.py")
@@ -118,6 +120,54 @@ def main():
         check(f"no label collides in any of the {len(CASES)} triangles",
               not collided,
               f"{len(collided)} collided — " + "; ".join(collided[:3]))
+
+    # ── The label metrics must still match the shipped preamble ─────────────
+    # render_figures.py decides placement in Python, before LaTeX runs, so it
+    # cannot ask TeX how wide a label is; it carries a table calibrated with
+    # \settowidth against this preamble at \small. That table is the whole
+    # reason the box model works — an earlier version estimated widths from a
+    # character count, came out 44% under on a single letter, and made
+    # placement WORSE (6 collisions to 7) by computing clear paper where the
+    # page had none. A font change in the preamble would silently reintroduce
+    # exactly that failure, so the constants are re-derived from a real
+    # compile here rather than trusted.
+    if engine:
+        probe = tempfile.mkdtemp(prefix="ssametrics")
+        for f in os.listdir(TEMPLATES):
+            if f.endswith(".tex"):
+                shutil.copy(os.path.join(TEMPLATES, f), probe)
+        SHAPES = ["C", "b = 26", "a = 310", "B_2", "50^\\circ", "?"]
+        body = "".join(
+            "\\settowidth{\\lblw}{\\small$%s$}\\typeout{MEAS %d \\the\\lblw}\n"
+            % (s, i) for i, s in enumerate(SHAPES))
+        open(os.path.join(probe, "m.tex"), "w").write(
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[margin=1in]{geometry}\n"
+            "\\input{worksheet-preamble}\n\\newlength{\\lblw}\n"
+            "\\begin{document}\n" + body + "x\\end{document}\n")
+        cmd = ([engine, "-interaction=nonstopmode", "m.tex"]
+               if engine.endswith("pdflatex") else [engine, "m.tex"])
+        subprocess.run(cmd, cwd=probe, capture_output=True)
+        log = os.path.join(probe, "m.log")
+        got = {}
+        if os.path.isfile(log):
+            for line in open(log, errors="replace"):
+                m = re.match(r"MEAS (\d+) ([\d.]+)pt", line.strip())
+                if m:
+                    got[int(m.group(1))] = float(m.group(2))
+        check("the metrics probe compiled and reported every shape",
+              len(got) == len(SHAPES), f"got {len(got)} of {len(SHAPES)}")
+        worst = 0.0
+        for i, shape in enumerate(SHAPES):
+            if i not in got:
+                continue
+            modelled = 2 * rf.label_extent_cm("$%s$" % shape)[0] / rf.PT_CM
+            worst = max(worst, abs(modelled - got[i]))
+        # A tenth of a point is far tighter than any placement decision needs
+        # and far looser than float noise: it catches a font change, not a
+        # rounding difference.
+        check("the calibrated width table still matches this preamble "
+              f"(worst error {worst:.3f}pt)", worst < 0.1)
 
     print()
     if FAILS:

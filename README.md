@@ -1,21 +1,33 @@
 # math-worksheets — Agent Skill
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](tests/coverage.sh)
+[![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](tests/coverage.sh)
 [![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.2.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.6.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
 | Worksheet | Answer key | Skills summary |
 |:---:|:---:|:---:|
 | [<img src="docs/samples/worksheet_geometry-1.png" width="250">](docs/samples/worksheet_geometry-1.png) | [<img src="docs/samples/answerkey_geometry-1.png" width="250">](docs/samples/answerkey_geometry-1.png) | [<img src="docs/samples/skills_summary-1.png" width="250">](docs/samples/skills_summary-1.png) |
-| To-scale figures, work space, ramped difficulty | Step-by-step solutions, boxed answers | Formula boxes + worked mini-examples |
+| To-scale figures, work space, ramped difficulty | Quick Answers up top, worked solutions, ♠ for hand-judged items | Formula boxes + worked mini-examples |
 
-*Real, unretouched output. The `read_data` type even renders data charts from the same numbers it verifies:* [data-handling worksheet →](docs/samples/worksheet_data-1.png)
+*Real, unretouched output, rebuilt with every layout change. The key's verification and curriculum metadata live on [a final summary page of their own →](docs/samples/answerkey_summary_page.png), and the `read_data` type renders data charts from the same numbers it verifies: [data-handling worksheet →](docs/samples/worksheet_data-1.png)*
+
+## Get the skill (without the 286 MB of evidence)
+
+This repository carries its own eval system and three fully judged eval runs — 9,699 files of verdicts, observations, and judged PDFs. That is the **evidence** behind the claims below, and it stays in the repo so every number remains checkable. It is not the **product**, so downloads exclude it automatically:
+
+- **[Download ZIP](../../archive/refs/heads/main.zip) or a [release](../../releases) tarball** — ~2 MB, ~230 files: `SKILL.md`, `scripts/`, `templates/`, `references/`, `tests/`, and the docs. `.gitattributes` `export-ignore` keeps the eval corpus out of every archive GitHub serves.
+- **Clone, skill only** — sparse checkout skips the corpus while keeping history:
+  ```bash
+  git clone --filter=blob:none --sparse <repo-url> && cd math-worksheets-skill
+  git sparse-checkout set --no-cone '/*' '!evals'
+  ```
+- **Full clone** — `git clone` as usual when you want the eval system, the retained runs, and the analyses they feed.
 
 Works with any AI agent that can read files and run shell commands — **Claude Code**, **Gemini**, **Codex**, **OpenClaw** — via the standard `SKILL.md` format, with portable fallbacks for every platform-specific step.
 
@@ -46,11 +58,13 @@ The guarantee is enforced, not aspirational: a **mandatory coverage gate** means
 
 ## Features
 
-- **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary cheat sheet with formula boxes and worked mini-examples (all three verified).
+- **Three documents per request** — worksheet, step-by-step answer key, and a skills-summary study guide (all three verified). The guide can also be built **alone** (`--study-guide-only`) with its full gate chain, for "just make me a reference sheet" requests.
+- **Study guides built on the learning-science results, not just formatted** — worked examples with a mandatory strategy step, retrieval-practice try-its with upside-down answers, optional `\why{}` self-explanation asides, optional `\fadestep{}` completion problems (backwards fading), and a dual-coding rule pairing spatial skills with value-free diagrams. Two pages by default; a declared `"pages"` (1–6) buys room for diagrams or a user-requested longer guide, and `verify.py` validates the declaration.
 - **26 verification types, elementary → AP Calc BC** — arithmetic, fractions, `solve`/`factor`/`expand`, `system`, `inequality`, `stats`, `probability`, `read_data` charts, coordinate geometry, `triangle` (law of sines/cosines, SSA-aware), `diff`/`integrate`/`definite_integral`/`limit`/`series`, `estimate`, `compare`, complex numbers, and explicit `manual`. [Full menu →](references/problem-library.md)
 - **Provenance binding** — `check_answer_key.py` and `check_prose_consistency.py` confirm the printed worksheet, figures, and answer key match the verified JSON, problem by problem.
 - **Standards, difficulty & Bloom** — every problem tags a CCSS/AP code (K–4 through AP CED), a 1–5 difficulty (ramp-checked), and a cognitive level; tiered support/core/challenge worksheets on request. [Standards map →](references/standards-map.md)
-- **Publication-quality LaTeX** — a compile-tested figure library (to-scale triangles, circle theorems, the unit circle, trig graphs, 3D solids, data charts, two-column proofs) via `tectonic`, with a `pdflatex` fallback.
+- **A figure house style, not a snippet pile** — the preamble ships graph styles (`wsgrid` and friends: 7mm pencil-sized unit squares, a gridline at every integer, tick labels white-backed so a curve can never strike a number) and chart styles (`wsbar`, a true `wshist`, `wsboxplot pair`, `\wsdotplot`, stem-and-leaf, scaled pictograms); `figure-macros.tex` ships to-scale triangles, congruence/parallel marks, a CCSS-8 transformation grid, fixed-size solids with nets, and the K-4 model set — ten frames, arrays, proportional base-ten blocks, clock faces, fractions on a number line, tape models, coins. Compile-tested via `tectonic`, with a `pdflatex` fallback. [House style →](references/latex-templates.md)
+- **Figures that survive the photocopier** — black ink with meaning carried by dash pattern, fill pattern, weight and label, never by hue; a measured line-weight hierarchy (minor grid < major grid < axis < data). Figures are space-generous by policy: budget the page for the figure's natural size rather than shrinking it until a student cannot plot on it.
 - **Accessible output** — large-print and dyslexia-friendly modes (`extarticle` at 14/17pt plus `\accessiblemode`): roomier leading, bigger answer blanks, sans-serif prose *and* math, emphasis set bold rather than italic. A student whose IEP entitles them to large print can use the same generator everyone else does. [How →](references/latex-templates.md#accessibility)
 - **Paper and locale** — US Letter, A4, and Legal; `\mwslocale{eu}` prints decimal commas and `\times`. The verify JSON stays canonical, so only the *printed* form is localised and every gate keeps one number format.
 - **Page budget computed from content** — 50 graphing problems that each need a coordinate plane are allowed the ~24 pages they need; a flat cap could only be met by shrinking the work space. `build.sh` prints the ideal page count and the double-sided sheet count, so paper cost is visible before printing. [Details →](references/latex-templates.md#page-budget-measured-not-guessed)
@@ -130,9 +144,9 @@ python3 -m venv .venv
 .venv/bin/python3 -m pip install "sympy==1.14.0" "coverage>=7"
 ```
 
-Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.
+**On versions, because "0 false accepts" is a claim about a CAS, not about a script.** `verify.py` enforces a floor of **sympy 1.12** and refuses to run below it. The floor is the weaker of the two controls and it is worth saying why: this verifier's sympy surface is small and old, so an out-of-range CAS does not raise `AttributeError` and stop — it computes, and answers differently. A floor catches the loud failure; the dangerous one is silent. The control that carries weight is the stamp. The corpus baselines (GSM8K, MATH) were established on **1.14.0**, and every run prints the version it actually used — and says so explicitly when that is not 1.14.0, rather than letting the run inherit a guarantee nobody measured it under. There is deliberately **no upper bound**: refusing to run on a newer sympy would age this skill into uselessness, and an author who cannot run the gate at all ships unverified answers instead.
 
-No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
+No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`. That path has a real version floor too: the figure house styles need **pgfplots ≥ 1.18**, and older distributions ship less (Ubuntu 20.04 has 1.16). The preamble checks and stops with an actionable message, because pgfplots' own refusal — *"Please use at most `compat=1.16`"* — points the wrong way: lowering the compat level silently changes axis scaling under every shipped style. tectonic always fetches a current pgfplots, so this only bites the fallback path.
 
 ## Skill Contents
 
@@ -141,47 +155,79 @@ math-worksheets/
 ├── SKILL.md                          ← workflow and instructions
 ├── LICENSE                           ← MIT
 ├── scripts/
-│   ├── build.sh                     ← ONE command: full gate chain + three compiles, fail-fast
-│   ├── compile.sh                   ← tectonic/pdflatex PDF compiler wrapper (stages templates/)
-│   ├── page_budget.py               ← page budget computed from the problem set (paper-aware)
-│   ├── find_python.sh               ← shared finder: first python3 that can import sympy
-│   ├── run_verify.sh                ← gates compilation on SymPy pass
-│   ├── review_eval_run.py           ← author diagnosis packets and improvement backlog
-│   ├── score_eval_run.py            ← PDF evidence, judge packets, and run scoring
-│   └── verify.py                    ← the fixed, audited verifier (26 check types; --schema)
+│   ├── build.sh                      ← ONE command: full gate chain + three compiles, fail-fast
+│   ├── compile.sh                    ← tectonic/pdflatex wrapper (stages templates/)
+│   ├── verify.py                     ← the fixed, audited verifier (26 check types; --schema)
+│   ├── page_budget.py                ← page budget computed from the problem set (paper-aware)
+│   ├── render_figures.py             ← builds TikZ figures FROM the verify JSON, so a figure
+│   │                                   cannot disagree with the answer it illustrates
+│   ├── render_quick_answers.py       ← generates the answer key's Quick Answers bank
+│   ├── render_meta.py                ← difficulty/effort markers from the JSON tags
+│   ├── check_log.py                  ← reads the LaTeX log for real layout faults
+│   ├── find_python.sh                ← shared finder: first python3 that can import sympy
+│   ├── run_verify.sh                 ← gates compilation on SymPy pass
+│   ├── review_eval_run.py            ← author diagnosis packets and improvement backlog
+│   └── score_eval_run.py             ← PDF evidence, judge packets, and run scoring
 ├── templates/
-│   ├── worksheet-preamble.tex       ← the \input-able preamble (headers, boxes, \problem)
-│   └── figure-macros.tex            ← \rtfig / \trifig / \refrt figure macros
+│   ├── worksheet-preamble.tex        ← the \input-able preamble: headers, boxes, \problem,
+│   │                                   and the figure HOUSE STYLES (wsgrid/wsbar/wshist/
+│   │                                   wsboxplot/\wsdotplot/wsstemleaf …)
+│   └── figure-macros.tex             ← triangles, congruence marks, transformation grid,
+│                                       fixed-size solids + nets, and the K-4 model set
+│                                       (\tenframefig \arrayfig \basetenfig \clockfig
+│                                       \fraclinefig \tapefig \coinrowfig …)
 ├── references/
-│   ├── latex-templates.md           ← LaTeX patterns (planes, figures, charts, answer key)
-│   ├── problem-library.md           ← problem menu + verification recipes, K → Calc BC
-│   ├── standards-map.md             ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
-│   ├── manual-review-aid.md         ← optional LLM-judge pass for open reasoning
+│   ├── latex-templates.md            ← figure house style, planes, figures, charts, answer key
+│   ├── problem-library.md            ← problem menu + verification recipes, K → Calc BC
+│   ├── standards-map.md              ← CCSS (K–4, 5–8, HS) + AP CED codes; difficulty ladders
+│   └── manual-review-aid.md          ← optional LLM-judge pass for open reasoning
 ├── evals/
 │   ├── evals.json                    ← quick 3-prompt skill-on/off smoke subset
-│   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, and coverage map
-│   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus acceptance prompts
-│   ├── curriculum-judge-rubric.md    ← human/independent-agent acceptance procedure
+│   ├── capability-suite.json         ← 28-task E2E suite, graders, profiles, coverage map
+│   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus prompts
+│   ├── curriculum-judge-rubric.md    ← v1 acceptance procedure (frozen)
+│   ├── curriculum-judge-rubric-v2.md ← v2 behavioural anchors (shadow-scored)
+│   ├── JUDGING-V2-ADDENDUM.md        ← what v2 changes, handed to the judge with the packet
+│   ├── run_eval.py                   ← start / next / record / status / package a run
+│   ├── score_eval.py                 ← aggregates a judge's verdicts into the run report;
+│   │                                   refuses self-judging, recomputes ACCEPT from the
+│   │                                   scores, and reports contradictions with the record
+│   ├── repair_artifacts.py           ← deterministic re-gate of stored artifacts
+│   ├── seed_defects.py               ← seeded-defect CALIBRATION runs: plants known defects
+│   │                                   in known-clean sheets, keeps controls, seals the
+│   │                                   manifest outside the run so judging stays blind
+│   ├── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
+│   ├── AUTHORING.md                  ← authoring brief + known-open traps
 │   ├── author-review.md              ← scored-run feedback loop for the author system
 │   ├── scoring-harness.md            ← retained-run layout and two-stage grading workflow
-│   └── generate_curriculum_suite.py  ← deterministic curriculum manifest generator
+│   ├── runs/                         ← recorded runs: artifacts, observations, verdicts
+│   └── analysis/                     ← findings and verdict reviews, OUTSIDE the judge packet
 ├── tests/
-│   ├── run_tests.sh                 ← regression suite (pass/fail/injection/schema fixtures)
-│   ├── test_eval_suite.py            ← eval schema, coverage, balance, and smoke-sync contract
-│   ├── test_curriculum_eval_suite.py ← 500-prompt uniqueness, distribution, and judge contract
-│   ├── test_author_review.py         ← author packets, response schema, and backlog contract
-│   ├── test_scoring_harness.py       ← PDF evidence, verdict validation, and aggregation contract
-│   ├── test_page_budget.py           ← page-budget cost model and CLI contract
-│   ├── visual_regression.py         ← renders each document, diffs against an approved baseline
-│   ├── test_visual_environment.py    ← the guard deciding whether baselines apply here
-│   ├── test_preamble_layout.py      ← compiles a PDF and reads it back (answer lines, header, date)
-│   ├── baseline/                    ← approved ink-density signatures, one file per page
-│   │   └── ENVIRONMENT.txt          ← the TeX/poppler stack they were recorded in
-│   ├── test_audit_fixes.py          ← soundness-regression pins from the trust audit
-│   ├── check_answer_key.py          ← binds printed answer key to verified JSON
-│   ├── check_prose_consistency.py   ← binds worksheet prose + figure labels to JSON
+│   ├── run_tests.sh                  ← the regression suite (107 fixtures/checks + 7 suites)
+│   ├── coverage.sh                   ← every suite under coverage, floor 90%
+│   ├── check_answer_key.py           ← binds printed answer key to verified JSON
+│   ├── check_answer_slots.py         ← every PRINTED response needs its own verify entry,
+│   │                                   and a slot label must not promise a form the value
+│   │                                   is not in
+│   ├── check_prose_consistency.py    ← binds worksheet prose + figure labels to JSON
+│   ├── check_layout.py               ← figure scope, work space, answer location
+│   ├── check_overprint.py            ← reads rendered word boxes for collisions
+│   ├── check_answer_line.py          ← answer_unit ↔ \answerline pairing
+│   ├── check_ss_coverage.py / check_facet_coverage.py / check_study_guide.py
+│   ├── check_template_use.py         ← the shell must \input the preamble, never hand-roll it
+│   ├── check_artifact_health.py      ← recorded-run artifact integrity
+│   ├── visual_regression.py          ← renders each document, diffs against approved baselines
+│   ├── test_*.py                     ← 30 suites; coverage.sh globs and runs them all
+│   ├── test_dependency_versions.py   ← the sympy floor + measured baseline + the
+│   │                                   pgfplots compat floor, checked against every
+│   │                                   file that states a version
+│   ├── test_suite_wiring.py          ← asserts every suite runs somewhere it can assert
+│   │                                   something — in particular that the render-and-
+│   │                                   read-back suites run in the CI job that has TeX
+│   ├── baseline/                     ← approved ink-density signatures, one file per page
+│   │   └── ENVIRONMENT.txt           ← the TeX/poppler stack they were recorded in
 │   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
-│   └── fixtures/
+│   └── fixtures/                     ← 62 verify fixtures + LaTeX probes
 └── .github/workflows/
     ├── tests.yml                     ← regression and pinned visual gates
     └── eval-results.yml              ← scored-run intake and author-review packets
@@ -190,7 +236,7 @@ math-worksheets/
 ## Testing
 
 ```bash
-bash tests/run_tests.sh                    # contract suite (105 fixtures/checks)
+bash tests/run_tests.sh                    # contract suite (107 fixtures/checks)
 bash tests/coverage.sh                     # every suite under coverage, floor 90%
 python3 tests/visual_regression.py         # rendered pages vs approved baselines
 python3 tests/visual_regression.py --approve   # re-record after an intended design change
@@ -198,9 +244,9 @@ python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
 python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **105 fixtures and checks** — 36 verify, 16 layout, 19 answer-key, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose, 10 facet/trap — plus capability-, curriculum-, scoring-harness-, and author-review integrity suites. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **30 Python suites**. `run_tests.sh` runs 21 of those 30 directly; `coverage.sh` globs and runs all 30, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
-`coverage.sh` runs those plus the Python suites under `coverage` and fails below **90%** (currently **93%**). Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_branches.py` (numeric fallbacks and verdict variants), `test_page_budget.py` (the content-cost model and CLI contract), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
+`coverage.sh` runs the fixtures and **every** `tests/test_*.py` under `coverage` and fails below **90%** (currently **90%**). The suite list is globbed, not hand-maintained: it was hand-maintained once and drifted until eleven wired suites never ran under coverage, so the reported percentage described a shrinking fraction of the tests while reading like a whole-project number. Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_verify.py` (scale-aware numeric comparison, symbolic traps, the equation form, and the defensive branches that keep a malformed key producing a verdict rather than a traceback), `test_answer_slots.py` (per-response coverage and the slot-form contract), `test_tikz_libraries.py` (which compiles every figure snippet the docs print, plus a 7-page probe exercising the whole house style), `test_seed_defects.py` (the calibration seeder's transforms), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
 **Visual regression.** Every layout fault this project has fixed was originally found by a human looking at a PDF, so `visual_regression.py` renders each document to grayscale, reduces it to a 48×48 ink-density grid, and compares against a committed baseline (~7KB per page, diffable in git). Comparison is band-aware: a single page-wide threshold missed a header collision entirely, because the running head is a thin strip. A diff is not automatically a bug — read the reported region, then either fix it or re-approve and commit the new baseline alongside the design change.
 
@@ -213,6 +259,44 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.6.0 — 2026-08-08
+- **Downloads are 2 MB, not 286 MB.** `.gitattributes` marks `evals/` `export-ignore`, so GitHub's Download ZIP and release tarballs carry the skill (~230 files) without the retained eval corpus (9,699 files) — while clones keep the full evidence base. The README's new *Get the skill* section gives the sparse-checkout recipe for lean clones. Sample images are regenerated from a fresh v3.6 build, so the screenshots show the layout the code actually produces (including the new [final summary page](docs/samples/answerkey_summary_page.png)); the SSA watch-out on the study-guide sample is the very ambiguity problem 4 of the worksheet sample teaches.
+- **The answer key reads the way a grader uses it: header, Quick Answers, worked solutions — and a final page of its own for the metadata.** The verification note, curriculum block, and common-wrong-answers table now claim the key's LAST page via `\AtEndDocument{\clearpage...}` emitted by the generated bank, so the `ak_` author writes nothing extra and the one-`\input` contract is untouched. Previously all three sat between the bank and the first worked solution, pushing the actual answers a page down on busy sheets.
+- **The hand-judged mark is now `$\spadesuit$`.** The old `---` sat one glyph from a minus sign — the exact neighbourhood a maths key crowds — and read as "nothing here". A card suit appears nowhere else in these documents, so it carries one meaning, and the summary-page legend states it. The eval harness's bank cross-check recognises both generations (♠ on current sheets, the em dash on retained pre-v3.6 runs), because the corpus is a history, not a snapshot.
+- **Answer keys breathe; worksheets stay measured.** `\akheader` now switches on rubber inter-problem space (0.5cm stretching toward a full centimetre), `\raggedbottom`, a small flexible `\parskip`, and 2pt between bank rows. The worksheet keeps its fixed layout deliberately — work space there is a per-problem measurement the page budget charges for, and stretch would be the budget lying. The ak page ceiling gains the +1 page the summary now occupies.
+- Found and fixed in the process: blank lines inside the `\AtEndDocument` argument are a `\par`-in-argument hazard, and *removing* them fused a closing rule with the next heading ("Curriculum" overfull by exactly its own width) — the separators became explicit `\par` tokens, and the layout contract test pins that no blank line can return.
+
+### v3.5.1 — 2026-08-08
+- **Coverage 92% → 95%, and the report says what the last 5% is.** ~90 new cases across five suites, every one asserting behaviour a user hits: the verifier's malformed-input refusals now pin their *messages* (the message is the UX of the gate, and several taught the wrong fix before anything exercised them), the scoring harness's finding emitters fire under a crafted defect-zoo run, malformed judge verdicts are refused **by field name**, the real PDF inspector runs on a real PDF (every prior test injected a fake), the sympy-missing and sympy-too-old guards execute in-process under a doctored `sys.modules`, and a new `test_cli_contracts.py` pins the shell-facing surface `build.sh` actually calls — exit codes, usage text, the all-manual floor. Three lines carry `# pragma: no cover`, each with its reason in the source (one raise reachable only by editing one dispatch table without the other; two `__main__` dispatch lines invisible to in-process coverage). **Stopped here deliberately**: the remaining ~230 dark lines are dominated by `except Exception` fallbacks around CAS internals, and covering those means monkeypatching sympy to throw mid-computation — tests that pin implementation rather than behaviour. The enforced floor rises 90 → 93.
+
+### v3.5.0 — 2026-08-08
+- **A weekly CAS canary makes sympy drift early, not just visible.** `.github/workflows/cas-canary.yml` runs the full fixture suite and the GSM8K corpus against the **newest sympy on PyPI** every Monday — the one workflow that deliberately does not pin. The run-time stamp says "this run isn't covered by the baseline"; the canary says "the next sympy needs the baseline re-established" before anyone upgrades. Its assertions were verified against today's baseline before shipping (4,271/4,282 parse coverage, 100% accept-correct, 0 false accepts on sympy 1.14.0 — which also corrected a stale 4,282/4,282 parse claim in `tests/README.md`), and the version-contract guard pins that the canary exists, is scheduled, is unpinned, and runs both instruments.
+- **Study guides overhauled around the worked-example literature.** New optional macros: `\why{...}` prints a one-line self-explanation aside under a step (the reason the move is legal — a printed model of the habit the research prompts train), and `\fadestep{...}` turns a try-it into a completion problem ("Started for you: … / Finish it:"), implementing backwards fading for multi-step skills. Boxes gained printed title tabs (RULE / EXAMPLE / TRY IT / WATCH OUT) — the signaling principle applied to a reference card, and the tab text keeps the meaning after a grayscale photocopy — plus rounded corners and a unified border weight. SKILL.md now states which learning effect each structural element rides on, and adds a dual-coding rule: spatial skills get a value-free diagram beside the rule.
+- **`--study-guide-only`.** A guide with no worksheet builds via `build.sh <verify_ss_…json> --study-guide-only`: all six guide-integrity gates run for real (template, verify, compile with page cap, answer binding, structure, prose) plus overprint; sheet-relative gates skip by name. Mutually exclusive with `--worksheet-only`; refuses a worksheet JSON with the correct invocation in the error.
+- **Study-guide length is declared, not hard-coded.** Top-level `"pages"` (integer 1–6, default 2) in the verify_ss JSON sets the compile-ss page cap; `verify.py` validates it so a typo fails at verify time with the policy in the message. The 2-page default stays the design — the declaration exists for guides whose skills genuinely need diagram room and for users who ask for a longer guide.
+- Visual baselines re-recorded for the redesign (the documented `--approve` path); the driver suite gained five `--study-guide-only` cases and the preamble suite pins all four tabs and both macros on the rendered page.
+
+### v3.4.0 — 2026-08-08
+- **The curr-482 class is now flagged: a stem that asks for a formula nothing verifies.** The slot gate counts the responses the answer bank PRINTS; this reads what the STEM ASKS FOR, which is the only place the shortfall is visible. `verify.json` covered an antiderivative and an evaluated value while the stem said "Write the particular solution y = f(x), then evaluate y(1)" — so the count balanced and the bank simply never printed the formula. **Advisory, not a hard fail, and the measurement is the reason**: 20 fires over 6,096 corpus problems, all 20 reading as real on adjudication — good for a flag, short of the 100%-on-corpus bar every hard-fail lint here had to clear. The load-bearing distinction is that an antiderivative *is* the general solution and *cannot be* the particular one (its constant is fixed by an initial condition no `integrate` check sees), so the same entry covers one ask and not the other; both directions are pinned. Two shapes were measured and deliberately excluded rather than tolerated: a general solution keyed by `integrate` (genuinely covered), and ordinary set-up-and-solve word problems — a wider noun list including a bare "equation" fired 24 times with over half defensible, and is not shipped.
+
+### v3.3.2 — 2026-08-08
+- **The version contract is now stated once and enforced.** Four places stated a sympy version, using three different numbers, and nothing checked any of them: CI installed `sympy>=1.12`, the dev setup said `==1.14.0`, the prose said "baselines were established on 1.14", and a changelog line claimed SymPy was "pinned" when no code read a version at all. `verify.py` now refuses to run below **1.12** and prints the version every run — saying explicitly when it is not the **1.14.0** the GSM8K/MATH corpora were measured on, so a run cannot quietly inherit a guarantee nobody measured it under. **The floor is the weaker control and the README says so**: this verifier's sympy surface is small and old, so an out-of-range CAS does not raise `AttributeError` and stop — it computes, and answers differently. No upper bound, deliberately: an author who cannot run the gate ships unverified answers instead.
+- **pgfplots ≥ 1.18 is now checked, not assumed.** `compat=1.18` is a hard requirement of the figure house styles, and Ubuntu 20.04 ships 1.16. Unguarded, pgfplots refuses with *"Please use at most `compat=1.16`"* — advice that fixes the error and silently changes axis scaling under every shipped style. The preamble stops first with a message naming the actual fix (tectonic, or a newer texlive). Only reachable on the pdflatex fallback; tectonic always fetches a current pgfplots.
+- `tests/test_dependency_versions.py` pins all of it, including that CI's lower bound can never drop below the verifier's floor. It caught its own first bug: `_version_tuple` stripped non-digits rather than stopping at them, reading `1.14.0rc1` as `(1, 14, 1)` and sorting a release candidate above the release it precedes.
+
+### v3.3.1 — 2026-08-08
+- **`\ans` was math-only in study guides, and an end-to-end build found it.** `\akheader` replaces `\ans` with a text-safe compact box; `\ssheader` does not, so an `ss_` document got the base definition — a bare `\boldsymbol`, which is illegal outside math mode. Every shipped exemplar happens to write `$\ans{...}$`, so the text-mode path had never been exercised; a study guide written from SKILL.md's prose ("print each result with `\ans{...}`") instead failed the `compile-ss` gate with `! Missing $ inserted`, the last gate in the chain, the error naming a line two away from the cause. `\ensuremath` fixes it with no change to math-mode output at all — visual regression moved 0 of 2304 cells on the study-guide case — and `tests/test_preamble_layout.py` now pins both authoring forms, mutation-tested against the old macro.
+- **Four test suites were reporting green without running.** `test_ssa_figure_labels.py`, `test_tikz_libraries.py`, `test_overprint.py` and `test_page_budget_type_size.py` render a real document and read the PDF back, so they open by probing for a LaTeX engine and skip cleanly when there is none. CI's `verify` job installs poppler but not TeX, and those four were invoked only there — so on every push they printed "skipped" and exited 0, including the figure label-collision measurement and the probe that compiles every figure snippet the docs print. They now run in the `visual` job, which is the one that installs texlive, and `tests/test_suite_wiring.py` fails the build if an engine-dependent suite is ever again wired only where no engine exists. A clean skip is right on a laptop and worthless in CI; nothing distinguished the two.
+- **Doc corrections found by auditing claims against the code, not by a red build.** SKILL.md stated the worksheet and answer-key page caps as a fixed 8 and 6; `build.sh` computes them per sheet from `page_budget.py` and uses 8/6 only as the fallback when that fails — a 50-problem graphing set is allowed 26 pages, so an author reading the old text would have cut content the gate never asked them to cut. The README claimed all suites were wired into `run_tests.sh` (9 of 28 are not; they run under `coverage.sh`), quoted a stale fixture count in one of two places, and omitted `evals/score_eval.py` from the file tree. The suite-wiring guard now pins the suite count too.
+- **The calibration controls are adjudicated**, and one of the three judge findings is the judge's own error: a hard failure claiming three number lines label their first interior tick as 1, where all three label the right endpoint, in the TikZ source and in the rendered PDF. So the honest control reading is 1 real defect / 1 false hard failure / 1 judgement call, and the 10% false-hard-failure rate now travels beside the 20% detection rate.
+
+### v3.3.0 — 2026-08-08
+- **Figure house style.** Four parallel reviews rendered real corpus pages and judged them against printed practice books. They found figures that defeat their own pedagogy: a blank grid with gridlines only every 2 units (no line at any odd integer, on the figure whose job is plotting integer points), a bar chart printing each bar's value on the bar — answering the `read_data` question for the student — a two-panel comparison whose panels auto-scaled independently, 3D solids overprinting their own labels, base-ten blocks drawn from three inconsistent units, and a grade-3 fraction comparison distinguishing its two points by red vs blue, which photocopies into two identical dots. Below grade 5 there were essentially no templates at all, so every K-4 sheet hand-rolled its models and the generator visibly avoided whole strands — zero clock faces, zero coins, zero multiplication arrays in the entire corpus. Ships ~20 preamble styles and ~30 macros, each compiled and rendered before merging, plus a 7-page probe pinned as a fixture test.
+- **The verifier stopped failing correct answers it could not express.** Decimal keys are compared scale-aware (five separate authors had rewritten correct mathematics — `4.9t²` became `5t²` — to satisfy exact float comparison); `equiv`/`expand`/`factor` can carry misconception traps, making error analysis reachable on factoring and rewrite sheets; `equiv` accepts the equation the student actually writes (`"expected": "(x-3)**2 + (y+5)**2 = 25"`), with `lhs - rhs` compared as before; divergence, identities and contradictions became answers rather than MANUAL fallthroughs. Re-measured over 1200 verify JSONs and 13,297 entries: **0 verdict changes** — this widened what can be stated, it did not reclassify what was already decided.
+- **The answer bank tells the truth about what is unchecked.** Multiple `manual` responses on one problem used to collapse into a single `---` with their slot labels dropped, so a grader could not see how many judgements were owed; and the marker was appended at the end, reordering parts against the printed page (measured: of 1041 ids with two or more lettered slots, all 1041 declare in ascending order). A new hard gate catches a slot label promising a FORM its value is not in — `the equation` keyed to a slope, `colon form` keyed to a fraction.
+- **Seeded-defect calibration** (`evals/seed_defects.py`). A judge that scores every sheet 4/5 is indistinguishable from a judge that reads nothing, and a 300-case run cannot tell them apart because nobody knows its true defect count. The seeder plants catalogued defects in known-clean sheets, keeps controls for the false-positive denominator, admits a case only if every gate stays **green** (a defect a gate catches says nothing about the territory the judge covers), and seals the manifest outside the run directory. **The first run's numbers are in the repo and they are not flattering to the judge: 3 of 15 planted defects detected, 1 of 10 clean controls failed on a fabricated citation, and two passes over identical artifacts agreed on only 68% of verdicts.** So no single-pass ACCEPT rate is quoted anywhere in this README — the [calibration write-up](evals/analysis/curriculum-shardX-20260808T033421Z/CALIBRATION.md) explains why one would not mean anything. The CAS gate above is a different instrument with a different guarantee; only the judge-based scores carry this caveat.
+- **Coverage measures the whole test suite again.** `coverage.sh` globs `tests/test_*.py` instead of carrying a hand-maintained list that had drifted until eleven wired suites — every suite added for the slot gate, the figure styles and the seeder — never ran under it.
 
 ### v3.2.1 — 2026-08-02
 - **Eval suites** — a 28-task capability suite with hard-gate profiles and a map covering all 26 verifier types, and a 500-prompt curriculum acceptance suite spanning kindergarten counting to AP Calculus BC, generated deterministically so the checked-in manifest cannot drift from its source. Three new integrity suites keep them honest.
@@ -241,7 +325,7 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 - **New verify types:** `system`, `series`, `inequality`, complex via `I`, `stats` (mean/median/mode/range/variance/stdev/quartiles), `probability`, `read_data` (charts/tables), `definite_integral` (mpmath quadrature), `estimate`, and `compare` — plus task-reframing recipes that turn many "understanding" topics into checkable tasks. 24 types total.
 - **Standards, difficulty, Bloom:** per-problem `standard` (K–4 through HS + AP CED, in `references/standards-map.md`), `difficulty` (1–5 ladders, ramp-checked), and `bloom` tags; tiered-differentiation workflow.
 - **Coverage:** elementary → AP Calculus BC; validated against the Marble OS-taxonomy (503 topics) — ~61% machine-verifiable, with an honest `manual` boundary for open reasoning (optional LLM-judge review aid in `references/manual-review-aid.md`).
-- **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy pinned and version-stamped; MIT `LICENSE`; CI runs the test suites on every push.
+- **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy version-stamped into every report (a floor was added later, in v3.3.2 — "pinned" overstated what this release shipped); MIT `LICENSE`; CI runs the test suites on every push.
 - **Testing:** regression suite (18 fixtures incl. injection/schema/coverage) + audit-fix suite (21 assertions); verifier validated on GSM8K calculator annotations (4282/4282, test split) and MATH boxed answers (2711/2711) with 0 false accepts, 6,993 checks in total.
 
 ### v2.3.0 — 2026-07-20

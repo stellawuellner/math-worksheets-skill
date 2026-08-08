@@ -27,6 +27,8 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKER = os.path.join(ROOT, "tests", "check_answer_slots.py")
+sys.path.insert(0, os.path.join(ROOT, "tests"))
+import check_answer_slots as cas  # noqa: E402
 FAILS = []
 
 
@@ -220,6 +222,106 @@ def main():
                   r"\end{itemize}}", [entry(1)])
     check("\\item[(a)] sub-parts still FAIL when uncovered",
           rc == 1, out.strip()[-160:])
+
+    # 20. SLOT-FORM CONTRACT. The run-2 judge rejected curr-188 for a bank row
+    #     reading "the equation = 6" and curr-151 for word/colon/fraction-form
+    #     slots all keyed "3/5" — a slot label promising a FORM the value is
+    #     not in. The judge caught 1 of the 3 affected cases (curr-190 carries
+    #     the identical defect FIVE times and was ACCEPTED); this gate catches
+    #     all of them. Measured 12/12 precise over the four runs' 2953 slotted
+    #     entries.
+    rc, out = run(r"\problem[5cm]{The graph shows distance $y$ after $x$ "
+                  r"seconds. (a) Write the equation. \ansblank}",
+                  [{"id": 1, "type": "slope", "points": [[0, 0], [1, 6]],
+                    "expected": 6, "slot": "(a) the equation"}])
+    check("an 'equation' slot keyed to a bare slope FAILS",
+          rc == 1 and "promises an EQUATION" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[5cm]{The graph shows distance $y$ after $x$ "
+                  r"seconds. (a) Write the equation. \ansblank}",
+                  [{"id": 1, "type": "equiv", "expr": "y - 6*x",
+                    "expected": "y = 6*x", "slot": "(a) the equation"}])
+    check("the same slot keyed to the equation itself passes", rc == 0,
+          out.strip()[-160:])
+    # "equation" naming a PART of one is a correct key — all four corpus
+    # shapes, which the first cut of the lint flagged as 9 false positives.
+    for slot in ("both solutions of the equation",
+                 "(c) right-hand side of the equation",
+                 "(b) equation value at 4",
+                 "(b) litres from the equation"):
+        rc, out = run(r"\problem[4cm]{Solve. \ansblank}",
+                      [entry(1, slot=slot)])
+        check(f"a part-of-the-equation slot does not fire ({slot!r})",
+              rc == 0, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Write the ratio two ways. "
+                  r"colon form: \ansblank \quad fraction form: \ansblank}",
+                  [entry(1, expected="3/5", type="eval", expr="3/5",
+                         slot="colon form"),
+                   entry(1, expected="3/5", type="eval", expr="3/5",
+                         slot="fraction form")])
+    check("a 'colon form' slot keyed to a fraction FAILS",
+          rc == 1 and "COLON form" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Write it in word form. \ansblank}",
+                  [entry(1, expected=35, slot="(a) word form")])
+    check("a 'word form' slot keyed to a number FAILS",
+          rc == 1 and "WORD form" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Ten percent of the 350 seats. \ansblank}",
+                  [entry(1, expected=35, slot="(a) ten percent of the seats")])
+    check("a 'percent of' slot asking for a COUNT does not fire "
+          "(the rejected broad detector was 0-for-23 here)", rc == 0,
+          out.strip()[-160:])
+
+
+    # ── Stem-side formula asks (ADVISORY) ───────────────────────────────────
+    # curr-482: "Write the particular solution y = f(x), then evaluate y(1)".
+    # One printed blank, two things asked, verify.json covering the x-integral
+    # and the value. The slot arithmetic balances, so the gate above is silent
+    # by construction — it measures what the BANK PRINTS, not what the STEM
+    # ASKS FOR. Advisory, because on 6,096 corpus problems this fires 20 times
+    # and hand-adjudication read 20 as real: good for a flag, short of the
+    # 100%-precision bar every hard-fail lint here had to clear.
+    print("\nstem-side formula asks:")
+    _fires = lambda seg, ents: bool(cas.formula_ask_notes([seg], {1: ents}))
+
+    check("the curr-482 shape fires",
+          _fires("Solve dy/dx = 2xy, y(0)=5. Write the particular solution "
+                 "$y = f(x)$, then evaluate $y(1)$.",
+                 [{"type": "integrate", "slot": "the x-integral"},
+                  {"type": "approx", "slot": "y(1)"}]))
+    check("so does a recursive formula keyed only by a term value",
+          _fires("Write the recursive formula for $a_n$, then find $a_6$.",
+                 [{"type": "eval", "expected": 40}]))
+
+    # An antiderivative IS the general solution and is NOT the particular one —
+    # the particular solution is the antiderivative with its constant fixed by
+    # an initial condition, which no integrate check ever sees. The same entry
+    # type therefore covers one ask and cannot cover the other, and only the
+    # stem says which. Both directions pinned, because collapsing them is the
+    # obvious "simplification".
+    check("a GENERAL solution keyed by integrate is covered, so silent",
+          not _fires("Find the general solution of dy/dx = 8x^3 - 6x. "
+                     "Include the constant of integration.",
+                     [{"type": "integrate", "expected": "2*x**4-3*x**2"}]))
+    check("the same entry does NOT cover a PARTICULAR solution",
+          _fires("Give the particular solution, then use it to find $y(2)$.",
+                 [{"type": "integrate", "expected": "2*x**4-3*x**2"},
+                  {"type": "eval", "expected": 25}]))
+
+    # Must-not-fire shapes, each measured on the corpus before exclusion.
+    check("an equation keyed AS an equation is covered",
+          not _fires("Write the explicit formula for the nth term.",
+                     [{"type": "equiv", "expected": "a_n = 5 + 7*n"}]))
+    check("a manual entry counts as covering the formula",
+          not _fires("Write the recursive formula for $a_n$.",
+                     [{"type": "manual", "desc": "grade the recursion"}]))
+    check("'Write the equation the explicit rule gives' is not a formula ask "
+          "(the filler gap must not swallow a second formula noun)",
+          not _fires("(a) Write the equation the explicit rule gives, then "
+                     "count the terms.", [{"type": "eval", "expected": 15}]))
+    check("an ordinary set-up-and-solve word problem stays silent",
+          not _fires("Write an equation for the number of pencils in one "
+                     "pack, then solve it.", [{"type": "solve"}]))
+    check("a problem with no entries at all is left to the coverage gate",
+          not _fires("Write the particular solution.", []))
 
     print()
     if FAILS:

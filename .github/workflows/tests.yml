@@ -62,6 +62,20 @@ jobs:
             texlive-latex-base texlive-latex-recommended texlive-latex-extra \
             texlive-pictures texlive-fonts-recommended poppler-utils
 
+      # TeX is necessary but not sufficient. These suites render figures through
+      # the shipped renderer, and render_figures.py imports verify.py's triangle
+      # solver so a figure cannot disagree with the check it illustrates — which
+      # makes sympy a hard requirement here, not just in the `verify` job. Its
+      # absence is not a clean skip: test_ssa_figure_labels exits 1 outright,
+      # and test_overprint degrades to "renderer unavailable" on three checks
+      # while still exiting 0. Both were found the first time this job actually
+      # ran them.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install sympy for the figure renderer
+        run: pip install "sympy>=1.12"
+
       - name: Record the rendering environment
         run: |
           {
@@ -86,6 +100,22 @@ jobs:
       - name: Printed-page round trip
         if: ${{ ! inputs.rerecord_visual_baselines }}
         run: python3 tests/test_preamble_layout.py
+
+      # These four render real documents and read the resulting PDFs back, so
+      # they skip cleanly when no engine is present — which is exactly what they
+      # were doing in the `verify` job, on every push, in silence. A suite that
+      # skips reports the same green as a suite that passes. They belong in the
+      # job that has TeX, and this is it. Between them they cover the figure
+      # label-collision measurement, the calibrated \settowidth table against the
+      # shipped preamble, every figure snippet the docs print plus the house-style
+      # probe, and the large-print page-budget charge.
+      - name: TeX-dependent suites (skip silently without an engine)
+        if: ${{ ! inputs.rerecord_visual_baselines }}
+        run: |
+          python3 tests/test_overprint.py
+          python3 tests/test_ssa_figure_labels.py
+          python3 tests/test_tikz_libraries.py
+          python3 tests/test_page_budget_type_size.py
 
       # The escape hatch for drift, so nobody has to reproduce the runner
       # locally: re-record here, download, commit. Deliberately manual and

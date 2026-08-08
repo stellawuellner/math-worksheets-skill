@@ -2,6 +2,7 @@
 # build.sh — the single gate-chain driver: verify JSON in, three gated PDFs out.
 #
 # Usage: build.sh <verify_<stem>.json> [--outdir DIR] [--worksheet-only]
+#        build.sh <verify_ss_<stem>.json> --study-guide-only [--outdir DIR]
 #                 [--ws FILE] [--ak FILE] [--ss FILE] [--verify-ss FILE]
 #
 # WHY: the skill used to prescribe nine separate gate commands spread across
@@ -91,12 +92,14 @@ usage() { awk 'NR > 1 && !/^#/ {exit} NR > 1 {sub(/^# ?/, ""); print}' "${BASH_S
 JSON_FILE=""
 OUT_DIR="$HOME/Documents/Worksheets"
 WORKSHEET_ONLY=0
+STUDY_GUIDE_ONLY=0
 WS_OVERRIDE=""; AK_OVERRIDE=""; SS_OVERRIDE=""; VSS_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --outdir) OUT_DIR="${2:?--outdir needs a directory}"; shift 2 ;;
     --worksheet-only) WORKSHEET_ONLY=1; shift ;;
+    --study-guide-only) STUDY_GUIDE_ONLY=1; shift ;;
     --ws) WS_OVERRIDE="${2:?--ws needs a file}"; shift 2 ;;
     --ak) AK_OVERRIDE="${2:?--ak needs a file}"; shift 2 ;;
     --ss) SS_OVERRIDE="${2:?--ss needs a file}"; shift 2 ;;
@@ -117,7 +120,24 @@ if [[ "$JSON_BASE" != verify_*.json ]]; then
   echo "(build.sh derives the ws_/ak_/ss_ document names from <stem>)" >&2
   exit 1
 fi
+if [[ "$WORKSHEET_ONLY" -eq 1 && "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  echo "Error: --worksheet-only and --study-guide-only are mutually exclusive" >&2
+  exit 1
+fi
 STEM="${JSON_BASE#verify_}"; STEM="${STEM%.json}"
+# A guide-only request has no worksheet and therefore no verify_<stem>.json:
+# the natural invocation is on the ss JSON itself. Strip its ss_ marker so the
+# stem still names the document set, and remember the JSON we were handed IS
+# the study-guide one.
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  if [[ "$JSON_BASE" == verify_ss_*.json ]]; then
+    STEM="${STEM#ss_}"
+    VSS_OVERRIDE="${VSS_OVERRIDE:-$JSON_FILE}"
+  else
+    echo "Error: --study-guide-only expects the study-guide JSON (verify_ss_<stem>.json); got $JSON_BASE" >&2
+    exit 1
+  fi
+fi
 if [[ "$STEM" == ss_* ]]; then
   echo "Error: $JSON_BASE is the STUDY-GUIDE verification file. Pass the" >&2
   echo "worksheet's verify_<stem>.json — build.sh finds verify_ss_<stem>.json" >&2
@@ -212,12 +232,21 @@ find_role() {
 }
 
 banner "discover documents for stem '$STEM' in $JSON_DIR"
-if [[ -n "$WS_OVERRIDE" ]]; then WS_TEX="$WS_OVERRIDE"; else find_role ws; WS_TEX="$FOUND"; fi
-if [[ -z "$WS_TEX" || ! -f "$WS_TEX" ]]; then
-  fail discover "Error: worksheet ws_${STEM}.tex not found in $JSON_DIR (or --ws path missing)."
+WS_TEX=""
+if [[ "$STUDY_GUIDE_ONLY" -eq 0 ]]; then
+  if [[ -n "$WS_OVERRIDE" ]]; then WS_TEX="$WS_OVERRIDE"; else find_role ws; WS_TEX="$FOUND"; fi
+  if [[ -z "$WS_TEX" || ! -f "$WS_TEX" ]]; then
+    fail discover "Error: worksheet ws_${STEM}.tex not found in $JSON_DIR (or --ws path missing)."
+  fi
 fi
 AK_TEX=""; SS_TEX=""; SS_JSON=""
-if [[ "$WORKSHEET_ONLY" -eq 0 ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  if [[ -n "$SS_OVERRIDE" ]]; then SS_TEX="$SS_OVERRIDE"; else find_role ss; SS_TEX="$FOUND"; fi
+  if [[ -z "$SS_TEX" || ! -f "$SS_TEX" ]]; then
+    fail discover "Error: study guide ss_${STEM}.tex not found in $JSON_DIR (or --ss path missing)."
+  fi
+  SS_JSON="$VSS_OVERRIDE"
+elif [[ "$WORKSHEET_ONLY" -eq 0 ]]; then
   if [[ -n "$AK_OVERRIDE" ]]; then AK_TEX="$AK_OVERRIDE"; else find_role ak; AK_TEX="$FOUND"; fi
   if [[ -n "$SS_OVERRIDE" ]]; then SS_TEX="$SS_OVERRIDE"; else find_role ss; SS_TEX="$FOUND"; fi
   # The skill mandates three documents; a missing key or study guide is a
@@ -233,7 +262,7 @@ if [[ "$WORKSHEET_ONLY" -eq 0 ]]; then
     fail discover "Error: verify_ss_${STEM}.json not found. The study guide's worked examples must be verified too (SKILL.md step 3) — write the ss verification JSON next to the ws one."
   fi
 fi
-echo "   ws: $WS_TEX"
+[[ -n "$WS_TEX" ]] && echo "   ws: $WS_TEX"
 [[ -n "$AK_TEX" ]] && echo "   ak: $AK_TEX"
 [[ -n "$SS_TEX" ]] && echo "   ss: $SS_TEX  (verify: $SS_JSON)"
 record discover "PASS"
@@ -251,11 +280,16 @@ template_gate() { # gate-name tex-file
     fail "$gate"
   fi
 }
-template_gate template-ws "$WS_TEX"
-if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record template-ws "SKIPPED(--study-guide-only)"
+  record template-ak "SKIPPED(--study-guide-only)"
+  template_gate template-ss "$SS_TEX"
+elif [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+  template_gate template-ws "$WS_TEX"
   record template-ak "SKIPPED(--worksheet-only)"
   record template-ss "SKIPPED(--worksheet-only)"
 else
+  template_gate template-ws "$WS_TEX"
   template_gate template-ak "$AK_TEX"
   template_gate template-ss "$SS_TEX"
 fi
@@ -272,8 +306,12 @@ run_verify_gate() { # gate-name json-file
   esac
 }
 
-banner "verify worksheet JSON ($JSON_BASE)"
-run_verify_gate verify-ws "$WS_JSON"
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record verify-ws "SKIPPED(--study-guide-only)"
+else
+  banner "verify worksheet JSON ($JSON_BASE)"
+  run_verify_gate verify-ws "$WS_JSON"
+fi
 
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record verify-ss "SKIPPED(--worksheet-only)"
@@ -284,7 +322,12 @@ fi
 
 # Skill coverage runs BEFORE anything renders or compiles: an uncovered skill
 # means the study guide must gain a section, so later gates would be wasted.
-if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  # There is no worksheet whose skills the guide must cover; coverage is the
+  # one obligation that is RELATIVE to a sheet. The guide's own integrity
+  # gates (verify-ss, answer-key-ss, ss-structure, prose-ss) all still run.
+  record coverage-ss "SKIPPED(--study-guide-only)"
+elif [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record coverage-ss "SKIPPED(--worksheet-only)"
 else
   banner "skill coverage: $JSON_BASE → $(basename "$SS_JSON")"
@@ -298,16 +341,20 @@ fi
 # Cross-file facet gates likewise run BEFORE any compile: they read only JSON
 # + tex text, so a facet or subtitle drift is caught in milliseconds, not
 # after three tectonic runs.
-banner "facet coverage (ws facets ⊆ ss examples; subtitle binding)"
-if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
-  FACET_ARGS=("$WS_TEX" "$WS_JSON")
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record facet-coverage "SKIPPED(--study-guide-only)"
 else
-  FACET_ARGS=("$WS_TEX" "$WS_JSON" "$SS_JSON")
-fi
-if "$PYTHON3" "$TESTS_DIR/check_facet_coverage.py" "${FACET_ARGS[@]}"; then
-  record facet-coverage "PASS"
-else
-  fail facet-coverage
+  banner "facet coverage (ws facets ⊆ ss examples; subtitle binding)"
+  if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+    FACET_ARGS=("$WS_TEX" "$WS_JSON")
+  else
+    FACET_ARGS=("$WS_TEX" "$WS_JSON" "$SS_JSON")
+  fi
+  if "$PYTHON3" "$TESTS_DIR/check_facet_coverage.py" "${FACET_ARGS[@]}"; then
+    record facet-coverage "PASS"
+  else
+    fail facet-coverage
+  fi
 fi
 
 # One python-resolution path for every render gate that needs sympy
@@ -319,7 +366,9 @@ source "$SCRIPT_DIR/find_python.sh"
 SYMPY_PY="$(find_sympy_python)" || SYMPY_PY=""
 
 banner "render figures"
-if [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record render-figures "SKIPPED(--study-guide-only)"
+elif [[ ! -f "$SCRIPT_DIR/render_figures.py" ]]; then
   # Defensive: the renderer ships separately; its absence is not a fault.
   echo "   render_figures.py not shipped — skipping."
   record render-figures "SKIPPED(renderer not shipped)"
@@ -340,7 +389,9 @@ fi
 
 banner "render effort markers (difficulty -> \\probmeta/\\probpts)"
 META_TEX=""
-if [[ ! -f "$SCRIPT_DIR/render_meta.py" ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record render-meta "SKIPPED(--study-guide-only)"
+elif [[ ! -f "$SCRIPT_DIR/render_meta.py" ]]; then
   echo "   render_meta.py not shipped — skipping."
   record render-meta "SKIPPED(renderer not shipped)"
 else
@@ -373,7 +424,9 @@ print("yes" if ok else "no")' "$WS_JSON" 2>/dev/null || echo no)"
 fi
 
 banner "quick-answer bank for the answer key"
-if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record quick-answers "SKIPPED(--study-guide-only)"
+elif [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record quick-answers "SKIPPED(--worksheet-only)"
 elif [[ ! -f "$SCRIPT_DIR/render_quick_answers.py" ]]; then
   echo "   render_quick_answers.py not shipped — skipping."
@@ -396,25 +449,31 @@ else
   fi
 fi
 
-banner "layout check (figure scope + work space + answer location) on $(basename "$WS_TEX")"
-if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX" ${FIGS_TEX:+--figs "$FIGS_TEX"}; then
-  record layout-ws "PASS"
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record layout-ws "SKIPPED(--study-guide-only)"
+  record answer-line-ws "SKIPPED(--study-guide-only)"
+  record answer-slots-ws "SKIPPED(--study-guide-only)"
 else
-  fail layout-ws
-fi
+  banner "layout check (figure scope + work space + answer location) on $(basename "$WS_TEX")"
+  if "$PYTHON3" "$TESTS_DIR/check_layout.py" "$WS_TEX" ${FIGS_TEX:+--figs "$FIGS_TEX"}; then
+    record layout-ws "PASS"
+  else
+    fail layout-ws
+  fi
 
-banner "answer-line binding (answer_unit) on $(basename "$WS_TEX")"
-if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
-  record answer-line-ws "PASS"
-else
-  fail answer-line-ws
-fi
+  banner "answer-line binding (answer_unit) on $(basename "$WS_TEX")"
+  if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
+    record answer-line-ws "PASS"
+  else
+    fail answer-line-ws
+  fi
 
-banner "answer-slot coverage on $(basename "$WS_TEX")"
-if "$PYTHON3" "$TESTS_DIR/check_answer_slots.py" "$WS_TEX" "$WS_JSON"; then
-  record answer-slots-ws "PASS"
-else
-  fail answer-slots-ws
+  banner "answer-slot coverage on $(basename "$WS_TEX")"
+  if "$PYTHON3" "$TESTS_DIR/check_answer_slots.py" "$WS_TEX" "$WS_JSON"; then
+    record answer-slots-ws "PASS"
+  else
+    fail answer-slots-ws
+  fi
 fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared
@@ -441,10 +500,30 @@ fi
 # budget adapted automatically; it did not, and a correct 17pt sheet failed this
 # gate by a page. --from-tex reads the point size and \accessiblemode off the
 # worksheet itself, so nothing depends on an author remembering a flag.
-WS_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" --max-pages 2>/dev/null || echo 8)
-AK_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --doc ak --from-tex "$AK_TEX" --max-pages 2>/dev/null || echo 6)
+if [[ "$STUDY_GUIDE_ONLY" -eq 0 ]]; then
+  WS_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" --max-pages 2>/dev/null || echo 8)
+  AK_MAX_PAGES=$("$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --doc ak --from-tex "$AK_TEX" --max-pages 2>/dev/null || echo 6)
+fi
+# The study-guide cap DEFAULTS to 2 pages — it is a reference card, and the
+# discipline of the small page is most of what makes it one. It is no longer a
+# constant: a guide whose skills genuinely need room for diagrams (a unit
+# circle, a transformation grid, a labelled solid) declares a top-level
+# "pages" in its verify_ss JSON, and a user asking for a longer guide gets one
+# the same way. Clamped to 1..6: past six it is not a reference card any more,
+# it is a textbook chapter, and splitting by topic serves the student better.
+# The declaration lives in the JSON rather than a flag so the ARTIFACT records
+# its own budget — the same reasoning as workspace_cm on the worksheet.
 SS_MAX_PAGES=2
-"$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" 2>/dev/null || true
+if [[ -n "$SS_JSON" && -f "$SS_JSON" ]]; then
+  SS_MAX_PAGES=$("$PYTHON3" -c '
+import json, sys
+try:
+    print(max(1, min(6, int(json.load(open(sys.argv[1])).get("pages", 2)))))
+except Exception:
+    print(2)' "$SS_JSON" 2>/dev/null || echo 2)
+fi
+[[ "$STUDY_GUIDE_ONLY" -eq 0 ]] && \
+  "$PYTHON3" "$SCRIPT_DIR/page_budget.py" "$WS_JSON" --from-tex "$WS_TEX" 2>/dev/null || true
 compile_gate() { # gate-name tex-file max-pages
   local gate="$1" tex="$2" cap="$3"
   banner "compile $(basename "$tex") → $OUT_DIR  (page budget: $cap)"
@@ -455,13 +534,19 @@ compile_gate() { # gate-name tex-file max-pages
     fail "$gate"
   fi
 }
-compile_gate compile-ws "$WS_TEX" "$WS_MAX_PAGES"
-if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
-  record compile-ak "SKIPPED(--worksheet-only)"
-  record compile-ss "SKIPPED(--worksheet-only)"
-else
-  compile_gate compile-ak "$AK_TEX" "$AK_MAX_PAGES"
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record compile-ws "SKIPPED(--study-guide-only)"
+  record compile-ak "SKIPPED(--study-guide-only)"
   compile_gate compile-ss "$SS_TEX" "$SS_MAX_PAGES"
+else
+  compile_gate compile-ws "$WS_TEX" "$WS_MAX_PAGES"
+  if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
+    record compile-ak "SKIPPED(--worksheet-only)"
+    record compile-ss "SKIPPED(--worksheet-only)"
+  else
+    compile_gate compile-ak "$AK_TEX" "$AK_MAX_PAGES"
+    compile_gate compile-ss "$SS_TEX" "$SS_MAX_PAGES"
+  fi
 fi
 
 if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
@@ -469,11 +554,15 @@ if [[ "$WORKSHEET_ONLY" -eq 1 ]]; then
   record answer-key-ss "SKIPPED(--worksheet-only)"
   record ss-structure "SKIPPED(--worksheet-only)"
 else
-  banner "answer-key binding: $(basename "$AK_TEX") ↔ $JSON_BASE"
-  if "$PYTHON3" "$TESTS_DIR/check_answer_key.py" "$AK_TEX" "$WS_JSON"; then
-    record answer-key-ak "PASS"
+  if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+    record answer-key-ak "SKIPPED(--study-guide-only)"
   else
-    fail answer-key-ak
+    banner "answer-key binding: $(basename "$AK_TEX") ↔ $JSON_BASE"
+    if "$PYTHON3" "$TESTS_DIR/check_answer_key.py" "$AK_TEX" "$WS_JSON"; then
+      record answer-key-ak "PASS"
+    else
+      fail answer-key-ak
+    fi
   fi
   banner "answer-key binding: $(basename "$SS_TEX") ↔ $(basename "$SS_JSON")"
   if "$PYTHON3" "$TESTS_DIR/check_answer_key.py" "$SS_TEX" "$SS_JSON"; then
@@ -489,11 +578,18 @@ else
   fi
 fi
 
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  record prose-ws "SKIPPED(--study-guide-only)"
+  rc=0
+else
 banner "prose consistency on $(basename "$WS_TEX")"
 "$PYTHON3" "$TESTS_DIR/check_prose_consistency.py" "$WS_TEX" "$WS_JSON" \
   ${FIGS_TEX:+--figs "$FIGS_TEX"} ${META_TEX:+--meta "$META_TEX"}
 rc=$?
-if [[ "$rc" -eq 0 ]]; then
+fi
+if [[ "$STUDY_GUIDE_ONLY" -eq 1 ]]; then
+  : # recorded above
+elif [[ "$rc" -eq 0 ]]; then
   record prose-ws "PASS"
 elif [[ "$rc" -eq 2 ]]; then
   # NOT a manual-review pass: exit 2 here is structural — the checker parsed

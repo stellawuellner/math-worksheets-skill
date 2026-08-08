@@ -31,7 +31,28 @@ PDF, because the faults they cover are only visible on the page.
    in the source — every document still compiles either way — so it is pinned
    on the rendered page, from both directions.
 
-5. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
+5.5 WORKSPACE GLUE INSIDE A \problem STEM SURVIVES A PAGE BREAK — which is
+   why check_layout must not call it "outside any minipage". \problem opens its
+   minipage IN THE PREAMBLE, so a \vspace written in a stem has no
+   \begin{minipage} beside it to count, and check_layout's minipage_depth_fn
+   (which counts literal tokens in the body) read depth 0 and reported the
+   space as glue that will vanish at a page break. It will not: the minipage is
+   unbreakable, so the whole problem moves to the next page with its glue
+   intact. That is the wrong diagnosis on the sheet shape SKILL.md teaches
+   first, and 284 of the 600 recorded worksheets carry workspace glue in that
+   exact position. Pinned from the page, in both directions: the in-stem glue
+   is measured across a forced page boundary and must still be there, while the
+   same glue OUTSIDE any minipage must be shown to disappear — otherwise this
+   test would be pinning a rule that has stopped protecting anything.
+
+5.6 A BLANK PLOTTING GRID IS WRITING SPACE. check_layout's work-space floor
+   counts glue only, so a problem whose room to work is an empty coordinate
+   plane measured 0cm and needed an artificial \problem[Ncm] adding blank paper
+   under a grid the student writes on. A grid carrying DATA is still a figure
+   and still fails the floor, which is the distinction has_valued_figure
+   already draws.
+
+6. COMMON-ERROR BLOCK FITS THE LINE. \commonerror opens a paragraph; it did not
    close one, so the closing full-width \rule of the generated "Common wrong
    answers" block joined the last entry's text line and overflowed it by ~200pt.
    Every answer key declaring a trap failed compile-ak, while the feature's own
@@ -101,6 +122,78 @@ LEVEL_KEY_DOC = r"""
 \problem{$m = \ans{3}$}
 \end{document}
 """
+
+
+# 5.5 — an unstarred workspace \vspace written INSIDE a \problem stem, with
+# enough problems ahead of it to drive it onto a page boundary. If the glue
+# were discarded at the break the two markers would end up a line apart.
+GEOMETRY_LINE = (r"\usepackage[margin=1in, top=0.75in, bottom=0.75in]{geometry}")
+STEM_GLUE_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\input{worksheet-preamble}
+\wsheader{Stem glue at a page break}
+\begin{document}
+\wstitleblock{Stem glue at a page break}{Test}{}
+\problem[5cm]{Filler one.}
+\problem[5cm]{Filler two.}
+\problem[5cm]{Filler three.}
+\problem{STEMGLUEA marker, then five centimetres of unstarred glue in the stem.
+\par\vspace{5cm}\noindent STEMGLUEB marker.}
+\end{document}
+"""
+
+# The control: identical glue, no minipage anywhere near it, landing at the
+# same break. This is the fault the rule exists for and it must still bite.
+LOOSE_GLUE_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\begin{document}
+\noindent Filler.\par\vspace{20cm}
+\noindent LOOSEGLUEA marker.\par\vspace{5cm}
+\noindent LOOSEGLUEB marker.
+\end{document}
+"""
+
+# 5.6 — the same sheet twice: a blank plotting grid (a place to write) and a
+# grid carrying plotted data (a figure to read). Only the first is workspace.
+GRID_DOC = r"""
+\documentclass[12pt]{article}
+""" + GEOMETRY_LINE + r"""
+\input{worksheet-preamble}
+\wsheader{Grid}
+\begin{document}
+\wstitleblock{Grid}{Test}{}
+\problem[5cm]{Solve $2x + 3 = 11$.}
+\problem{Plot your counterexample on the grid below.
+\begin{center}\begin{tikzpicture}
+\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]
+\end{axis}
+\end{tikzpicture}\end{center}}
+\end{document}
+"""
+
+VALUED_GRID_DOC = GRID_DOC.replace(
+    r"\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\end{axis}",
+    r"\begin{axis}[width=8cm, height=8cm, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\addplot {2*x + 1};" "\n" r"\end{axis}").replace(
+    "Plot your counterexample on the grid below.",
+    "Read the value of $y$ at $x = 2$ from this graph.")
+
+# ...and the third case, which is why the exemption is an `axis` and nothing
+# else: an AREA MODEL is a grid path too, and the student counts its squares
+# rather than writing in them. It needs room beside it exactly as the floor
+# says. Copied in shape from a recorded worksheet that a wider rule exempted.
+AREA_MODEL_DOC = GRID_DOC.replace(
+    r"\begin{axis}[width=8cm, height=8cm, grid=both, xmin=-5, xmax=5, ymin=-5, ymax=5]"
+    "\n" r"\end{axis}",
+    r"\draw[step=1, gray!55, thin] (0,0) grid (4,3);" "\n"
+    r"\draw[thick] (0,0) rectangle (4,3);").replace(
+    "Plot your counterexample on the grid below.",
+    "Rosa cut this rectangle into two parts. Are they the same size?")
+
+CM = 72.0 / 2.54          # PDF points per centimetre
 
 
 def check(label, cond, detail=""):
@@ -186,7 +279,93 @@ def main():
         else:
             check("the level-key probe compiles", False, "no PDF produced")
 
-        print("5. common-error block fits the line")
+        print("5.5 workspace glue inside a \\problem stem survives a break")
+
+        def build(doc, stem):
+            path = os.path.join(d, stem + ".tex")
+            with open(path, "w") as fh:
+                fh.write(doc)
+            cmd = ([engine, "-interaction=nonstopmode", stem + ".tex"]
+                   if engine.endswith("pdflatex") else [engine, stem + ".tex"])
+            subprocess.run(cmd, cwd=d, capture_output=True)
+            out = os.path.join(d, stem + ".pdf")
+            return out if os.path.isfile(out) else None
+
+        def marker(pdf, text, pages=4):
+            """(page, y) of a marker word, or None."""
+            for pg in range(1, pages + 1):
+                for x0, y0, x1, t in words_with_boxes(pdf, pg):
+                    if t.strip(",.").strip() == text:
+                        return pg, y0
+            return None
+
+        sg = build(STEM_GLUE_DOC, "stemglue")
+        if not sg:
+            check("the stem-glue probe compiles", False, "no PDF produced")
+        else:
+            a, b = marker(sg, "STEMGLUEA"), marker(sg, "STEMGLUEB")
+            check("both stem-glue markers are on the page", a is not None and b is not None)
+            if a and b:
+                check("the problem moved to a page of its own (the minipage "
+                      "cannot break)", a[0] == b[0], f"{a[0]} vs {b[0]}")
+                gap = b[1] - a[1]
+                check(f"the 5cm of unstarred glue is still there across the "
+                      f"break ({gap / CM:.2f}cm)", gap >= 5.0 * CM,
+                      f"measured {gap:.1f}pt, wanted >= {5.0 * CM:.1f}pt")
+
+        lg = build(LOOSE_GLUE_DOC, "looseglue")
+        if not lg:
+            check("the loose-glue control compiles", False, "no PDF produced")
+        else:
+            a, b = marker(lg, "LOOSEGLUEA"), marker(lg, "LOOSEGLUEB")
+            check("both loose-glue markers are on the page",
+                  a is not None and b is not None)
+            if a and b:
+                # The control: the SAME 5cm, outside any minipage, at a break.
+                # It must be gone, or the fault this rule reports is imaginary.
+                check("the same glue OUTSIDE a minipage is discarded at the "
+                      "break (so the rule still protects something)",
+                      b[0] > a[0] and b[1] < 3.0 * CM,
+                      f"after-marker landed on page {b[0]} at y={b[1]:.1f}pt")
+
+        # ...and the checker must agree with the page.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import check_layout  # noqa: E402
+        def stranded_pair(doc):
+            """(faults, stem notes) — tolerant of the pre-fix single-list
+            return, so this assertion FAILS against the old checker instead of
+            crashing on the signature."""
+            res = check_layout.stranded_workspace(check_layout.strip_comments(doc))
+            if isinstance(res, tuple) and len(res) == 2:
+                return res
+            return res, []
+
+        stranded, in_stem = stranded_pair(STEM_GLUE_DOC)
+        check("check_layout does not call stem glue 'outside any minipage'",
+              not stranded, f"reported {stranded}")
+        check("it reports it as a stem-placement note instead", len(in_stem) == 1)
+        loose, _ = stranded_pair(LOOSE_GLUE_DOC)
+        check("and the genuinely stranded glue is still a fault",
+              any(cm == 5.0 for _, cm in loose), f"reported {loose}")
+
+        print("5.6 a blank plotting grid counts as writing space")
+        for doc, stem, want in ((GRID_DOC, "grid", 0),
+                                (VALUED_GRID_DOC, "gridval", 1),
+                                (AREA_MODEL_DOC, "gridarea", 1)):
+            p = os.path.join(d, stem + "_ws.tex")
+            with open(p, "w") as fh:
+                fh.write(doc)
+            rc = subprocess.run(
+                [sys.executable, os.path.join(os.path.dirname(
+                    os.path.abspath(__file__)), "check_layout.py"), p],
+                capture_output=True, text=True)
+            floor = "of WRITING space" in rc.stdout
+            names = {"grid": "a blank plotting grid satisfies the work-space floor",
+                     "gridval": "a grid carrying plotted data does not",
+                     "gridarea": "an area model the student counts does not"}
+            check(names[stem], floor == bool(want), rc.stdout[-400:])
+
+        print("6. common-error block fits the line")
         ce = os.path.join(d, "ce.tex")
         with open(ce, "w") as fh:
             fh.write(COMMON_ERROR_DOC)
@@ -205,6 +384,132 @@ def main():
                                   capture_output=True, text=True).stdout
             check("the common-wrong-answer text still prints",
                   "used cos instead of tan" in body)
+
+
+
+        # ── v3.6: the key breathes, the worksheet stays measured ────────────
+        # \akheader turns on rubber inter-problem glue and \raggedbottom;
+        # the worksheet keeps fixed 0.4cm. Pinned at the source level because
+        # the rendered difference is glue, which a word-box read cannot see.
+        pre_src = open(os.path.join(TEMPLATES, "worksheet-preamble.tex")).read()
+        print("8.5 answer keys breathe; worksheets are measured")
+        check("\\problem's ak leg is rubber and its ws leg is fixed",
+              "plus 0.45cm" in pre_src and
+              "\\else\\vspace{0.4cm}\\fi" in pre_src.replace(" ", ""))
+        # exactly one \raggedbottom in the whole preamble, and it sits inside
+        # \akheader's definition — position-checked against the \newcommand,
+        # not against the word "akheader", which first appears in prose.
+        ak_def = pre_src.index(r"\newcommand{\akheader}")
+        ss_def = pre_src.index(r"\newcommand{\ssheader}")
+        # count CODE occurrences only: the design comment above \akheader
+        # also says \raggedbottom, and a comment is not a setting.
+        code = "\n".join(l.split("%", 1)[0] for l in pre_src.split("\n"))
+        check("\\akheader sets raggedbottom, and nothing else does",
+              code.count(r"\raggedbottom") == 1
+              and ak_def < pre_src.rindex(r"\raggedbottom") < ss_def)
+
+        # ── \ans in a STUDY GUIDE, both authoring forms ──────────────────────
+        # \akheader replaces \ans with a text-safe compact box; \ssheader does
+        # not, so in an ss_ document \ans is the base definition. That was a
+        # bare \boldsymbol -- math-only -- and every shipped exemplar happens to
+        # write $\ans{...}$, so the text-mode path was never exercised until an
+        # end-to-end build followed SKILL.md's prose ("print each result with
+        # \ans{...}") instead of copying a template. The result was
+        # "! Missing $ inserted", fatal, on compile-ss: the last gate of the
+        # chain, with the error naming a line two away from the cause.
+        # \ensuremath fixed it without changing math-mode output at all (visual
+        # regression: 0 of 2304 cells moved on study_guide_boxes). Pinned from
+        # both directions because a "simplification" back to \boldsymbol still
+        # compiles every document that wraps it in $...$.
+        print("8. \\ans works in a study guide in text mode AND math mode")
+        ss = os.path.join(d, "ansmode.tex")
+        open(ss, "w").write(
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}\n"
+            "\\input{worksheet-preamble}\n\\ssheader{Modes}\n"
+            "\\begin{document}\n\\sstitleblock{Modes}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: clear the constant, then divide.}\n"
+            "\\step{Text mode: \\ans{x = 31}}\n"
+            "\\end{examplebox}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: the same, keyed the documented way.}\n"
+            "\\step{Math mode: $\\ans{x = 47}$}\n"
+            "\\end{examplebox}\n"
+            "\\end{document}\n")
+        cmd2 = ([engine, "-interaction=nonstopmode", "ansmode.tex"]
+                if engine.endswith("pdflatex") else [engine, "ansmode.tex"])
+        r2 = subprocess.run(cmd2, cwd=d, capture_output=True, text=True)
+        anspdf = os.path.join(d, "ansmode.pdf")
+        # The weaker of the two: bare pdflatex in nonstopmode recovers from the
+        # inserted $ and still emits a PDF, so this alone did NOT catch the bug
+        # (measured, by reverting the macro). It is the log assertion below that
+        # fires. Kept because build.sh's compile does treat it as fatal — the
+        # real failure was `compile-ss FAIL ... no output PDF file produced` —
+        # and an engine that stops harder should be caught here, not by a user.
+        check("a study guide using \\ans in text mode compiles at all",
+              os.path.isfile(anspdf),
+              "through compile.sh this is the compile-ss gate failing outright")
+        log2 = os.path.join(d, "ansmode.log")
+        if os.path.isfile(log2):
+            txt2 = open(log2, errors="replace").read()
+            check("and does so with no 'Missing $ inserted'",
+                  "Missing $ inserted" not in txt2,
+                  "text-mode \\ans is being typeset as bare \\boldsymbol again")
+        if os.path.isfile(anspdf):
+            got = subprocess.run(["pdftotext", anspdf, "-"],
+                                 capture_output=True, text=True).stdout
+            check("both answers reach the page", "31" in got and "47" in got,
+                  "check_answer_key.py binds study guides through \\ans, so an "
+                  "answer that does not print cannot bind")
+
+
+        # ── 9. The study-guide design system, on the page ────────────────────
+        # The boxes gained title tabs (RULE / EXAMPLE / TRY IT / WATCH OUT) and
+        # two evidence-based macros: \why (a printed self-explanation aside)
+        # and \fadestep (a completion problem inside a try-it — the setup
+        # shown, the finish left to the student; backwards-fading beats the
+        # example-to-bare-problem jump on multi-step skills). Pinned from the
+        # PDF because all four tabs are colorbox text a source lint cannot see
+        # rendered, and because the environments were rewrapped (examplebox ->
+        # exampleboxinner) — the one regression that must never happen is a
+        # document-facing name changing, since check_answer_key.py segments
+        # study guides by exactly these names.
+        print("9. study-guide design system")
+        sg = os.path.join(d, "sgdesign.tex")
+        open(sg, "w").write(
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}\n"
+            "\\input{worksheet-preamble}\n\\ssheader{Design}\n"
+            "\\begin{document}\n\\sstitleblock{Design}\n"
+            "\\begin{formulabox}$a^2+b^2=c^2$\\end{formulabox}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: legs known, hypotenuse wanted.}\n"
+            "\\step{$c = \\sqrt{9+16} = 5$}\n"
+            "\\why{squaring makes both legs positive contributions.}\n"
+            "\\step{So $\\ans{c = 5}$}\n"
+            "\\end{examplebox}\n"
+            "\\begin{tryitbox}\nLegs 6 and 8.\n"
+            "\\fadestep{$c = \\sqrt{36 + 64}$}\n"
+            "\\hfill\\rotatebox{180}{\\footnotesize check: $\\ans{c = 10}$}\n"
+            "\\end{tryitbox}\n"
+            "\\begin{watchoutbox}\nAdd squares, not legs.\n\\end{watchoutbox}\n"
+            "\\end{document}\n")
+        cmd3 = ([engine, "-interaction=nonstopmode", "sgdesign.tex"]
+                if engine.endswith("pdflatex") else [engine, "sgdesign.tex"])
+        subprocess.run(cmd3, cwd=d, capture_output=True)
+        sgpdf = os.path.join(d, "sgdesign.pdf")
+        check("a guide using every box and both new macros compiles",
+              os.path.isfile(sgpdf))
+        if os.path.isfile(sgpdf):
+            body = subprocess.run(["pdftotext", sgpdf, "-"],
+                                  capture_output=True, text=True).stdout
+            for tab in ("RULE", "EXAMPLE", "TRY IT", "WATCH OUT"):
+                check(f"the {tab} tab prints", tab in body)
+            check("the why-aside prints with its label",
+                  "why:" in body and "positive contributions" in body)
+            check("the faded step prints setup and hand-off",
+                  "Started for you:" in body and "Finish it:" in body)
 
     if failures:
         print(f"\n❌ {len(failures)} preamble layout regression(s)")

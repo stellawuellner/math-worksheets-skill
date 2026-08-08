@@ -21,6 +21,21 @@ pass**:
    Quick Answers bank rows for the first, middle, and last problems, copied
    verbatim into `artifact_findings` as `bank row N: <what the bank prints>`.
 
+**Two v2 anchors were repaired after the first dual-scored run and are worth
+naming, because both made a dimension unscoreable rather than merely strict.**
+`curriculum_alignment`'s test says to check standards codes against the
+standards map "not against memory", and v2 forbids awarding a 4 for a test you
+did not run — but the map was not in the packet, so the test could not be run
+and the dimension scored a constant **3 across all 300 cases**. The map now
+ships as `standards-map.md` beside this file; run the check. `instruction_
+following` required "file names that exist", and the harness renames every
+artifact to a canonical name after the delivery message is written — 285 of
+285 responses that name a file name one that is absent under that name — so
+that dimension was pinned at 3 too. Filenames are now explicitly out of
+scope. **If a dimension comes out identical on every task you score, say so
+in the rationale**: that is a broken instrument, not a uniform corpus, and it
+is the one failure a shadow rubric exists to surface early.
+
 Because both rubrics share the review procedure, one careful inspection
 supports both blocks. The honest outcome when the behavioral tests reveal
 something v1's adjectives let pass is a *lower* v2 score with the same v1

@@ -31,7 +31,10 @@ None is visible to verify.py, which only sees the JSON.
    three or four lines each. Space is credited from itemsep, signed \vspace
    (deliberate reclaiming with \vspace{-2.9cm} is charged, not ignored),
    \\[5cm] line skips, and the three standard skips — all of which put real
-   ink-to-ink distance on the page.
+   ink-to-ink distance on the page. A BLANK plotting grid counts too: an empty
+   coordinate plane is where the student writes, not a figure they read, and
+   has_valued_figure already tells the two apart. A grid carrying data does not
+   count, which is the same rule the message states.
 
 3. PAGE-BREAK GLUE. LaTeX discards \vspace glue that falls at a page or column
    break, so workspace left outside a minipage silently vanishes exactly when
@@ -41,6 +44,9 @@ None is visible to verify.py, which only sees the JSON.
    \end{minipage}, see references/latex-templates.md). A workspace-sized
    unstarred \vspace outside any minipage is therefore a fault. Starred
    \vspace* at least survives the break, so it is tolerated as a minimal fix.
+   "Outside any minipage" includes the one \problem opens IN THE PREAMBLE:
+   a \problem stem has no \begin{minipage} of its own to count, so glue written
+   there is inside a minipage and is reported as a style note, never a fault.
 
 4. ANSWER LOCATION. Bare workspace gives the grader nowhere to look and the
    student nothing to commit to — the final answer drowns in scratch work.
@@ -285,10 +291,48 @@ def space_cm(opts, item):
     return cm
 
 
+def problem_stem_spans(tex):
+    r"""(start, end) of each \problem[..]{STEM} argument — brace-matched.
+
+    The shipped preamble defines
+
+        \newcommand{\problem}[2][0pt]{...\begin{minipage}{\linewidth}
+            ... #2 \par\vspace*{#1} ... \end{minipage}\par}
+
+    so the stem argument is typeset INSIDE the problem's minipage, and the
+    minipage's \begin never appears in the document body at all. See
+    stranded_workspace for what that broke.
+
+    PROBLEM_RE is reused deliberately: it already declines to match the
+    \newcommand definition itself (there the next character is `}`), so a
+    document that redefines \problem locally is read the same way here.
+    """
+    out = []
+    for m in PROBLEM_RE.finditer(tex):
+        i, depth = m.end(), 1
+        while i < len(tex) and depth:
+            c = tex[i]
+            if c == "\\":            # skip \{ and \} — escaped braces
+                i += 2
+                continue
+            depth += (c == "{") - (c == "}")
+            i += 1
+        out.append((m.end(), i - 1))
+    return out
+
+
 def minipage_depth_fn(tex):
-    """Return a pos -> minipage-nesting-depth function for this document."""
+    r"""Return a pos -> minipage-nesting-depth function for this document.
+
+    A \problem stem counts as one level of minipage even though no
+    \begin{minipage} is written there: the macro opens one in the preamble.
+    Counting only literal \begin{minipage} tokens made this function say
+    "depth 0" for a position that is demonstrably inside a minipage.
+    """
+    stems = problem_stem_spans(tex)
     events = sorted([(m.start(), 1) for m in re.finditer(r"\\begin\{minipage\}", tex)] +
-                    [(m.start(), -1) for m in re.finditer(r"\\end\{minipage\}", tex)])
+                    [(m.start(), -1) for m in re.finditer(r"\\end\{minipage\}", tex)] +
+                    [(a, 1) for a, _ in stems] + [(b, -1) for _, b in stems])
 
     def depth_at(pos):
         d = 0
@@ -301,20 +345,70 @@ def minipage_depth_fn(tex):
 
 
 def stranded_workspace(tex):
-    """Workspace-sized unstarred \\vspace outside any minipage (fault 3).
+    r"""Workspace-sized unstarred \vspace outside any minipage (fault 3).
 
-    Only unstarred \\vspace is flagged: \\vspace* survives a page break, so
-    the space is never lost (though the templates' minipage form is still
-    preferred, since it also keeps stem and workspace on the same page).
-    Returns [(line_number, cm), ...].
+    Returns (faults, notes): faults are [(line, cm), ...] for glue that really
+    is exposed to a page break; notes are [(line, cm), ...] for glue inside a
+    \problem stem, which is a style remark, not a fault.
+
+    THE MINIPAGE A \problem OPENS IS IN THE PREAMBLE, NOT IN THE BODY.
+    This function used to count literal \begin{minipage} tokens in the document
+    text, so an unstarred workspace \vspace written inside a \problem stem was
+    reported as "sits outside any minipage" — on the sheet shape SKILL.md
+    teaches FIRST, and about the one construction where the glue is safest:
+    \problem wraps stem and workspace in ONE unbreakable minipage, so nothing
+    there can fall at a page break in the first place. The author is told the
+    space will vanish when it will not, and the offered remedy (star the glue)
+    fixes a problem that was never present. 284 of the 600 recorded worksheets
+    carry 1646 workspace \vspace* inside a \problem stem — every one of those
+    sites is one character away from the wrong diagnosis.
+
+    Only unstarred \vspace is considered at all: \vspace* survives a page
+    break, so the space is never lost (though the templates' minipage form is
+    still preferred, since it also keeps stem and workspace on the same page).
     """
     depth_at = minipage_depth_fn(tex)
-    found = []
+    stems = problem_stem_spans(tex)
+    faults, notes = [], []
     for m in re.finditer(r"\\vspace\{\s*(-?[\d.]+)\s*(cm|mm|in|pt|ex|em)\s*\}", tex):
         cm = to_cm(m.group(1), m.group(2))
-        if cm >= MIN_CM_PER_PROBLEM and depth_at(m.start()) == 0:
-            found.append((tex.count("\n", 0, m.start()) + 1, round(cm, 2)))
-    return found
+        if cm < MIN_CM_PER_PROBLEM:
+            continue
+        line = tex.count("\n", 0, m.start()) + 1
+        if any(a <= m.start() < b for a, b in stems):
+            notes.append((line, round(cm, 2)))
+        elif depth_at(m.start()) == 0:
+            faults.append((line, round(cm, 2)))
+    return faults, notes
+
+
+# A blank plotting grid is WRITING SPACE, not a figure.
+#
+# The work-space floor counts glue only, so a problem whose room to work is an
+# empty coordinate plane — "plot your counterexample here", "graph the line
+# through these points" — measured 0cm and had to be given an artificial
+# \problem[Ncm] that adds blank paper below a grid the student was always going
+# to write on. has_valued_figure already draws exactly this distinction (an axis
+# that draws nothing, or whose ticks are emptied, is not a figure to read), so
+# the floor can use it rather than pretend the grid is not there.
+#
+# Deliberately narrow: an `axis` and nothing else. That is precisely where
+# has_valued_figure already reasons about a blank grid ("an empty numbered grid
+# is a place to write, like the \problem workspace above it"), so the floor and
+# the figure rule agree about what an empty plane is.
+#
+# A bare tikzpicture `grid` path does NOT count, and the reason is a measured
+# one: extending this to any \draw...grid exempted six recorded worksheets,
+# among them an area model — a 4x3 rectangle the student COUNTS squares in and
+# answers with "<", "=" or ">". That is a figure to read, and the problem needs
+# writing room beside it exactly as the floor says. A pgfplots axis with
+# nothing plotted in it has no such reading; it is blank paper with a scale.
+PLOT_GRID = re.compile(r"\\begin\{axis\}")
+
+
+def is_plotting_workspace(item):
+    """A blank grid the student writes ON, rather than a figure they read."""
+    return bool(PLOT_GRID.search(item)) and not has_valued_figure(item)
 
 
 def main():
@@ -384,7 +478,8 @@ def main():
         # enforces (mirrors problem_regions' had_list)
         thin = [(i, round(space_cm(opts, it), 2))
                 for i, (it, nested) in enumerate(zip(its, had_nested), 1)
-                if not nested and space_cm(opts, it) < MIN_CM_PER_PROBLEM]
+                if not nested and not is_plotting_workspace(it)
+                and space_cm(opts, it) < MIN_CM_PER_PROBLEM]
         if thin:
             worst = min(c for _, c in thin)
             faults.append(
@@ -439,14 +534,16 @@ def main():
         # are governed by the enumerate pass above — skip the floor here
         thin = [(i, round(opt + space_cm("", r), 2))
                 for i, (opt, r, had_list) in enumerate(regions, 1)
-                if not had_list and opt + space_cm("", r) < MIN_CM_PER_PROBLEM]
+                if not had_list and not is_plotting_workspace(r)
+                and opt + space_cm("", r) < MIN_CM_PER_PROBLEM]
         if thin:
             worst = min(c for _, c in thin)
             faults.append(
                 f"problem blocks: {len(thin)} of {len(regions)} problems have under "
                 f"{MIN_CM_PER_PROBLEM}cm of WRITING space (thinnest {worst}cm) — "
                 f"a figure in the stem is not counted, however tall it is, "
-                f"because a student cannot write on it. "
+                f"because a student cannot write on it (a BLANK plotting grid is "
+                f"the exception: that is a place to write, and it counts). "
                 f"SKILL.md specifies ~5cm per problem, 8cm multi-step. Pass the "
                 f"workspace as the macro's optional argument — \\problem[5cm]{{...}} "
                 f"— so it lives inside the problem's unbreakable minipage.")
@@ -477,7 +574,17 @@ def main():
         return 2
 
     # 3. page-break glue
-    for line, cm in stranded_workspace(tex):
+    stranded, in_stem = stranded_workspace(tex)
+    for line, cm in in_stem:
+        # Inside a \problem stem the glue is already inside the macro's
+        # unbreakable minipage, so it cannot be discarded at a break. Saying
+        # otherwise sent authors to fix a fault that was not there.
+        print(f"  ⚠ line {line}: workspace \\vspace{{{cm}cm}} sits inside a "
+              f"\\problem stem, so it is already in the problem's unbreakable "
+              f"minipage and will NOT be discarded at a page break. Prefer "
+              f"\\problem[{cm}cm]{{...}} — the macro emits the answer line with "
+              f"it — or star it (\\vspace*) if it must stay in the stem.")
+    for line, cm in stranded:
         faults.append(
             f"line {line}: workspace \\vspace{{{cm}cm}} sits outside any minipage. "
             f"LaTeX discards \\vspace glue at a page or column break, so this space "

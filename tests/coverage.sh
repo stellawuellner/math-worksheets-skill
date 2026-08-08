@@ -6,7 +6,11 @@ set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
-FAIL_UNDER="${COVERAGE_FAIL_UNDER:-90}"
+# 93, not the current 94.6: the floor is a ratchet against regression, not a
+# target, and a point of margin keeps environment variance (a skipped TeX
+# suite on a minimal machine) from flapping the gate. Raised from 90 after the
+# 2026-08-08 coverage pass; raise it again only after the number has settled.
+FAIL_UNDER="${COVERAGE_FAIL_UNDER:-93}"
 source "$DIR/scripts/find_python.sh"
 PYTHON="$(find_sympy_python)" || exit 1
 
@@ -17,11 +21,19 @@ for f in tests/fixtures/*.json; do
   "$PYTHON" -m coverage run --source=scripts -a scripts/verify.py "$f" >/dev/null 2>&1
 done
 
-# the python test suites (each exits nonzero on failure)
+# The python test suites (each exits nonzero on failure).
+#
+# THIS LIST IS DERIVED, NOT MAINTAINED BY HAND. It was hand-maintained once and
+# drifted: eleven wired suites — including every suite added for the slot gate,
+# the figure house style and the calibration seeder — never ran under coverage,
+# so the reported percentage described a shrinking fraction of the tests while
+# reading like a whole-project number. Globbing means a new suite is measured
+# the day it lands, and `tests/run_tests.sh` stays the place that decides what
+# is wired.
 rc=0
-for t in test_audit_fixes test_error_paths test_branches test_answer_key_binding test_check_log test_pipeline_fixes test_render_figures test_facets test_render_meta test_render_quick_answers test_unit_binding test_page_budget test_scoring_harness test_author_review test_visual_environment test_preamble_layout visual_regression; do
-  if ! "$PYTHON" -m coverage run --source=scripts -a "tests/$t.py"; then
-    echo "❌ tests/$t.py FAILED"
+for t in tests/test_*.py tests/visual_regression.py; do
+  if ! "$PYTHON" -m coverage run --source=scripts -a "$t"; then
+    echo "❌ $t FAILED"
     rc=1
   fi
 done

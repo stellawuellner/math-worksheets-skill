@@ -24,9 +24,32 @@ overlap substantially are two things drawn on top of each other. Words that sit
 outside the page are text that ran off the paper.
 
 WHAT IT DELIBERATELY DOES NOT DO
-It cannot see a figure — a collision between two TikZ paths, or a grid too small
-to use, leaves no word box. It reads text only, so a clean report means "no text
-is overprinted", not "the page is good". The remaining classes still need eyes.
+It cannot see a figure's GEOMETRY — a collision between two TikZ paths, or a
+label lying across a drawn line, or a grid too small to use, leaves no word box
+to overlap. It reads text only, so a clean report means "no text is
+overprinted", not "the page is good". The remaining classes still need eyes.
+
+WHAT IT DOES COVER INSIDE A FIGURE, stated precisely because the repository
+has been telling authors otherwise. Every LABEL is text, so label-over-label
+IS in scope wherever it happens — including at the swing apex of an
+ambiguous-SSA triangle, which evals/AUTHORING.md lists as an ungated defect
+bounded by "prefer A >= 30 degrees". Both halves of that are wrong, and both
+were re-measured by rendering (see tests/test_overprint.py, SSA_MEASURED):
+
+  A = 44 deg, a = 310, b = 400   the "?" arc label at B_2 lands on the "0" of
+                                 the swing side's "a = 310" label. This gate
+                                 reports it: '?' and '310' overlap by 54% of
+                                 the smaller box — over the 0.45 prose
+                                 threshold, so the ordinary rule catches it,
+                                 not the narrow figure-label rule.
+
+So the threshold does not bound the defect: 44 is comfortably above 30 and
+collides anyway. What IS bounded is the OTHER geometry — at A = 15 and A = 25
+(the cases AUTHORING.md confirmed by eye) the swing label lands on the BASE
+LINE, a TikZ path, and this gate is correctly silent because there is no second
+word box. Those two failures look identical on the page and are opposite here:
+one is gated, one is invisible. Rendering a page and looking at it remains the
+only cover for the second.
 
 CALIBRATION
 The threshold is overlap area as a fraction of the SMALLER box, so a subscript

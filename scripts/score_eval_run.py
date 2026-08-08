@@ -872,9 +872,12 @@ def _line_anchors(line):
         kept.append(m)
         last = pid
     return kept
-# The manual dash. LaTeX "---" always prints an em dash; pdftotext may emit an
-# em/en/figure dash. A minus sign attached to a digit is NOT a manual dash.
-BANK_DASH_RE = re.compile(r"(?<![\w∞.])(?:—|–|‒|-{2,3})(?![\w∞])")
+# The hand-judged mark. Since v3.6.0 the bank prints \spadesuit (pdftotext
+# emits ♠); before that it was "---", which LaTeX sets as an em dash and
+# pdftotext may emit as an em/en/figure dash. Both generations are matched so
+# this cross-check keeps working on retained pre-v3.6 runs — the corpus is a
+# history, not a snapshot. A minus sign attached to a digit is NOT the mark.
+BANK_DASH_RE = re.compile(r"♠|\\spadesuit|(?<![\w∞.])(?:—|–|‒|-{2,3})(?![\w∞])")
 # A Python repr leaking into a delivered key ("<built-in function open>"; OT1
 # text encoding turns the angle brackets into ¡ ¿ before pdftotext sees them).
 BANK_BUILTIN_RE = re.compile(
@@ -2169,5 +2172,5 @@ def main(argv=None):
         return 2
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover — dispatch-only; main() is tested directly through both subcommands
     sys.exit(main())

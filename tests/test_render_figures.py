@@ -312,3 +312,87 @@ if FAILS:
     print(f"❌ {len(FAILS)} check(s) failed")
     sys.exit(1)
 print("✅ all render_figures checks passed")
+
+
+# ── Branch legs a coverage read found dark (2026-08-08) ─────────────────────
+# Each case pins observable renderer behaviour on a real input shape: figure
+# variants the corpus happens not to contain, and the duplicate-figure and
+# impossible-geometry error paths an author hits precisely when their JSON is
+# wrong. No case exists only to light a line.
+print("branch legs:")
+
+# A right-triangle figure whose givens cannot close (leg > hypotenuse) must
+# refuse with the geometry named, not draw a wrong triangle.
+figs, errors = rf.build_figures([
+    {"id": 1, "type": "eval", "expr": "a/c", "at": {"a": 15, "c": 8},
+     "expected": "15/8",
+     "figure": {"kind": "right_triangle", "given": {"a": 15, "c": 8},
+                "solve_for": "b"}}])
+check("an impossible right triangle is an error, not a drawing",
+      not figs and errors and "right triangle" in errors[0])
+
+# Two figures on one id is author error and must be NAMED per id: silently
+# taking the first would print a figure the check never bound.
+figs, errors = rf.build_figures([
+    {"id": 1, "type": "triangle", "given": {"a": 3, "b": 4, "C": 90},
+     "solve_for": "c", "expected": 5},
+    {"id": 1, "type": "eval", "expr": "a/b", "at": {"a": 3, "b": 4},
+     "expected": "3/4",
+     "figure": {"kind": "right_triangle", "given": {"a": 3, "b": 4},
+                "solve_for": "c"}}])
+check("two figures on one id is a named error",
+      any("more than one figure" in e for e in errors))
+
+# The opt-in marker: a triangle problem may carry figure={"kind": "triangle"}
+# as a no-op declaration. It must neither error nor add a second figure.
+figs, errors = rf.build_figures([
+    {"id": 1, "type": "triangle", "given": {"a": 3, "b": 4, "C": 90},
+     "solve_for": "c", "expected": 5, "figure": {"kind": "triangle"}}])
+check("the triangle opt-in marker is a no-op, one figure, no error",
+      len(figs) == 1 and not errors)
+
+# SSA with the BASE side asked for: the "$base = ?$" label leg. Real shape —
+# 'find the third side' on an ambiguous sheet.
+figs, errors = rf.build_figures([
+    {"id": 1, "type": "triangle", "given": {"a": 15, "b": 22, "A": 28},
+     "solve_for": "c", "expected": 0}])
+_body = "\n".join(figs[0][2]) if figs else ""
+check("SSA solving for the base draws and labels the base with ?",
+      len(figs) == 1 and "c = ?" in _body and not errors)
+
+# SSA solving for the apex angle C: only the solid apex gets the "?" arc.
+figs, errors = rf.build_figures([
+    {"id": 1, "type": "triangle", "given": {"a": 15, "b": 22, "A": 28},
+     "solve_for": "C", "expected": 0}])
+_body = "\n".join(figs[0][2]) if figs else ""
+check("SSA solving for the apex angle draws its ? arc",
+      len(figs) == 1 and _body.count("$?$") >= 1 and not errors)
+
+# The right_triangle validator's refusals, each with the taught message —
+# these raise FigureError at build time, the author's first contact with a
+# bad figure declaration.
+print("right_triangle refusals:")
+
+
+def rt_error(name, fig, needle, expr="a/b", at=None):
+    p = {"id": 9, "type": "eval", "expr": expr,
+         "at": at or {"a": 8, "b": 15}, "expected": "8/15", "figure": fig}
+    figs, errors = rf.build_figures([p])
+    check(name, not figs and errors and needle in errors[0])
+
+
+rt_error("an unknown figure field is named with the allowed set",
+         {"kind": "right_triangle", "given": {"a": 8, "b": 15},
+          "solve_for": "c", "flip": True}, "unknown field")
+rt_error("one given is refused with the worked example",
+         {"kind": "right_triangle", "given": {"a": 8}, "solve_for": "c"},
+         "exactly two")
+rt_error("a boolean given is refused as not-a-number",
+         {"kind": "right_triangle", "given": {"a": 8, "b": True},
+          "solve_for": "c"}, "must be a number")
+rt_error("solve_for colliding with a given is refused",
+         {"kind": "right_triangle", "given": {"a": 8, "b": 15},
+          "solve_for": "a"}, "not already given")
+rt_error("a long unknown label is refused (math-mode letter names only)",
+         {"kind": "right_triangle", "given": {"a": 8, "b": 15},
+          "solve_for": "c", "unknown": "hypotenuse"}, "short letter name")

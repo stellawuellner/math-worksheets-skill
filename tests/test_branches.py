@@ -48,6 +48,24 @@ print("system MANUAL (infinite family) + estimate tenth:")
 expect("system infinite family → MANUAL", {"id": 1, "type": "system", "equations": ["x - y", "2*x - 2*y"], "vars": ["x", "y"], "expected": {"x": 1, "y": 1}}, "MANUAL")
 expect("estimate to tenth", {"id": 1, "type": "estimate", "expr": "5.73 + 3.28", "place": "tenth", "expected": "9.0"}, "PASS")
 
+# ── Verdict variants added for answers the schema could not previously state.
+# Each of these WAS the MANUAL or FAIL branch above, on correct mathematics.
+print("verdicts for answers that are not values:")
+expect("dependent system stating infinitely many → PASS",
+       {"id": 1, "type": "system", "equations": ["x - y", "2*x - 2*y"], "vars": ["x", "y"], "expected": "infinitely many"}, "PASS")
+expect("identity keyed as all real numbers → PASS",
+       {"id": 1, "type": "solve", "expr": "3*(x - 2) - 3*x + 6", "expected": "all real numbers"}, "PASS")
+expect("contradiction keyed as no solution → PASS",
+       {"id": 1, "type": "solve", "expr": "3*(x - 2) - 3*x + 5", "expected": "no solution"}, "PASS")
+expect("identity keyed as the empty set → FAIL (solve() returns [] for both)",
+       {"id": 1, "type": "solve", "expr": "3*(x - 2) - 3*x + 6", "expected": []}, "FAIL")
+expect("divergent definite_integral keyed oo → PASS",
+       {"id": 1, "type": "definite_integral", "expr": "1/x**2", "from": 0, "to": 3, "expected": "oo"}, "PASS")
+expect("Abs integrand splits at its corner instead of failing to converge",
+       {"id": 1, "type": "definite_integral", "expr": "Abs(t**2-4)", "var": "t", "from": 0, "to": 3, "expected": "23/3"}, "PASS")
+expect("a literal equation solves in terms of the other symbol",
+       {"id": 1, "type": "solve", "expr": "x*y - 5", "var": "y", "expected": "5/x"}, "PASS")
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} branch test(s) failed: {FAILS}")

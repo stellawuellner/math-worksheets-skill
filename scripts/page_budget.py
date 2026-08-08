@@ -535,7 +535,11 @@ def main():
     # the answer key holds worked solutions, not work space: it runs shorter
     # than the worksheet but never shorter than the problem list itself
     if doc == "ak":
-        b["max_pages"] = max(2, math.ceil(b["ideal_pages"] * 0.9) + SLACK_OVER)
+        # +1: the generated bank now claims the LAST page for its verification
+        # and curriculum summary (\AtEndDocument\clearpage), so every key is
+        # one page longer than its solutions — and the rubber inter-problem
+        # glue the key gained is already inside the 0.9 factor's slack.
+        b["max_pages"] = max(3, math.ceil(b["ideal_pages"] * 0.9) + SLACK_OVER + 1)
         b["min_pages"] = 1
 
     if only_max:

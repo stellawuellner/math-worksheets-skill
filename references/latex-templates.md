@@ -822,6 +822,17 @@ Key" as a subtitle beneath it** — never append "--- Answer Key" to the big
 title, or a long topic wraps mid-phrase. The skills summary uses
 `\ssheader`/`\sstitleblock` the same way.
 
+`\ans` differs between the two shells and the difference is deliberate.
+`\akheader` replaces it with a compact same-line `\fbox`; a study guide keeps
+the base definition, a bold symbol, so the answer reads as emphasis inside a
+worked example rather than as a second box inside a box. Both forms work in
+text and in math — the exemplars below write `$\ans{...}$` and that is still
+the house style, but `\ans{x = 3}` in prose is legal and prints the same thing.
+It was not always: the base definition was a bare `\boldsymbol`, math-only, and
+a study guide written from SKILL.md's prose rather than copied from a template
+failed the `compile-ss` gate with `! Missing $ inserted` pointing at a line two
+away from the cause. Pinned by `tests/test_preamble_layout.py` §8.
+
 ### Quick-answer bank (generated, never hand-edited)
 `scripts/render_quick_answers.py` regenerates `qa_<stem>.tex` from the verify
 JSON on every build — a compact multi-column "answers at a glance" block for

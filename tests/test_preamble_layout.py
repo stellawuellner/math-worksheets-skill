@@ -385,6 +385,62 @@ def main():
             check("the common-wrong-answer text still prints",
                   "used cos instead of tan" in body)
 
+
+        # ── \ans in a STUDY GUIDE, both authoring forms ──────────────────────
+        # \akheader replaces \ans with a text-safe compact box; \ssheader does
+        # not, so in an ss_ document \ans is the base definition. That was a
+        # bare \boldsymbol -- math-only -- and every shipped exemplar happens to
+        # write $\ans{...}$, so the text-mode path was never exercised until an
+        # end-to-end build followed SKILL.md's prose ("print each result with
+        # \ans{...}") instead of copying a template. The result was
+        # "! Missing $ inserted", fatal, on compile-ss: the last gate of the
+        # chain, with the error naming a line two away from the cause.
+        # \ensuremath fixed it without changing math-mode output at all (visual
+        # regression: 0 of 2304 cells moved on study_guide_boxes). Pinned from
+        # both directions because a "simplification" back to \boldsymbol still
+        # compiles every document that wraps it in $...$.
+        print("8. \\ans works in a study guide in text mode AND math mode")
+        ss = os.path.join(d, "ansmode.tex")
+        open(ss, "w").write(
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[margin=0.85in, top=0.7in, bottom=0.7in]{geometry}\n"
+            "\\input{worksheet-preamble}\n\\ssheader{Modes}\n"
+            "\\begin{document}\n\\sstitleblock{Modes}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: clear the constant, then divide.}\n"
+            "\\step{Text mode: \\ans{x = 31}}\n"
+            "\\end{examplebox}\n"
+            "\\begin{examplebox}\n"
+            "\\step{Strategy: the same, keyed the documented way.}\n"
+            "\\step{Math mode: $\\ans{x = 47}$}\n"
+            "\\end{examplebox}\n"
+            "\\end{document}\n")
+        cmd2 = ([engine, "-interaction=nonstopmode", "ansmode.tex"]
+                if engine.endswith("pdflatex") else [engine, "ansmode.tex"])
+        r2 = subprocess.run(cmd2, cwd=d, capture_output=True, text=True)
+        anspdf = os.path.join(d, "ansmode.pdf")
+        # The weaker of the two: bare pdflatex in nonstopmode recovers from the
+        # inserted $ and still emits a PDF, so this alone did NOT catch the bug
+        # (measured, by reverting the macro). It is the log assertion below that
+        # fires. Kept because build.sh's compile does treat it as fatal — the
+        # real failure was `compile-ss FAIL ... no output PDF file produced` —
+        # and an engine that stops harder should be caught here, not by a user.
+        check("a study guide using \\ans in text mode compiles at all",
+              os.path.isfile(anspdf),
+              "through compile.sh this is the compile-ss gate failing outright")
+        log2 = os.path.join(d, "ansmode.log")
+        if os.path.isfile(log2):
+            txt2 = open(log2, errors="replace").read()
+            check("and does so with no 'Missing $ inserted'",
+                  "Missing $ inserted" not in txt2,
+                  "text-mode \\ans is being typeset as bare \\boldsymbol again")
+        if os.path.isfile(anspdf):
+            got = subprocess.run(["pdftotext", anspdf, "-"],
+                                 capture_output=True, text=True).stdout
+            check("both answers reach the page", "31" in got and "47" in got,
+                  "check_answer_key.py binds study guides through \\ans, so an "
+                  "answer that does not print cannot bind")
+
     if failures:
         print(f"\n❌ {len(failures)} preamble layout regression(s)")
         return 1

@@ -463,7 +463,18 @@
 % \ans{...} — the printed final answer of a worked example. check_answer_key.py
 % binds study guides through this macro (and \boxed); a result set in bare
 % \boldsymbol is invisible to the gate, so every worked example ends in \ans.
-\newcommand{\ans}[1]{\boldsymbol{#1}}
+%
+% \ensuremath, not a bare \boldsymbol, because \boldsymbol is math-only and this
+% definition is what a STUDY GUIDE gets: \akheader replaces \ans with a
+% text-safe compact box, \ssheader does not, so in an ss_ document \ans has
+% always been the raw \boldsymbol. Every shipped exemplar writes it inside
+% $...$, so that held right up until someone followed SKILL.md's prose ("print
+% each result with \ans{...}") instead of copying a template — and got
+% "! Missing $ inserted", a fatal error naming the symptom two lines away from
+% the cause, on the last gate of the chain. \ensuremath is a no-op in math mode,
+% so every existing study guide renders byte-identically; it only adds the
+% missing text-mode path. Do not "simplify" it back.
+\newcommand{\ans}[1]{\ensuremath{\boldsymbol{#1}}}
 
 % Skill section heading
 % Tightened from 0.4/0.1/0.2cm (35.3pt) to 24pt. On a 2-page reference card the

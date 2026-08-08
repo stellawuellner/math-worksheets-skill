@@ -82,6 +82,17 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_overprint.py"; then
 fi
 overprint_ran=1
 
+# Asks whether every suite on disk runs somewhere it can assert something. Four
+# render-and-read-back suites were invoked only in a CI job with no TeX, where
+# they printed "skipped" and exited 0 on every push. Pure text-reading, so it
+# runs everywhere and needs no engine of its own.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_suite_wiring.py"; then
+  echo "❌ test_suite_wiring.py failed"
+  exit 1
+fi
+wiring_ran=1
+
 # A recorded run is a snapshot; the code moves on. This asks whether the stored
 # artifacts still look like what the skill produces TODAY — dead workarounds for
 # fixed faults, printed defects no gate catches, content a reference file could
@@ -1358,4 +1369,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard"

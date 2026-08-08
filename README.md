@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.3.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.3.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -174,7 +174,11 @@ math-worksheets/
 │   ├── curriculum-suite-500.json     ← 500 unique counting-through-calculus prompts
 │   ├── curriculum-judge-rubric.md    ← v1 acceptance procedure (frozen)
 │   ├── curriculum-judge-rubric-v2.md ← v2 behavioural anchors (shadow-scored)
+│   ├── JUDGING-V2-ADDENDUM.md        ← what v2 changes, handed to the judge with the packet
 │   ├── run_eval.py                   ← start / next / record / status / package a run
+│   ├── score_eval.py                 ← aggregates a judge's verdicts into the run report;
+│   │                                   refuses self-judging, recomputes ACCEPT from the
+│   │                                   scores, and reports contradictions with the record
 │   ├── repair_artifacts.py           ← deterministic re-gate of stored artifacts
 │   ├── seed_defects.py               ← seeded-defect CALIBRATION runs: plants known defects
 │   │                                   in known-clean sheets, keeps controls, seals the
@@ -200,7 +204,10 @@ math-worksheets/
 │   ├── check_template_use.py         ← the shell must \input the preamble, never hand-roll it
 │   ├── check_artifact_health.py      ← recorded-run artifact integrity
 │   ├── visual_regression.py          ← renders each document, diffs against approved baselines
-│   ├── test_*.py                     ← 27 suites; every one wired into run_tests.sh
+│   ├── test_*.py                     ← 28 suites; coverage.sh globs and runs them all
+│   ├── test_suite_wiring.py          ← asserts every suite runs somewhere it can assert
+│   │                                   something — in particular that the render-and-
+│   │                                   read-back suites run in the CI job that has TeX
 │   ├── baseline/                     ← approved ink-density signatures, one file per page
 │   │   └── ENVIRONMENT.txt           ← the TeX/poppler stack they were recorded in
 │   ├── eval_gsm8k.py / eval_math_dataset.py  ← corpus evals
@@ -213,7 +220,7 @@ math-worksheets/
 ## Testing
 
 ```bash
-bash tests/run_tests.sh                    # contract suite (105 fixtures/checks)
+bash tests/run_tests.sh                    # contract suite (107 fixtures/checks)
 bash tests/coverage.sh                     # every suite under coverage, floor 90%
 python3 tests/visual_regression.py         # rendered pages vs approved baselines
 python3 tests/visual_regression.py --approve   # re-record after an intended design change
@@ -221,7 +228,7 @@ python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
 python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and **27 Python suites, every one of them wired**. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **28 Python suites**. `run_tests.sh` runs 19 of those 28 directly; `coverage.sh` globs and runs all 28, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
 `coverage.sh` runs the fixtures and **every** `tests/test_*.py` under `coverage` and fails below **90%** (currently **90%**). The suite list is globbed, not hand-maintained: it was hand-maintained once and drifted until eleven wired suites never ran under coverage, so the reported percentage described a shrinking fraction of the tests while reading like a whole-project number. Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_verify.py` (scale-aware numeric comparison, symbolic traps, the equation form, and the defensive branches that keep a malformed key producing a verdict rather than a traceback), `test_answer_slots.py` (per-response coverage and the slot-form contract), `test_tikz_libraries.py` (which compiles every figure snippet the docs print, plus a 7-page probe exercising the whole house style), `test_seed_defects.py` (the calibration seeder's transforms), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
@@ -237,11 +244,16 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 
 ## Changelog
 
+### v3.3.1 — 2026-08-08
+- **Four test suites were reporting green without running.** `test_ssa_figure_labels.py`, `test_tikz_libraries.py`, `test_overprint.py` and `test_page_budget_type_size.py` render a real document and read the PDF back, so they open by probing for a LaTeX engine and skip cleanly when there is none. CI's `verify` job installs poppler but not TeX, and those four were invoked only there — so on every push they printed "skipped" and exited 0, including the figure label-collision measurement and the probe that compiles every figure snippet the docs print. They now run in the `visual` job, which is the one that installs texlive, and `tests/test_suite_wiring.py` fails the build if an engine-dependent suite is ever again wired only where no engine exists. A clean skip is right on a laptop and worthless in CI; nothing distinguished the two.
+- **Doc corrections found by auditing claims against the code, not by a red build.** SKILL.md stated the worksheet and answer-key page caps as a fixed 8 and 6; `build.sh` computes them per sheet from `page_budget.py` and uses 8/6 only as the fallback when that fails — a 50-problem graphing set is allowed 26 pages, so an author reading the old text would have cut content the gate never asked them to cut. The README claimed all suites were wired into `run_tests.sh` (9 of 28 are not; they run under `coverage.sh`), quoted a stale fixture count in one of two places, and omitted `evals/score_eval.py` from the file tree. The suite-wiring guard now pins the suite count too.
+- **The calibration controls are adjudicated**, and one of the three judge findings is the judge's own error: a hard failure claiming three number lines label their first interior tick as 1, where all three label the right endpoint, in the TikZ source and in the rendered PDF. So the honest control reading is 1 real defect / 1 false hard failure / 1 judgement call, and the 10% false-hard-failure rate now travels beside the 20% detection rate.
+
 ### v3.3.0 — 2026-08-08
 - **Figure house style.** Four parallel reviews rendered real corpus pages and judged them against printed practice books. They found figures that defeat their own pedagogy: a blank grid with gridlines only every 2 units (no line at any odd integer, on the figure whose job is plotting integer points), a bar chart printing each bar's value on the bar — answering the `read_data` question for the student — a two-panel comparison whose panels auto-scaled independently, 3D solids overprinting their own labels, base-ten blocks drawn from three inconsistent units, and a grade-3 fraction comparison distinguishing its two points by red vs blue, which photocopies into two identical dots. Below grade 5 there were essentially no templates at all, so every K-4 sheet hand-rolled its models and the generator visibly avoided whole strands — zero clock faces, zero coins, zero multiplication arrays in the entire corpus. Ships ~20 preamble styles and ~30 macros, each compiled and rendered before merging, plus a 7-page probe pinned as a fixture test.
 - **The verifier stopped failing correct answers it could not express.** Decimal keys are compared scale-aware (five separate authors had rewritten correct mathematics — `4.9t²` became `5t²` — to satisfy exact float comparison); `equiv`/`expand`/`factor` can carry misconception traps, making error analysis reachable on factoring and rewrite sheets; `equiv` accepts the equation the student actually writes (`"expected": "(x-3)**2 + (y+5)**2 = 25"`), with `lhs - rhs` compared as before; divergence, identities and contradictions became answers rather than MANUAL fallthroughs. Re-measured over 1200 verify JSONs and 13,297 entries: **0 verdict changes** — this widened what can be stated, it did not reclassify what was already decided.
 - **The answer bank tells the truth about what is unchecked.** Multiple `manual` responses on one problem used to collapse into a single `---` with their slot labels dropped, so a grader could not see how many judgements were owed; and the marker was appended at the end, reordering parts against the printed page (measured: of 1041 ids with two or more lettered slots, all 1041 declare in ascending order). A new hard gate catches a slot label promising a FORM its value is not in — `the equation` keyed to a slope, `colon form` keyed to a fraction.
-- **Seeded-defect calibration** (`evals/seed_defects.py`). A judge that scores every sheet 4/5 is indistinguishable from a judge that reads nothing, and a 300-case run cannot tell them apart because nobody knows its true defect count. The seeder plants catalogued defects in known-clean sheets, keeps controls for the false-positive denominator, admits a case only if every gate stays **green** (a defect a gate catches says nothing about the territory the judge covers), and seals the manifest outside the run directory.
+- **Seeded-defect calibration** (`evals/seed_defects.py`). A judge that scores every sheet 4/5 is indistinguishable from a judge that reads nothing, and a 300-case run cannot tell them apart because nobody knows its true defect count. The seeder plants catalogued defects in known-clean sheets, keeps controls for the false-positive denominator, admits a case only if every gate stays **green** (a defect a gate catches says nothing about the territory the judge covers), and seals the manifest outside the run directory. **The first run's numbers are in the repo and they are not flattering to the judge: 3 of 15 planted defects detected, 1 of 10 clean controls failed on a fabricated citation, and two passes over identical artifacts agreed on only 68% of verdicts.** So no single-pass ACCEPT rate is quoted anywhere in this README — the [calibration write-up](evals/analysis/curriculum-shardX-20260808T033421Z/CALIBRATION.md) explains why one would not mean anything. The CAS gate above is a different instrument with a different guarantee; only the judge-based scores carry this caveat.
 - **Coverage measures the whole test suite again.** `coverage.sh` globs `tests/test_*.py` instead of carrying a hand-maintained list that had drifted until eleven wired suites — every suite added for the slot gate, the figure styles and the seeder — never ran under it.
 
 ### v3.2.1 — 2026-08-02

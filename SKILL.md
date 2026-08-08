@@ -107,7 +107,7 @@ See `references/latex-templates.md` for document templates, coordinate planes, t
 | `decorations.pathreplacing` | braces on bar models and part-whole diagrams | "Brace annotating a part" |
 | `pgfplots: statistics` | box plots | "Box plot" |
 | `pgfplots: fillbetween` | area between curves | "Area between two curves" |
-| `pgfplots: groupplots` | two displays with shared limits | "Two displays side by side" |
+| `pgfplots: groupplots` | two displays with shared limits | "Two displays for a compare item" |
 | `adjustbox` | scaling a figure that is genuinely too wide | "Fitting an oversized figure" |
 | `positioning`, `intersections`, `shapes.geometric` | relative node placement, named-path constructions, sorting-diagram nodes | — |
 
@@ -321,7 +321,7 @@ The second gate exists because the first was mistaken for it. "At least one chec
 | `compare` | ✅ | Order `values` (`order`: `asc`/`desc`) or state a `relation` (`<`/`>`/`=`) between the first two |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
 
-**Reframe "understanding" topics as checkable tasks** (see `references/problem-library.md` → "Reframing…"): missing-number → `solve`, fact-family → `eval`, estimation → `estimate`, ordering → `compare`.
+**Reframe "understanding" topics as checkable tasks** (see `references/problem-library.md` → "Reframing \"understanding\" topics as checkable tasks"): missing-number → `solve`, fact-family → `eval`, estimation → `estimate`, ordering → `compare`.
 
 **A check must exercise the work the problem asks for.** No gate can enforce this — it is a relationship between the printed stem and the JSON that no static rule reads reliably, so it is on you. Two shipped failures show the shape:
 
@@ -466,7 +466,7 @@ That single command replaces what used to be nine separate steps. It discovers `
 6. quick-answer bank regeneration (`render_quick_answers.py` on the answer key — every build, with the two preflight teaching failures)
 7. `check_layout.py` on the worksheet (figure scope + work space + answer location)
 8. `check_answer_line.py` on the worksheet (`answer_unit` ↔ `\answerline`)
-9. `compile.sh` for all three documents (nothing compiles after a failed gate). Each compile enforces a **page budget** read from the engine's own `Output written ... (N pages` log line (`check_log.py --max-pages`): the study guide is hard-capped at **2 pages** (its documented cap, above), and the worksheet (**8 pages**) and answer key (**6 pages**) get sanity ceilings sized from the real artifacts — the largest real 12-problem worksheet ran 7 pages with figures, so anything past the ceiling is a layout accident, not a bigger worksheet. Over budget: cut optional sections, tighten workspace, or split the sheet into two
+9. `compile.sh` for all three documents (nothing compiles after a failed gate). Each compile enforces a **page budget** read from the engine's own `Output written ... (N pages` log line (`check_log.py --max-pages`). The study guide is hard-capped at **2 pages** — it is a reference card and that cap is fixed. The worksheet and answer-key caps are **computed per sheet** by `page_budget.py` from the problem set, the declared `workspace_cm`, the paper size and the type size read off the `.tex` (`--from-tex`, so large-print sheets get their extra pages without anyone remembering a flag): 50 graphing problems that each need a plane are allowed 26, not squeezed into a flat number. `8`/`6` appear in `build.sh` only as the fallback when `page_budget.py` itself cannot run. Over budget means the sheet overran *its own measured* budget — a layout accident, not a bigger worksheet. Fix it by cutting optional sections, declaring the real `workspace_cm`, or reducing the problem count; never by shrinking work space
 10. `check_answer_key.py` binding `ak_` and `ss_` to their verified JSONs (values and units; for `ss_`: pairing — every examplebox is followed by its tryitbox — and role/position agreement, then per-box value binding)
 11. `check_study_guide.py` — every worked example opens with a `\step` strategy line before any computation
 12. `check_prose_consistency.py` on the worksheet AND the study guide (`--figs`/`--meta` passed automatically; examplebox prose givens are bound to the ss JSON; intermediate values that equal a subexpression of the entry's expr at printed precision are auto-matched; story numbers unused by the computation are expected flags)
@@ -547,6 +547,6 @@ bash "$SKILL_DIR/scripts/compile.sh" /tmp/ws_TOPIC_DATE.tex ~/Documents/Workshee
 | LaTeX error on line N | Check paired `$...$`, matching `\begin{}/\end{}` |
 | Compile blocked: `Overfull \hbox (Npt too wide)` | Text physically overflows the printed page — shorten the line, allow a break point, or scale the figure. The log gate (`scripts/check_log.py`) blocks PDFs that would ship with off-page text; `OVERFULL_PT=5` relaxes the threshold if the overhang is verified harmless |
 | Compile blocked: undefined references | A `\ref` points at a missing or typo'd `\label` — the PDF would print `??` where the number belongs. Fix the pair and recompile |
-| Compile blocked: page budget exceeded | The document overran its cap (ss 2 · ws 8 · ak 6 pages, from the log's `Output written ... (N pages` line). Cut optional sections (watch-out box, vocabulary), tighten workspace, or split the sheet into two — never bypass the cap by compiling the engine directly |
+| Compile blocked: page budget exceeded | The document overran its cap, read from the log's `Output written ... (N pages` line. The ss cap is a fixed 2; the ws/ak caps are computed for THIS sheet — run `python3 scripts/page_budget.py <verify.json> --from-tex <ws.tex>` to see the number and the reason. Cut optional sections (watch-out box, vocabulary), declare the real `workspace_cm`, or reduce the problem count — never bypass the cap by compiling the engine directly |
 | pgfplots not rendering | Ensure `\pgfplotsset{compat=1.18}` is in preamble |
 | PDF not created | Read full tectonic output for the specific error |

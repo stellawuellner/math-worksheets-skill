@@ -87,6 +87,22 @@ jobs:
         if: ${{ ! inputs.rerecord_visual_baselines }}
         run: python3 tests/test_preamble_layout.py
 
+      # These four render real documents and read the resulting PDFs back, so
+      # they skip cleanly when no engine is present — which is exactly what they
+      # were doing in the `verify` job, on every push, in silence. A suite that
+      # skips reports the same green as a suite that passes. They belong in the
+      # job that has TeX, and this is it. Between them they cover the figure
+      # label-collision measurement, the calibrated \settowidth table against the
+      # shipped preamble, every figure snippet the docs print plus the house-style
+      # probe, and the large-print page-budget charge.
+      - name: TeX-dependent suites (skip silently without an engine)
+        if: ${{ ! inputs.rerecord_visual_baselines }}
+        run: |
+          python3 tests/test_overprint.py
+          python3 tests/test_ssa_figure_labels.py
+          python3 tests/test_tikz_libraries.py
+          python3 tests/test_page_budget_type_size.py
+
       # The escape hatch for drift, so nobody has to reproduce the runner
       # locally: re-record here, download, commit. Deliberately manual and
       # deliberately not a push — a baseline change is a human decision.

@@ -77,12 +77,56 @@ locatable, plausible defect that run 2's judge accepted at 31–32/32:
 - **curr-482** (31 → 30) — particular-solution formulas requested in six
   problems are absent from `verify.json`; the verifier checks antiderivatives
   and evaluated values but never the requested formula.
-- **curr-496** (31 → 27) — p-series exact sums the worksheet requires are not
-  verified anywhere.
+- **curr-496** (31 → 27) — rejected on a `curriculum_alignment` score of 2,
+  NOT a hard failure: two of eight problems require memorised exact zeta
+  values that are not among the requested AP classification tools. (The
+  p-series verification gap appears in its `errors`, but it is not what
+  triggered the rejection — a distinction the first draft of this file got
+  wrong.)
 
 So the control rejections read as **findings run 2's judge missed**, not as a
 false-positive rate. That inverts the usual reading: the instrument is not
 noisy, the two instruments disagree about where the bar is.
+
+## Machine cross-checks in the generated report
+
+The scoring harness recomputes deterministic facts the judge never saw.
+`bank_value_unbacked` fired 19 times and `standard_code_not_in_map` once, both
+advisory. The standards flag is adjudicated here as a **false positive**: it
+reports `0.08P` on curr-482, which is not a standards tag at all — the sheet
+tags `FUN-7` throughout, and `0.08P` is lifted out of problem 7's stem,
+`dP/dt = 0.08P`. The extractor reads `<digits>.<digits><Letter>` out of PDF
+prose and cannot tell a differential equation from a CCSS code. Worth
+narrowing before that flag is ever promoted past advisory.
+
+## A correction to the rubric-v2 diagnosis this run forced
+
+Before these verdicts arrived, run 2's constant-3 scores on
+`curriculum_alignment` and `instruction_following` were diagnosed as
+STRUCTURALLY unscoreable: v2's test-for-4 names a standards map absent from the
+packet, and requires filenames that the harness renames after the delivery
+message is written, while v2's scale forbids awarding a 4 for a test you did
+not run. That reasoning was sound and the facts behind it are all true.
+
+**The conclusion was too strong, and this run disproves it.** Scored under the
+*identical frozen v2 rubric* — the copy in this run still points at
+`references/standards-map.md`, which is still not in its packet — the
+calibration judge produced the full range on both:
+
+| dimension (v2) | run 2 | calibration |
+|---|---|---|
+| curriculum_alignment | 3 × 300 | 2 × 3, 3 × 15, **4 × 7** |
+| instruction_following | 3 × 300 | 2 × 7, 3 × 6, **4 × 12** |
+
+So the anchors are **ambiguous, not impossible**: one judge read them as
+capping at 3, another did not. The repairs shipped for them — putting the map
+in the packet, excluding filenames from the claim test — are still right,
+because removing the ambiguity is the point. But the causal claim ("the test
+could not be run", "unverifiable by construction") is corrected to: *these
+anchors are read inconsistently across judges, and run 2's judge resolved that
+ambiguity by refusing the 4 on every case.* A dimension constant across 300
+cases remains a broken measurement; the breakage is in how the anchor is
+worded, not in what the packet contains.
 
 ## The confound: this is not run 2's judge
 

@@ -75,6 +75,21 @@ So v2 is a net regression except on one dimension. The anchors for those two
 dimensions need rewriting so a 4 is reachable and a 2 is defined; until then
 the official v1 verdict stands and v2 should not be promoted.
 
+**Corrected 2026-08-08 by the calibration run.** This section originally
+attributed the two constants to a STRUCTURAL cause: v2's test-for-4 names a
+standards map that is not in the packet, and requires filenames the harness
+renames after the delivery message is written, while v2's scale forbids
+awarding a 4 for a test you did not run. Every one of those facts is true, and
+both were repaired (the map now ships with the packet; filenames are out of
+scope). But the conclusion — that the dimensions were unscoreable BY
+CONSTRUCTION — is disproved: scored under the identical frozen v2 rubric, the
+calibration judge produced curriculum_alignment {2:3, 3:15, **4:7**} and
+instruction_following {2:7, 3:6, **4:12**}. The anchors are ambiguous, not
+impossible; run 2's judge resolved the ambiguity by refusing the 4 on every
+case. A dimension constant across 300 cases is still a broken measurement — the
+breakage is in the wording, not the packet. See
+`evals/analysis/curriculum-shardX-20260808T033421Z/CALIBRATION.md`.
+
 ## 4. The 5 REJECTs are all real, and two are ours
 
 - **curr-100** — study guide teaches "a rhombus and a trapezoid have no square

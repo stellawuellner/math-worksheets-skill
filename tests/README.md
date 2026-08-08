@@ -66,9 +66,18 @@ curl -sSL -o /tmp/gsm8k_test.jsonl \
   https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl
 python3 tests/eval_gsm8k.py /tmp/gsm8k_test.jsonl --report /tmp/gsm8k_report.json
 ```
-Baseline result (2026-07-20): 4,282/4,282 parse coverage, 100% accept-correct,
-0 false accepts. This eval caught a real tokenizer gap (leading-decimal
-numbers like `.5`) on its first run.
+Baseline result (re-measured 2026-08-08, sympy 1.14.0): 4,271/4,282 parse
+coverage (11 annotations rejected by the allowlist — fraction-literal answers
+like `'3/4' = '3/4'`), **100% accept-correct and 0 false accepts on all 4,271
+parsed checks**. An earlier note here claimed 4,282/4,282 parse coverage; the
+current number is the measured one. This eval caught a real tokenizer gap
+(leading-decimal numbers like `.5`) on its first run.
+
+The `cas-canary` workflow re-runs this corpus plus the full fixture suite
+against the **newest sympy on PyPI** every Monday, so a CAS that starts
+answering differently is discovered by a scheduled job, not by an author
+mid-build. A red canary means: do not upgrade sympy until the baseline is
+re-established (`MEASURED_SYMPY` in `scripts/verify.py`).
 
 **MATH dataset** (Hendrycks et al.; Prealgebra/Algebra/Geometry/Precalculus with
 symbolic boxed answers — the closest match to this skill's scope). Needs the

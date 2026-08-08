@@ -120,6 +120,20 @@ def main():
     check("the README no longer claims SymPy is 'pinned' without qualifying it",
           "SymPy pinned and version-stamped" not in readme)
 
+    print("\nthe forward canary exists and is genuinely unpinned:")
+    canary_path = os.path.join(ROOT, ".github", "workflows", "cas-canary.yml")
+    check("a scheduled cas-canary workflow exists", os.path.isfile(canary_path))
+    if os.path.isfile(canary_path):
+        canary = read(".github", "workflows", "cas-canary.yml")
+        check("it runs on a schedule", "schedule:" in canary and "cron:" in canary)
+        check("it installs sympy UNPINNED — the one workflow that must not pin",
+              "pip install --upgrade sympy" in canary,
+              "a pinned canary re-tests the present instead of the future")
+        check("it runs both instruments: the fixture suite and the corpus",
+              "tests/run_tests.sh" in canary and "eval_gsm8k.py" in canary)
+        check("a red canary explains itself in the job summary",
+              "MEASURED_SYMPY" in canary)
+
     print("\nthe pgfplots floor is guarded, not just assumed:")
     pre = read("templates", "worksheet-preamble.tex")
     check("the preamble still sets compat=1.18", "compat=1.18}" in pre)

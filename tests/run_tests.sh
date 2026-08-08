@@ -93,6 +93,16 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_suite_wiring.py"; then
 fi
 wiring_ran=1
 
+# The shell-facing contracts: usage text, exit codes, and file-error messages
+# of every CLI build.sh calls by path. runpy-based, so the __main__ dispatch
+# runs in-process and under coverage.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_cli_contracts.py"; then
+  echo "❌ test_cli_contracts.py failed"
+  exit 1
+fi
+cli_ran=1
+
 # The version contract: sympy floor + measured baseline + the pgfplots compat
 # floor, checked against every file that states a version. Four statements,
 # three numbers and zero enforcement is what this replaced.
@@ -1419,4 +1429,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard · $versions_ran version-contract guard"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard · $versions_ran version-contract guard · $cli_ran CLI-contract suite"

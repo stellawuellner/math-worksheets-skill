@@ -2784,7 +2784,7 @@ def check_problem(p, ptype):
         return ("PASS" if ok else "FAIL",
                 f"solve {p['expr']} {rel} 0 → {computed} (expected {expected_set})")
 
-    raise VerifyInputError(f"unhandled type {ptype!r}")  # unreachable
+    raise VerifyInputError(f"unhandled type {ptype!r}")  # pragma: no cover — check_schema validates ptype against SCHEMAS before dispatch ever runs; reaching this line requires editing one table without the other
 
 
 # ── Driver ────────────────────────────────────────────────────────────────────

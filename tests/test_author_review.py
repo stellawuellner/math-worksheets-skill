@@ -465,6 +465,50 @@ with tempfile.TemporaryDirectory() as temp:
             check(f"{label} is refused by the parser", False, "no SystemExit")
 
 
+# ── Aggregate and merge under adverse inputs ────────────────────────────────
+print("\nAggregate under adverse inputs:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    run_dir = temp / "run"
+    create_run(run_dir, ("curr-001", "curr-002"), rejected=False)
+    packets = temp / "packets"
+    review.prepare_run(run_dir, packets)
+
+    responses = temp / "responses"
+    responses.mkdir()
+    (responses / "curr-001.json").write_text(
+        json.dumps(completed_review("curr-001")), encoding="utf-8")
+    # curr-002 has no response at all
+    rc = review.main(["aggregate", "--packet-dir", str(packets),
+                      "--responses-dir", str(responses),
+                      "--output-dir", str(temp / "agg-partial")])
+    check("a missing response is tolerated WITHOUT --require-complete", rc == 0)
+    rc = review.main(["aggregate", "--packet-dir", str(packets),
+                      "--responses-dir", str(responses),
+                      "--output-dir", str(temp / "agg-strict"),
+                      "--require-complete"])
+    check("--require-complete makes the missing response fatal", rc != 0)
+
+    # an INVALID response must be counted invalid, not folded into the backlog
+    bad = completed_review("curr-002")
+    bad["reviewer"]["role"] = "judge"
+    (responses / "curr-002.json").write_text(json.dumps(bad), encoding="utf-8")
+    rc = review.main(["aggregate", "--packet-dir", str(packets),
+                      "--responses-dir", str(responses),
+                      "--output-dir", str(temp / "agg-invalid")])
+    check("an invalid response fails the aggregate", rc != 0)
+
+    # merge: a backlog path that does not exist is a named error, exit 2
+    rc = review.main(["merge", "--backlog", str(temp / "nope.json"),
+                      "--output-dir", str(temp / "m")])
+    check("merging a missing backlog is exit 2, not a traceback", rc == 2)
+
+    # ci with an explicit run filter naming a run that is not there
+    rc = review.main(["ci", "--runs-root", str(temp / "runs-none"),
+                      "--output-dir", str(temp / "ci2"),
+                      "--run-id", "does-not-exist"])
+    check("ci with an unknown --run-id is exit 2", rc == 2)
+
 if FAILS:
     print(f"\nFAIL: {len(FAILS)} author-review check(s) failed")
     for failure in FAILS:

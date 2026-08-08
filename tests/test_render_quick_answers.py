@@ -500,3 +500,25 @@ if FAILS:
     print(f"❌ {len(FAILS)} quick-answer test(s) failed")
     sys.exit(1)
 print("✅ All quick-answer tests passed")
+
+
+# ── Printer fallbacks a coverage read found dark ────────────────────────────
+# _fmt is the last translator between a verified value and the ink a grader
+# reads, so its fallbacks are behaviour: a value the bank cannot faithfully
+# print must degrade to the MANUAL dash — visibly instructor-judged — never to
+# a wrong-looking rendering or a crash.
+print("printer fallbacks:")
+check("a boolean expected degrades to the manual dash, not 'True'",
+      rqa._fmt(True) == rqa.MANUAL)
+check("a blank string degrades to the manual dash — nothing declared "
+      "is not an answer", rqa._fmt("   ") == rqa.MANUAL)
+check("an unprintable object degrades to the manual dash",
+      rqa._fmt(object()) == rqa.MANUAL)
+check("a malformed interval spec yields None so the caller falls through",
+      rqa._interval([[1, 2]]) is None)
+check("an unbounded interval prints open at its infinite end",
+      "(" in (rqa._interval([["-oo", 5, "hiopen"]]) or ""))
+check("a dict expected prints each variable assignment",
+      "x = " in rqa._fmt({"x": 3, "y": 4}))
+check("a negative fraction keeps its sign through the math printer",
+      "-" in rqa._math("-3/4"))

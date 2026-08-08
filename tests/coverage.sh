@@ -6,7 +6,11 @@ set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$DIR"
 
-FAIL_UNDER="${COVERAGE_FAIL_UNDER:-90}"
+# 93, not the current 94.6: the floor is a ratchet against regression, not a
+# target, and a point of margin keeps environment variance (a skipped TeX
+# suite on a minimal machine) from flapping the gate. Raised from 90 after the
+# 2026-08-08 coverage pass; raise it again only after the number has settled.
+FAIL_UNDER="${COVERAGE_FAIL_UNDER:-93}"
 source "$DIR/scripts/find_python.sh"
 PYTHON="$(find_sympy_python)" || exit 1
 

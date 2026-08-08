@@ -1,12 +1,12 @@
 # math-worksheets — Agent Skill
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](tests/coverage.sh)
+[![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](tests/coverage.sh)
 [![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.5.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.5.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -205,7 +205,7 @@ math-worksheets/
 │   ├── check_template_use.py         ← the shell must \input the preamble, never hand-roll it
 │   ├── check_artifact_health.py      ← recorded-run artifact integrity
 │   ├── visual_regression.py          ← renders each document, diffs against approved baselines
-│   ├── test_*.py                     ← 29 suites; coverage.sh globs and runs them all
+│   ├── test_*.py                     ← 30 suites; coverage.sh globs and runs them all
 │   ├── test_dependency_versions.py   ← the sympy floor + measured baseline + the
 │   │                                   pgfplots compat floor, checked against every
 │   │                                   file that states a version
@@ -232,7 +232,7 @@ python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
 python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **29 Python suites**. `run_tests.sh` runs 20 of those 29 directly; `coverage.sh` globs and runs all 29, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **30 Python suites**. `run_tests.sh` runs 21 of those 30 directly; `coverage.sh` globs and runs all 30, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
 `coverage.sh` runs the fixtures and **every** `tests/test_*.py` under `coverage` and fails below **90%** (currently **90%**). The suite list is globbed, not hand-maintained: it was hand-maintained once and drifted until eleven wired suites never ran under coverage, so the reported percentage described a shrinking fraction of the tests while reading like a whole-project number. Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_verify.py` (scale-aware numeric comparison, symbolic traps, the equation form, and the defensive branches that keep a malformed key producing a verdict rather than a traceback), `test_answer_slots.py` (per-response coverage and the slot-form contract), `test_tikz_libraries.py` (which compiles every figure snippet the docs print, plus a 7-page probe exercising the whole house style), `test_seed_defects.py` (the calibration seeder's transforms), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
@@ -247,6 +247,9 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.5.1 — 2026-08-08
+- **Coverage 92% → 95%, and the report says what the last 5% is.** ~90 new cases across five suites, every one asserting behaviour a user hits: the verifier's malformed-input refusals now pin their *messages* (the message is the UX of the gate, and several taught the wrong fix before anything exercised them), the scoring harness's finding emitters fire under a crafted defect-zoo run, malformed judge verdicts are refused **by field name**, the real PDF inspector runs on a real PDF (every prior test injected a fake), the sympy-missing and sympy-too-old guards execute in-process under a doctored `sys.modules`, and a new `test_cli_contracts.py` pins the shell-facing surface `build.sh` actually calls — exit codes, usage text, the all-manual floor. Three lines carry `# pragma: no cover`, each with its reason in the source (one raise reachable only by editing one dispatch table without the other; two `__main__` dispatch lines invisible to in-process coverage). **Stopped here deliberately**: the remaining ~230 dark lines are dominated by `except Exception` fallbacks around CAS internals, and covering those means monkeypatching sympy to throw mid-computation — tests that pin implementation rather than behaviour. The enforced floor rises 90 → 93.
 
 ### v3.5.0 — 2026-08-08
 - **A weekly CAS canary makes sympy drift early, not just visible.** `.github/workflows/cas-canary.yml` runs the full fixture suite and the GSM8K corpus against the **newest sympy on PyPI** every Monday — the one workflow that deliberately does not pin. The run-time stamp says "this run isn't covered by the baseline"; the canary says "the next sympy needs the baseline re-established" before anyone upgrades. Its assertions were verified against today's baseline before shipping (4,271/4,282 parse coverage, 100% accept-correct, 0 false accepts on sympy 1.14.0 — which also corrected a stale 4,282/4,282 parse claim in `tests/README.md`), and the version-contract guard pins that the canary exists, is scheduled, is unpinned, and runs both instruments.

@@ -17,7 +17,7 @@ number.
 | **worked-step-error** | 5 | **3** | exact: right problem, the corrupted equality quoted, the correction stated |
 | **ramp-inversion** | 5 | **0** | |
 | **vague-rubric** | 5 | **0** | |
-| controls | 10 | — | 3 rejected, all citing specific defects (below) |
+| controls | 10 | — | 3 rejected → adjudicated 1 real, **1 false hard failure**, 1 judgement call |
 
 **Detection on planted defects: 3 of 15 (20%).** All three are the same class.
 
@@ -64,29 +64,72 @@ checkable either — the ramp report is deliberately exit-neutral and the
 stale-rubric lint fires only on a wrong eponym — so this is currently uncovered
 by gates AND by judging.
 
-## The controls, and why "false positive" is the wrong word
+## The controls, adjudicated
 
-3 of 10 controls were rejected. None looks like noise; each cites a specific,
-locatable, plausible defect that run 2's judge accepted at 31–32/32:
+3 of 10 controls were rejected. Each was checked against the shipped artifacts
+rather than taken at its word, because a control rejection is only a
+false-positive measurement once someone has decided whether it is true. The
+three do not land the same way.
 
-- **curr-082** (run 2: 32/32 → here 23/32) — on a fractions-on-a-number-line
-  sheet, "the first interior sixth tick is labelled 1 instead of the right
-  endpoint". If correct that is a serious mathematical defect, and it is
-  precisely the elementary number-line weakness the figure review flagged
-  independently.
-- **curr-482** (31 → 30) — particular-solution formulas requested in six
-  problems are absent from `verify.json`; the verifier checks antiderivatives
-  and evaluated values but never the requested formula.
-- **curr-496** (31 → 27) — rejected on a `curriculum_alignment` score of 2,
-  NOT a hard failure: two of eight problems require memorised exact zeta
-  values that are not among the requested AP classification tools. (The
-  p-series verification gap appears in its `errors`, but it is not what
-  triggered the rejection — a distinction the first draft of this file got
-  wrong.)
+**curr-082 (run 2: 32/32 → here 23/32) — FALSE POSITIVE. The judge's hard
+failure is factually wrong.** It claims "problem 4 on page 2 labels the first
+interior sixth tick as 1 instead of labeling the right endpoint 1; problem 9 on
+page 4 similarly labels the first interior eighth tick as 1; and both number
+lines in problem 10 on page 4 label their first interior tick as 1." All three
+are correct in the source — each line labels `$0$` at the leftmost tick and
+`$1$` at the last one:
 
-So the control rejections read as **findings run 2's judge missed**, not as a
-false-positive rate. That inverts the usual reading: the instrument is not
-noisy, the two instruments disagree about where the bar is.
+```latex
+% problem 4, sixths          % problem 9, eighths        % problem 10, both lines
+\foreach \i in {0,...,6}     \foreach \i in {0,...,8}    fourths at 1.7*\i, eighths at 0.85*\i
+\node[below] at (0,-0.2){$0$};  ... at (0,-0.2){$0$};    ... at (0,-0.2){$0$};
+\node[below] at (6,-0.2){$1$};  ... at (8,-0.2){$1$};    ... at (6.8,-0.2){$1$};
+```
+
+and correct in the rendered PDF, which is what the judge actually read. Reading
+word boxes out of `worksheet.pdf`, the `1` sits ~190pt right of the `0` on every
+one of the cited lines (page 2: 203→396, 206→393; page 4: 203→396, 205→398
+twice) — at the far end of the axis, not one tick in. Three independent
+fabrications inside one hard-failure sentence, on a sheet the run-2 judge scored
+32/32.
+
+**curr-482 (31 → 30) — CORRECT, and it names a gap the gates do not model.**
+Problems 3, 6, 8 and 10 print the instruction "Write the particular solution
+y = f(x)"; 4 and 7 say "Solve the initial value problem". `verify.json` covers
+those ids with `integrate` (the antiderivative of one side) and `approx` (an
+evaluated value) and never the formula itself — id 3 carries exactly
+`integrate 2*x → x**2` and `approx 5*exp(1**2) → 13.591`, so `y = 5e^{x^2}` is
+checked nowhere. The Quick Answers bank then prints `the x-integral = x², y(1) =
+13.591`.
+
+That last step is why no gate fires. `check_answer_slots` measures coverage of
+**the responses the bank prints**, not of the responses **the stem asked for**;
+a requested answer that is silently dropped from the bank makes coverage
+vacuously complete. Same family as the slot-form lint shipped this session — a
+slot label is a promise about form, and here the missing slot is a promise
+about existence — but the input is the worksheet stem, which no gate parses.
+Closing it needs stem-side extraction, and the `standard_code_not_in_map`
+extractor on this very case (below) is the standing warning about what reading
+maths out of PDF prose costs. Left open deliberately, recorded as
+`evals/analysis/.../CALIBRATION.md` §controls rather than half-built.
+
+**curr-496 (31 → 27) — a judgement call, not a factual claim.** Rejected on a
+`curriculum_alignment` score of 2, NOT a hard failure: two of eight problems
+require memorised exact zeta values that are not among the requested AP
+classification tools. Whether that is misalignment or enrichment is exactly the
+kind of call two graders may split on, and nothing in the artifacts settles it.
+(The p-series verification gap appears in its `errors`, but it is not what
+triggered the rejection — a distinction the first draft of this file got wrong.)
+
+So the honest score on the controls is **1 real defect, 1 false hard failure,
+1 judgement call in 10** — not the "findings run 2's judge missed" reading an
+earlier draft of this section gave them, which assumed all three were true
+because each was specific and locatable. Specificity is not accuracy: curr-082
+is the most specific of the three and the one that is wrong. A judge that
+invents a citable detail is worse than one that is vague, because the detail is
+what makes a finding actionable. **10% false hard-failure rate on clean sheets**
+belongs beside the 20% detection rate whenever that number is quoted — the
+instrument misses four defects in five and manufactures one in ten.
 
 ## Machine cross-checks in the generated report
 
@@ -165,9 +208,15 @@ is strengthened, not weakened.
    transcription work.
 2. **Re-run the calibration single-model.** The two-model split makes every
    per-class rate an estimate over 4–5 cases from a mixed instrument.
-3. **Adjudicate the three control findings.** If curr-082's tick labelling is
-   real, it is a shipped mathematical error on an elementary sheet and the
-   number-line macros added this session are the fix.
+3. ~~**Adjudicate the three control findings.**~~ **Done** — see §controls.
+   1 real (curr-482's unverified particular solutions), 1 false hard failure
+   (curr-082's tick labels, which are correct in both the TikZ source and the
+   rendered PDF), 1 judgement call (curr-496). The one real finding needs
+   stem-side extraction to gate and is left open on purpose.
 4. **Stop quoting single-pass ACCEPT rates.** 68% inter-pass agreement means a
    run needs either multiple passes or a seeded denominator before its headline
    number means anything.
+5. **Carry the false-hard-failure rate next to the detection rate.** Controls
+   exist to supply that denominator and it was nearly discarded by assuming a
+   specific finding is a true one. 3 of 15 detected, 1 of 10 clean sheets
+   failed on an invented citation.

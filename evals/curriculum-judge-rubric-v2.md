@@ -77,8 +77,8 @@ skipped.
 declared standards codes. At least the required share (70%+) materially
 exercises the focus, no problem depends on an unstated later-course
 prerequisite, and every printed standards code is plausible for the declared
-level — you checked the codes against `references/standards-map.md`, not
-against memory.
+level — you checked the codes against `standards-map.md` **in this packet**,
+not against memory.
 
 ### problem_set_design
 **Test for 4:** read the problems in order as a student would. Difficulty
@@ -124,11 +124,21 @@ the expected working; page breaks do not orphan a problem from its figure.
 Name the pages you checked in `artifact_findings` if anything was close.
 
 ### instruction_following
-**Test for 4:** every claim in the final delivery message is verifiable
-against the artifacts — file names that exist, counts that match, "verified"
-statements that the verification JSON actually supports — and every explicit
-request in the prompt (problem count, topic, format, artifacts) is met. You
-checked each claim, not the overall impression.
+**Test for 4:** every *checkable* claim in the final delivery message holds —
+counts that match the artifacts, "verified"/"machine-checked" statements the
+verification JSON actually supports, described features that are present —
+and every explicit request in the prompt (problem count, topic, format,
+artifacts) is met. You checked each claim, not the overall impression.
+
+**Filenames are NOT part of this test.** The delivery message was written
+against the generator's own build-time filenames, and the harness renames
+every artifact to a canonical name (`worksheet.pdf`, `verify.json`, …) when
+recording the run. Measured on run 2: of 285 responses that name a file,
+**285** name at least one that is absent from the packet under that name.
+Treating that as a false claim made this dimension unscoreable — a constant 3
+across all 300 cases, no 2 and no 4. A response naming `ws_slope_0421.tex`
+where the packet holds `worksheet.tex` is describing the same artifact; score
+what it says about the CONTENT.
 
 ## Acceptance
 

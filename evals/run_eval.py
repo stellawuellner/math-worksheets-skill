@@ -558,6 +558,16 @@ def cmd_package(a):
         return 1
 
     shutil.copy(RUBRIC, os.path.join(d, "rubric.md"))
+    # The standards map ships WITH the packet because rubric v2's
+    # curriculum_alignment test says to check every printed standards code
+    # against it "not against memory" — and v2's general scale forbids awarding
+    # a 4 for a test you did not run. The map was not in the packet, so the
+    # test was unrunnable and the dimension scored a constant 3 across all 300
+    # cases of run 2: no 2, no 4, zero information. A reference the rubric
+    # names is part of the packet, not an outside resource.
+    smap = os.path.join(ROOT, "references", "standards-map.md")
+    if os.path.isfile(smap):
+        shutil.copy(smap, os.path.join(d, "standards-map.md"))
     dim_block = ",\n".join(f'    "{k}": 3' for k in dims)
     with open(os.path.join(d, "JUDGING.md"), "w", encoding="utf-8") as fh:
         fh.write(JUDGE_BRIEF.format(run_id=run["run_id"], count=recorded,

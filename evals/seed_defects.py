@@ -269,7 +269,7 @@ def copy_packet(source_run, run_id, n_tasks):
     src = os.path.join(RUNS, source_run)
     dst = os.path.join(RUNS, run_id)
     for name in ("JUDGING.md", "rubric.md", "rubric-v2.md",
-                 "JUDGING-V2-ADDENDUM.md"):
+                 "JUDGING-V2-ADDENDUM.md", "standards-map.md"):
         p = os.path.join(src, name)
         if not os.path.isfile(p):
             continue

@@ -149,6 +149,14 @@ the `equiv` equation form landed this session: key `expr "y - 6*x"`,
 gate chain that passed and a matching problem count. The judge's ACCEPTs and
 the build's own record agree.
 
+*Correction on the evidence, not the claim:* the first version of this check
+read each task's `result.json`, which holds only `task_id` and a timestamp —
+the mechanical facts live in `observations/<task-id>.json`. Reading the wrong
+file returns `None` for every field and flags nothing by construction, so the
+original "0 contradictions" was vacuously true. The check was re-run against
+`observations/` (`gate_chain_passed`, `problem_count_matches`,
+`capture_problems`, 295 of 295 present): the result is genuinely 0.
+
 ## 7. What this run actually establishes
 
 - No regression: 300/300 build green, 1.7% hard-failure rate, no ACCEPT

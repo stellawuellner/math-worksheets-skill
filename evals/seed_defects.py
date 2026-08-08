@@ -51,7 +51,15 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNS = os.path.join(ROOT, "evals", "runs")
 ANALYSIS = os.path.join(ROOT, "evals", "analysis")
-WORK = os.path.join("/tmp", "seed_defects")
+# NEUTRALLY NAMED, and that is load-bearing: build.sh echoes its working paths
+# into gate_log.txt, which ships to the judge — 35 mentions per log. The first
+# staging dir was /tmp/seed_defects, and one grep over the first recorded run
+# found the harness's own name on every page of the packet. A judge who reads
+# "seed_defects" in a gate log knows planted defects exist and hunts for them,
+# which corrupts the false-positive half of the calibration — the controls
+# only measure a judge behaving normally. evalbuild3 follows the evalbuild2
+# naming the genuine runs used, so the logs are indistinguishable.
+WORK = os.path.join("/tmp", "evalbuild3")
 
 # The seed is FIXED and recorded. Every choice this script makes at random —
 # which step to corrupt, which manual entry to blank — must replay exactly, or
@@ -224,12 +232,65 @@ def apply_defect(src, dst_stage, stem, defect, rng):
     return where or "unmodified control"
 
 
+def record_case(run_id, tid, stage, src):
+    """Record one green-built case into evals/runs/<run_id>/ via run_eval.py.
+
+    Same invocation repair_artifacts.py uses — record derives every artifact
+    from the stage directory's stem and refuses partial results, so a case
+    either lands whole or not at all. The delivery response is carried over
+    from the source unchanged: it is the message the generator actually wrote
+    for these artifacts, and the transforms leave everything it describes
+    (problem counts, files, coverage) true.
+    """
+    resp = os.path.join(src, "final_response.md")
+    staged = os.path.join(stage, "final_response.md")
+    if os.path.isfile(resp):
+        shutil.copy(resp, staged)
+    cmd = ["python3", os.path.join(ROOT, "evals", "run_eval.py"), "record",
+           tid, "--run", run_id, "--from", stage,
+           "--generator-model", "claude-fable-5"]
+    if os.path.isfile(staged):
+        cmd += ["--response-file", staged]
+    r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+    return (r.returncode == 0,
+            (r.stdout + r.stderr).strip().splitlines()[-1][:160] if
+            (r.stdout or r.stderr) else "")
+
+
+def copy_packet(source_run, run_id, n_tasks):
+    """Copy the judging brief and rubrics from a prior run, counts fixed up.
+
+    The packet must read exactly like the source run's: a brief that mentioned
+    seeding, calibration, or a changed procedure would unblind the test, and a
+    rubric that drifted from the one the baseline was scored under would
+    confound the sensitivity measurement with a rubric change — the exact
+    mistake the run-1/run-2 comparison already has to disclose.
+    """
+    src = os.path.join(RUNS, source_run)
+    dst = os.path.join(RUNS, run_id)
+    for name in ("JUDGING.md", "rubric.md", "rubric-v2.md",
+                 "JUDGING-V2-ADDENDUM.md"):
+        p = os.path.join(src, name)
+        if not os.path.isfile(p):
+            continue
+        text = open(p, encoding="utf-8").read()
+        text = text.replace(source_run, run_id)
+        text = text.replace("— 300 of them", f"— {n_tasks} of them")
+        open(os.path.join(dst, name), "w", encoding="utf-8").write(text)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true",
                     help="print the defect catalogue and exit")
     ap.add_argument("--source", help="run id to draw clean cases from")
     ap.add_argument("--run", help="new run id to write")
+    ap.add_argument("--record-run",
+                    help="an evals/runs/<id> already created by run_eval.py "
+                         "start: record each green-built case into it and "
+                         "copy the source run's judging packet. The run dir "
+                         "carries NO trace of which cases are seeded — that "
+                         "mapping goes only to the sealed manifest")
     ap.add_argument("--dry-run", action="store_true",
                     help="stage and seed, but do not build or record")
     ap.add_argument("tasks", nargs="*",
@@ -296,6 +357,16 @@ def main():
             print(f"  ⛔ {tid}: {defect} tripped a gate (exit "
                   f"{r.returncode}) — DROPPED, see {log}", flush=True)
             continue
+        if a.record_run:
+            ok, line = record_case(a.record_run, tid, stage, src)
+            if not ok:
+                # A case that built green but cannot be recorded is a harness
+                # fault, not a judged case — it must not silently shrink the
+                # denominator the manifest claims.
+                gated.append((tid, defect, f"record failed: {line}"))
+                print(f"  ❌ {tid}: {defect} built but did not record — "
+                      f"{line}", flush=True)
+                continue
         manifest.append(dict(task=tid, defect=defect, where=where, built=True,
                              build_exit=r.returncode, stage=stage))
         print(f"  ✅ {tid}: {defect} — {where}", flush=True)
@@ -308,6 +379,9 @@ def main():
               "class, and the catalogue entry should retire:")
         for tid, d, why in gated:
             print(f"  ⛔ {tid}: {d} ({why})")
+    if not a.dry_run and manifest and a.record_run:
+        copy_packet(a.source, a.record_run, len(manifest))
+        print(f"\njudging packet copied from {a.source} with counts fixed up")
     if not a.dry_run and manifest:
         os.makedirs(os.path.join(ANALYSIS, a.run), exist_ok=True)
         path = os.path.join(ANALYSIS, a.run, "seed-manifest.json")

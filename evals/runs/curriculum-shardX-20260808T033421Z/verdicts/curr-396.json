@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "task_id": "curr-396",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5.6-sol",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
     "model": "gpt-5.6-sol",
-    "completed_at": "2026-08-08T13:07:23Z"
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "ACCEPT",
   "hard_failures": [],
@@ -36,14 +36,18 @@
   "incorrect_or_ambiguous_items": [],
   "errors": [],
   "critical_observations": [
-    "All worksheet response parts, worked solutions, and four study-guide try-it answers were independently recomputed and agreed with the artifacts.",
-    "The three instructor-judged responses are honestly separated from the machine-checked values, and the worked key supplies usable grading criteria for each.",
-    "All 12 rendered pages were inspected at normal reading size; no clipping, overlap, missing glyphs, or inadequate work space was found."
+    "The visual problem-count warning is an extraction false positive; all ten numbered conic problems are present."
   ],
   "artifact_findings": [
     "bank row 1: 7",
     "bank row 5: (a) = −4, (b) = —",
-    "bank row 10: (a) = x = 3, y = 4; x = −4, y = −3, (b) = —"
+    "bank row 10: (a) = x = 3, y = 4, x = −4, y = −3, (b) = —",
+    "ramp: 1 1 1 2 2 2 2 2 2 3 3 3 3 3 3 4 4 4 5 5",
+    "ramp assessment: rising",
+    "manual rubric (id 2): \"Part (b): the curve is an ellipse. A correct response says both squared terms are present with the same sign (so the product of their coefficients is positive) but the coefficients are not equal, which rules out a circle. Full credit names the conic AND gives the same-sign, unequal-coefficient reason. Naming the conic with no reason, or citing only the positive product without noticing the coefficients differ, is partial credit.\"",
+    "grader decision: award full credit only when the response names an ellipse and cites both same-sign and unequal squared-term coefficients.",
+    "v2 standards check: the blind packet contains no standards-map.md, so curriculum_alignment is capped at 3 rather than awarded 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; every conic classification, center, radius, vertex, axis, focus, asymptote, and intersection was independently recomputed."
   ],
-  "rationale": "The packet is mathematically correct, visually polished, and fully aligned to identifying conics and their features. The answer bank, worked key, study guide, verification coverage, and delivery claims all survived independent cross-checking."
+  "rationale": "All ten conic items are correct, varied, and clearly presented, and the manual classification rubrics support consistent grading. The study guide directly teaches the features used by the worksheet."
 }

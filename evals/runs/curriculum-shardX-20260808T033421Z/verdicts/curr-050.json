@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "task_id": "curr-050",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
-    "model": "gpt-5",
-    "completed_at": "2026-08-08T13:03:40Z"
+    "model": "gpt-5.6-sol",
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "ACCEPT",
   "hard_failures": [],
@@ -36,15 +36,18 @@
   "incorrect_or_ambiguous_items": [],
   "errors": [],
   "critical_observations": [
-    "Every worksheet count, comparison, shape name, and build-to-target result was independently checked against the visible figures and worked solutions.",
-    "The manual naming and explanation responses in worksheet problems 4, 8, 9, and 10 and the two study-guide naming items have specific, pedagogically sound grading criteria."
+    "The shape-composition tasks use clear diagrams, varied constructions, and explicit manual criteria for naming and explanation responses."
   ],
   "artifact_findings": [
     "bank row 1: how many small squares = 2",
     "bank row 5: the symbol = >",
     "bank row 10: (a) how many more squares = 3, (b) the explanation = —",
-    "Inspected student worksheet pages 1–5, answer-key pages 1–3, and study-guide pages 1–2 at normal reading size; all figures are legible and response space is sufficient.",
-    "Checked every Quick Answers bank row against its worked solution; grading outcomes match."
+    "ramp: 1 1 2 2 2 2 3 3 3 3 4 4 4 4",
+    "ramp assessment: rising",
+    "manual rubric (id 4): \"Part (a): the child names the shape the two matching triangles make when their long edges are joined. The intended answer is a square. Full credit for the word square, spelled any way a reader can sound out. Half credit for rectangle, which is true but not the most exact name, and worth saying aloud. No credit for triangle, which names the pieces rather than the shape they build.\"",
+    "grader decision: award full credit for square, half credit for rectangle, and no credit for triangle.",
+    "v2 standards check: the blind packet contains no standards-map.md, so curriculum_alignment is capped at 3 rather than awarded 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; every final answer and diagram count was independently recomputed."
   ],
-  "rationale": "This is a complete, accurate, visually accessible interleaved packet whose figures, worked reasoning, study-guide examples, and manual grading rubrics all support the requested composition focus. The v2 curriculum score is capped because no independent standards-map lookup was performed."
+  "rationale": "The ten problems materially exercise composing larger shapes, progress in difficulty, and provide enough space and visual clarity for the intended learner. The answer key and guide are correct and practically gradeable."
 }

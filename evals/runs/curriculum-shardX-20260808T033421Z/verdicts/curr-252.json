@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "task_id": "curr-252",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
-    "model": "gpt-5",
-    "completed_at": "2026-08-08T13:07:47Z"
+    "model": "gpt-5.6-sol",
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "ACCEPT",
   "hard_failures": [],
@@ -16,39 +16,38 @@
     "mathematical_correctness": 4,
     "answer_key_quality": 4,
     "study_guide_quality": 4,
-    "clarity_and_accessibility": 3,
-    "visual_and_print_quality": 3,
-    "instruction_following": 3
+    "clarity_and_accessibility": 4,
+    "visual_and_print_quality": 4,
+    "instruction_following": 4
   },
-  "total_score": 29,
+  "total_score": 32,
   "scores_v2": {
     "curriculum_alignment": 3,
     "problem_set_design": 4,
     "mathematical_correctness": 4,
     "answer_key_quality": 4,
     "study_guide_quality": 4,
-    "clarity_and_accessibility": 3,
-    "visual_and_print_quality": 3,
-    "instruction_following": 3
+    "clarity_and_accessibility": 4,
+    "visual_and_print_quality": 4,
+    "instruction_following": 4
   },
   "hard_failures_v2": [],
   "manual_items_reviewed": 1,
   "incorrect_or_ambiguous_items": [],
-  "errors": [
-    "Student worksheet problem 7 on page 3 prints only the polynomial product and an answer blank, with no explicit Multiply and simplify directive; the surrounding sequence makes the intended task inferable.",
-    "Study-guide page 2 is less than half filled after the multiplication section and watch-out box, producing a visibly unbalanced page.",
-    "The final response says the worksheet has 4 pages and the answer key has 4 pages, while the delivered artifacts have 5 worksheet pages and 3 answer-key pages; those claims should be 5 and 3 respectively."
-  ],
+  "errors": [],
   "critical_observations": [
-    "All 13 machine-checkable worksheet answers, the manual explanation in problem 12(c), every worked step, and all study-guide examples and try-it answers were independently checked and are correct.",
-    "The worksheet interleaves addition, subtraction, monomial distribution, binomial multiplication, a binomial-by-trinomial product, and a perimeter-area synthesis with a coherent difficulty ramp."
+    "The set covers addition, subtraction, monomial multiplication, binomial products, and a perimeter-area synthesis item with valid work throughout."
   ],
   "artifact_findings": [
     "bank row 1: 5x² − 3x",
     "bank row 6: 4x² − 5x + 11",
     "bank row 12: (a) perimeter = 6x + 16, (b) area = 2x² + 11x + 15, (c) = —",
-    "Inspected student worksheet pages 1–5, answer-key pages 1–3, and study-guide pages 1–2 at normal reading size; no clipping, overlap, or missing glyphs was found.",
-    "Checked every Quick Answers bank row against the corresponding worked solution; grading outcomes match."
+    "ramp: 1 1 2 2 2 3 3 3 3 4 4 5 5 5",
+    "ramp assessment: rising",
+    "manual rubric (id 12): \"Part (c): a correct response says adding two length-1 polynomials keeps degree 1 -- nothing raises the exponent -- while multiplying them multiplies the leading terms 2x and x, producing an x^2 term, so the degrees add. Full credit contrasts the two operations; naming only the answers 1 and 2 without the reason earns half credit.\"",
+    "grader decision: award full credit only for a contrast between addition preserving the maximum degree and multiplication creating the x² leading term; award half for merely naming the degrees.",
+    "v2 standards check: the blind packet contains no standards-map.md, so curriculum_alignment is capped at 3 rather than awarded 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; every polynomial operation was independently expanded and simplified."
   ],
-  "rationale": "The polynomial work is mathematically correct, well ramped, thoroughly explained, and fully verified except for the appropriately manual explanation. Minor prompt, page-flow, and delivery page-count defects keep the presentation from excellent but leave it acceptance-ready."
+  "rationale": "The problem sequence is varied and progressively challenging, and all polynomial results and contextual formulas agree across the worksheet, key, and verification data."
 }

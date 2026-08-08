@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "task_id": "curr-012",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
-    "model": "gpt-5",
-    "completed_at": "2026-08-08T13:03:40Z"
+    "model": "gpt-5.6-sol",
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "ACCEPT",
   "hard_failures": [],
@@ -36,15 +36,18 @@
   "incorrect_or_ambiguous_items": [],
   "errors": [],
   "critical_observations": [
-    "Student worksheet problems 1 through 10 were independently recomputed; every worked solution and all four study-guide try-it checks agree with the printed task.",
-    "Answer-key problems 9(b) and 10(b) give usable instructor-judged criteria and are not represented as machine-verified."
+    "The two explanation items have specific, age-appropriate full-credit and no-credit criteria."
   ],
   "artifact_findings": [
     "bank row 1: the symbol = <",
     "bank row 5: least to greatest = 2, 5, 9",
     "bank row 10: (a) the correct order = 3, 6, 8, (b) the explanation = —",
-    "Inspected student worksheet pages 1–3, answer-key pages 1–2, and study-guide pages 1–2 at normal reading size; no clipping, overlap, missing glyphs, or inadequate response space was found.",
-    "Checked every Quick Answers bank row against its worked solution; grading outcomes match."
+    "ramp: 1 1 1 2 2 2 2 3 3 3 4 4 4 4",
+    "ramp assessment: rising",
+    "manual rubric (id 9): \"Part (b): the child explains how they know 4 is less than 9. Full credit for any correct reason stated in the child's own words: 4 is said before 9 when counting up; 4 objects is fewer than 9 objects; on a number line 4 is to the left of 9; the wide open end of the symbol has to face the bigger number, 9. Accept a drawing of 4 dots beside 9 dots with the smaller group named. Do not require the word 'less' if the meaning is clear. No credit for restating the symbol with no reason.\"",
+    "grader decision: award full credit for any listed correct comparison reason or accepted drawing, and no credit for merely restating the symbol.",
+    "v2 standards check: the blind packet contains no standards-map.md, so curriculum_alignment is capped at 3 rather than awarded 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; every final answer was independently recomputed."
   ],
-  "rationale": "The packet is mathematically correct, age-appropriate, complete, and unusually thorough in its worked reasoning and manual-response guidance. All v2 behavioral tests performed passed except the standards-map lookup needed for curriculum_alignment 4."
+  "rationale": "The packet is mathematically correct, fully aligned to comparing numerals through 10, well ramped, and visually usable. The shadow curriculum score is capped only because the required packet standards map was unavailable."
 }

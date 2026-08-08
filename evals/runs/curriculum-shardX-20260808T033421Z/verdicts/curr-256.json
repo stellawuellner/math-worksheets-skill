@@ -2,56 +2,64 @@
   "schema_version": "1.0",
   "task_id": "curr-256",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5.6-sol",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
     "model": "gpt-5.6-sol",
-    "completed_at": "2026-08-08T13:03:47Z"
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "REJECT",
   "hard_failures": [
-    "The requested focus appears materially in fewer than the required share of worksheet problems: problems 1, 2, 5, 7, 8, and 10 exercise a balance model, name moves, or justify legality, while problems 3, 4, 6, and 9 ask only for solutions."
+    "worksheet.pdf: only problems 1, 2, 5, 7, 8, and 10 materially ask the learner to explain the legality of equation transformations; problems 3, 4, 6, and 9 are solve-only, so the requested focus appears in 6 of 10 problems."
   ],
   "dimension_scores": {
     "curriculum_alignment": 2,
     "problem_set_design": 3,
     "mathematical_correctness": 4,
-    "answer_key_quality": 3,
+    "answer_key_quality": 4,
     "study_guide_quality": 4,
     "clarity_and_accessibility": 4,
     "visual_and_print_quality": 4,
-    "instruction_following": 3
+    "instruction_following": 2
   },
   "total_score": 27,
   "scores_v2": {
     "curriculum_alignment": 2,
-    "problem_set_design": 3,
+    "problem_set_design": 2,
     "mathematical_correctness": 4,
-    "answer_key_quality": 2,
+    "answer_key_quality": 4,
     "study_guide_quality": 4,
     "clarity_and_accessibility": 4,
     "visual_and_print_quality": 4,
     "instruction_following": 2
   },
   "hard_failures_v2": [
-    "The requested focus appears materially in fewer than the required share of worksheet problems: problems 1, 2, 5, 7, 8, and 10 exercise a balance model, name moves, or justify legality, while problems 3, 4, 6, and 9 ask only for solutions."
+    "worksheet.pdf: the requested focus on explaining legal transformations is materially exercised in only 6 of 10 problems."
   ],
   "manual_items_reviewed": 6,
-  "incorrect_or_ambiguous_items": [],
+  "incorrect_or_ambiguous_items": [
+    "worksheet.pdf problems 3, 4, 6, and 9: solve-only items do not materially exercise the requested explanation focus."
+  ],
   "errors": [
-    "The worksheet under-covers the requested explaining focus because problems 3, 4, 6, and 9 require no explanation or naming of a legal transformation.",
-    "Quick Answers rows 4, 7, and 9 print interval notation even though those worksheet problems explicitly request an inequality in x; the worked solutions do print the requested inequality form.",
-    "The final response says the answer key has 4 pages, but the surfaced answer key has 3 pages."
+    {
+      "severity": "critical",
+      "category": "focus_coverage",
+      "description": "Four of the ten worksheet problems ask only for a solution rather than an explanation of a legal transformation."
+    }
   ],
   "critical_observations": [
-    "Every equation and inequality answer was independently recomputed and all 6 manual transformation explanations were reviewed as mathematically valid.",
-    "The study guide's three try-it items correctly follow the demonstrated methods, including the sign reversal after division by a negative."
+    "The mathematics and worked solutions are correct; the rejection is caused by curriculum-focus coverage rather than computational quality."
   ],
   "artifact_findings": [
     "bank row 1: 7",
     "bank row 5: (a) = —, (b) = 6",
     "bank row 10: (a) = 11, (b) = —",
-    "Visual inspection covered all 5 worksheet pages, all 3 answer-key pages, and both study-guide pages at normal reading size."
+    "ramp: 5 4 4 4 4 3 3 3 3 3 3 2 2 2 1 1",
+    "ramp assessment: falling",
+    "manual rubric (id 2): \"Part (a): a correct response says 7 was added to both sides -- the addition property of equality. Full credit states the operation and that it was done to both sides; naming only the number 7 does not.\"",
+    "grader decision: award full credit only when the learner identifies adding 7 and states that it was done to both sides.",
+    "v2 standards check: the blind packet contains no standards-map.md; curriculum_alignment cannot receive a 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; every equation solution was independently recomputed."
   ],
-  "rationale": "The mathematics and manual rubrics are correct, but too many worksheet items are solve-only exercises rather than practice explaining why transformations are legal. This falls below the required focus share and forces REJECT."
+  "rationale": "The packet is accurate and well rendered, but it does not meet the required share of problems that materially explain legal equation moves. Its verification difficulty sequence also falls, capping v2 problem-set design at 2."
 }

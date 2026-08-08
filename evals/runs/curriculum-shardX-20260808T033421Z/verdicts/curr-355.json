@@ -2,15 +2,15 @@
   "schema_version": "1.0",
   "task_id": "curr-355",
   "judge": {
-    "type": "independent_agent",
-    "id": "gpt-5.6-sol",
+    "type": "agent",
+    "id": "codex-gpt-5.6-sol-second-pass",
     "agent": "codex",
     "model": "gpt-5.6-sol",
-    "completed_at": "2026-08-08T13:03:47Z"
+    "completed_at": "2026-08-08T23:48:01Z"
   },
   "verdict": "REJECT",
   "hard_failures": [
-    "Answer key problem 10 prints the false factor-by-grouping equality `x³ − 2x² + 9x − 18 = x²(x − 2) + 9(x − 4)`; the second grouped factor should be `9(x − 2)`."
+    "answer_key.pdf problem 10 prints the false grouping equality \"x³ − 2x² + 9x − 18 = x²(x − 2) + 9(x − 4)\"."
   ],
   "dimension_scores": {
     "curriculum_alignment": 4,
@@ -24,7 +24,7 @@
   },
   "total_score": 28,
   "scores_v2": {
-    "curriculum_alignment": 4,
+    "curriculum_alignment": 3,
     "problem_set_design": 4,
     "mathematical_correctness": 2,
     "answer_key_quality": 2,
@@ -34,24 +34,32 @@
     "instruction_following": 4
   },
   "hard_failures_v2": [
-    "Answer key problem 10 prints the false factor-by-grouping equality `x³ − 2x² + 9x − 18 = x²(x − 2) + 9(x − 4)`; the second grouped factor should be `9(x − 2)`."
+    "answer_key.pdf problem 10 prints the false grouping equality \"x³ − 2x² + 9x − 18 = x²(x − 2) + 9(x − 4)\"."
   ],
   "manual_items_reviewed": 2,
   "incorrect_or_ambiguous_items": [
-    "Answer key problem 10"
+    "answer_key.pdf problem 10: the second grouped term should retain x − 2, not x − 4."
   ],
   "errors": [
-    "Answer key page 3, problem 10: `x³ − 2x² + 9x − 18 = x²(x − 2) + 9(x − 4)` is false; the second grouped factor should be `9(x − 2)` before factoring to `(x − 2)(x² + 9)`."
+    {
+      "severity": "critical",
+      "category": "worked_step_error",
+      "description": "The answer key changes the constant term in the grouping step, making a displayed equality false."
+    }
   ],
   "critical_observations": [
-    "All worksheet final solution sets, both manual explanations, and all study-guide examples and try-it items were independently recomputed or reviewed; the final roots in answer key problem 10 are correct despite the false intermediate equality.",
-    "The Quick Answers bank was checked row by row and agrees with the correct final solutions and the two instructor-judged items."
+    "The final zero set 2, 3i, −3i is correct, but it is reached through a false displayed equality."
   ],
   "artifact_findings": [
     "bank row 1: 7i, −7i",
     "bank row 6: −1 + 2i, −1 − 2i",
     "bank row 12: the quadratic in standard form = x² − 8x + 17, the justification = —",
-    "Visual inspection covered all 5 worksheet pages, all 3 answer-key pages, and both study-guide pages at normal reading size."
+    "ramp: 1 1 2 2 2 2 3 3 3 3 3 4 4 5 5",
+    "ramp assessment: rising",
+    "manual rubric (id 5): \"Rubric for the written explanation. A full-credit answer says the reported set is incomplete because a square root has two values, so the negative one is a solution as well, and that a second-degree equation has two solutions counted with multiplicity. Accept an answer that substitutes the missing value back and shows it also gives zero. No credit for adding the missing value without saying why a second one has to exist.\"",
+    "grader decision: award full credit when the response explains the missing negative root or verifies it by substitution; no credit for merely listing it.",
+    "v2 standards check: the blind packet contains no standards-map.md, so curriculum_alignment is capped at 3 rather than awarded 4.",
+    "Every rendered page of the worksheet, answer key, and study guide was inspected at normal reading size; all final solution sets and sampled worked steps were independently recomputed."
   ],
-  "rationale": "The packet otherwise has correct final solution sets and strong coverage, but answer key problem 10 contains a false displayed equality in its required step-by-step reasoning. That objective mathematical defect forces REJECT."
+  "rationale": "The packet's final answers are otherwise correct and complete, but problem 10 contains a false grouping equality in the worked key. That mathematical statement is a hard failure under both rubrics."
 }

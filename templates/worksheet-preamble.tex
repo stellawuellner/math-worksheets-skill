@@ -155,7 +155,7 @@
 % and multi-part parents stay untouched) and only if the stem did not opt out.
 % The opt-out flag is reset at the START of each \problem, not the end — a
 % \noansline inside an enumerate item must never leak into a later \problem.
-\newcommand{\problem}[2][0pt]{\par\vspace{0.4cm}\global\mws@anstrue\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\mws@wsdim=#1\relax\ifdim\mws@wsdim>0pt\ifmws@ans\ansline\fi\fi\end{minipage}\par}
+\newcommand{\problem}[2][0pt]{\par\ifmws@akmode\vspace{0.5cm plus 0.45cm minus 0.15cm}\else\vspace{0.4cm}\fi\global\mws@anstrue\noindent\begin{minipage}{\linewidth}\stepcounter{prob}\noindent\textbf{\large\theprob.}\quad #2\par\vspace*{#1}\mws@wsdim=#1\relax\ifdim\mws@wsdim>0pt\ifmws@ans\ansline\fi\fi\end{minipage}\par}
 \makeatother
 
 % ── Accessibility modes ─────────────────────────────────────────────────────
@@ -319,6 +319,16 @@
   \pagestyle{mwscont}%
   \AtBeginDocument{\thispagestyle{mwsfirst}}}
 
+% Answer keys breathe; worksheets are measured. The key's reader is a grader
+% scanning worked solutions, and a page of them set solid reads as a wall —
+% so in ak mode the inter-problem space is RUBBER (0.5cm that can stretch
+% toward a full centimetre or give back 0.15cm), \raggedbottom lets a page
+% end early instead of stretching solutions apart to fill it, and a small
+% \parskip separates paragraphs inside a worked solution. None of this
+% touches the worksheet: its work space is a per-problem measurement the
+% page budget charges for, and stretch there would be the budget lying.
+\newif\ifmws@akmode
+
 % \akheader{Short Topic} — answer key
 % Also switches \ans{...} to the COMPACT boxed form: check_answer_key.py binds
 % printed answers through the \ans/\boxed macro names, so a space-saving layout
@@ -341,6 +351,9 @@
   \fancyfoot[C]{\thepage}%
   \fancyfoot[L]{\small\schoolname}%
   \renewcommand{\headrulewidth}{0.4pt}%
+  \mws@akmodetrue
+  \raggedbottom
+  \setlength{\parskip}{2pt plus 1.5pt}%
   % Keep the compact box valid in both authoring forms. In prose, retain the
   % flush-right end-of-proof layout; inside `$...$`, stay in math mode instead
   % of emitting paragraph glue (or a second pair of math delimiters).

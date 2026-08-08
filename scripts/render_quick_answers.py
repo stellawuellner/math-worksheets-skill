@@ -91,7 +91,12 @@ _LOCALS = getattr(verify, "_SYMPY_LOCALS", {})
 # solution". It used to double as the fallback for anything sympify could not
 # swallow, which made a VERIFIED relation ("<") and an unchecked proof print the
 # SAME glyph — the one distinction the bank exists to draw.
-MANUAL = "---"
+# The hand-judged mark. Was "---": an em dash reads as "nothing here" and
+# lives one glyph away from a minus sign, exactly the neighbourhood a maths
+# answer key crowds. A card suit appears nowhere else in these documents, so
+# it can carry ONE meaning — this answer is yours to judge — and the legend
+# on the summary page says so. amssymb (always loaded) supplies the glyph.
+MANUAL = r"$\spadesuit$"
 
 # An answer nobody checked must not look like an answer somebody checked. The
 # bank had exactly two states — a value, or "---" — so a printed response with
@@ -575,7 +580,7 @@ def render(data, level="", ws_tex=""):
         "\\raggedright\\sloppy\\noindent",
     ]
     for i, t in enumerate(entries, 1):
-        sep = " \\\\" if i < len(entries) else ""
+        sep = " \\\\[2pt]" if i < len(entries) else ""
         lines.append(f"{i}.~{t}{sep}")
     lines += [
         "\\end{multicols}",
@@ -594,9 +599,36 @@ def render(data, level="", ws_tex=""):
     total = machine + sum(1 for e in data.get("problems", [])
                           if isinstance(e, dict) and e.get("type") == "manual")
     total += sum(gap.values())          # printed responses nothing covers
-    lines += coverage_note(n, unchecked_ids, manual_ids, scratch, machine, total)
-    lines += curriculum_block(by_id, n, level)
-    lines += common_errors(by_id, n)
+    # The verification and curriculum summaries are the ADULT's metadata, and
+    # printed between the bank and the worked solutions they pushed the actual
+    # answers a page down on busy sheets. They now claim the LAST page for
+    # themselves, via \AtEndDocument so the ak_ author changes nothing and the
+    # single-\input contract preflight enforces stays exactly as it was. The
+    # common-wrong-answers block travels with them: it is a reference table,
+    # and the worked solution is where a grader already lands when a student's
+    # answer is off. Blank lines cannot appear inside the hook's argument
+    # (\AtEndDocument's token list ends a paragraph at a stray \par from a
+    # blank line mid-brace), so the sections are joined with explicit \par.
+    summary = (coverage_note(n, unchecked_ids, manual_ids, scratch, machine,
+                             total)
+               + curriculum_block(by_id, n, level)
+               + common_errors(by_id, n))
+    # The blocks separate themselves with blank lines, and inline those blank
+    # lines ARE the \par between a closing rule and the next block's heading.
+    # Dropping them fused rule and heading onto one line — "Curriculum"
+    # overfull by exactly its own width. Inside the hook a blank line is the
+    # hazard and \par is the same token, so swap rather than filter.
+    summary = [ln if ln.strip() else r"\par" for ln in summary]
+    while summary and summary[-1] == r"\par":
+        summary.pop()
+    if summary:
+        lines += [
+            r"\AtEndDocument{\clearpage",
+            r"\noindent{\large\textbf{Verification \& Curriculum "
+            r"Summary}}\par\nopagebreak",
+            r"\vspace{2pt}\noindent\rule{\linewidth}{1pt}\par\nopagebreak",
+            r"\vspace{4pt plus 2pt}",
+        ] + summary + ["}"]
     return "\n".join(lines)
 
 

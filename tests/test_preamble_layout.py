@@ -386,6 +386,28 @@ def main():
                   "used cos instead of tan" in body)
 
 
+
+        # ── v3.6: the key breathes, the worksheet stays measured ────────────
+        # \akheader turns on rubber inter-problem glue and \raggedbottom;
+        # the worksheet keeps fixed 0.4cm. Pinned at the source level because
+        # the rendered difference is glue, which a word-box read cannot see.
+        pre_src = open(os.path.join(TEMPLATES, "worksheet-preamble.tex")).read()
+        print("8.5 answer keys breathe; worksheets are measured")
+        check("\\problem's ak leg is rubber and its ws leg is fixed",
+              "plus 0.45cm" in pre_src and
+              "\\else\\vspace{0.4cm}\\fi" in pre_src.replace(" ", ""))
+        # exactly one \raggedbottom in the whole preamble, and it sits inside
+        # \akheader's definition — position-checked against the \newcommand,
+        # not against the word "akheader", which first appears in prose.
+        ak_def = pre_src.index(r"\newcommand{\akheader}")
+        ss_def = pre_src.index(r"\newcommand{\ssheader}")
+        # count CODE occurrences only: the design comment above \akheader
+        # also says \raggedbottom, and a comment is not a setting.
+        code = "\n".join(l.split("%", 1)[0] for l in pre_src.split("\n"))
+        check("\\akheader sets raggedbottom, and nothing else does",
+              code.count(r"\raggedbottom") == 1
+              and ak_def < pre_src.rindex(r"\raggedbottom") < ss_def)
+
         # ── \ans in a STUDY GUIDE, both authoring forms ──────────────────────
         # \akheader replaces \ans with a text-safe compact box; \ssheader does
         # not, so in an ss_ document \ans is the base definition. That was a

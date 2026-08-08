@@ -54,7 +54,7 @@ bank row 4: (-1, 1)
 bank row 8: (4, 3.5), (4, 3.5), ---
 ```
 
-Copy what the bank prints, dashes and all — not what the worked solution says
+Copy what the bank prints — the hand-judged mark included (♠ on current sheets, an em dash on pre-v3.6 ones) — not what the worked solution says
 the answer is. This is not busywork: the aggregate step looks every quoted
 value up in the extracted artifacts, so a transcription that was never read
 off the page is mechanically detectable. If the key has no Quick Answers
@@ -149,7 +149,7 @@ down with the printed value quoted.
 yields the same marks as grading from the worked solutions. Concretely: for
 each problem, the bank row alone tells you whether a correct student response
 is right — the row prints the actual answer (not a given, not a rewritten
-form that contradicts the directions, not `---` for a value that was
+form that contradicts the directions, not the hand-judged mark (♠, or `---` on older sheets) for a value that was
 verified), labels multi-part answers so they cannot be read in the wrong
 order, and marks manual/unchecked items as exactly that. The three
 transcribed rows are the evidence you opened it; the score claims you checked

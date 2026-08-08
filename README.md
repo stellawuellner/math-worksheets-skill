@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.5.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.6.0** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -247,6 +247,12 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.6.0 — 2026-08-08
+- **The answer key reads the way a grader uses it: header, Quick Answers, worked solutions — and a final page of its own for the metadata.** The verification note, curriculum block, and common-wrong-answers table now claim the key's LAST page via `\AtEndDocument{\clearpage...}` emitted by the generated bank, so the `ak_` author writes nothing extra and the one-`\input` contract is untouched. Previously all three sat between the bank and the first worked solution, pushing the actual answers a page down on busy sheets.
+- **The hand-judged mark is now `$\spadesuit$`.** The old `---` sat one glyph from a minus sign — the exact neighbourhood a maths key crowds — and read as "nothing here". A card suit appears nowhere else in these documents, so it carries one meaning, and the summary-page legend states it. The eval harness's bank cross-check recognises both generations (♠ on current sheets, the em dash on retained pre-v3.6 runs), because the corpus is a history, not a snapshot.
+- **Answer keys breathe; worksheets stay measured.** `\akheader` now switches on rubber inter-problem space (0.5cm stretching toward a full centimetre), `\raggedbottom`, a small flexible `\parskip`, and 2pt between bank rows. The worksheet keeps its fixed layout deliberately — work space there is a per-problem measurement the page budget charges for, and stretch would be the budget lying. The ak page ceiling gains the +1 page the summary now occupies.
+- Found and fixed in the process: blank lines inside the `\AtEndDocument` argument are a `\par`-in-argument hazard, and *removing* them fused a closing rule with the next heading ("Curriculum" overfull by exactly its own width) — the separators became explicit `\par` tokens, and the layout contract test pins that no blank line can return.
 
 ### v3.5.1 — 2026-08-08
 - **Coverage 92% → 95%, and the report says what the last 5% is.** ~90 new cases across five suites, every one asserting behaviour a user hits: the verifier's malformed-input refusals now pin their *messages* (the message is the UX of the gate, and several taught the wrong fix before anything exercised them), the scoring harness's finding emitters fire under a crafted defect-zoo run, malformed judge verdicts are refused **by field name**, the real PDF inspector runs on a real PDF (every prior test injected a fake), the sympy-missing and sympy-too-old guards execute in-process under a doctored `sys.modules`, and a new `test_cli_contracts.py` pins the shell-facing surface `build.sh` actually calls — exit codes, usage text, the all-manual floor. Three lines carry `# pragma: no cover`, each with its reason in the source (one raise reachable only by editing one dispatch table without the other; two `__main__` dispatch lines invisible to in-process coverage). **Stopped here deliberately**: the remaining ~230 dark lines are dominated by `except Exception` fallbacks around CAS internals, and covering those means monkeypatching sympy to throw mid-computation — tests that pin implementation rather than behaviour. The enforced floor rises 90 → 93.

@@ -834,6 +834,14 @@ failed the `compile-ss` gate with `! Missing $ inserted` pointing at a line two
 away from the cause. Pinned by `tests/test_preamble_layout.py` §8.
 
 ### Quick-answer bank (generated, never hand-edited)
+
+The generated file also carries the key's FINAL page: a "Verification &
+Curriculum Summary" (what-is-verified note, curriculum block, common wrong
+answers) emitted through `\AtEndDocument{\clearpage ...}` — so the reading
+order is header, Quick Answers, worked solutions, then the summary on a page
+of its own, with no extra `\input` and no author action. The hand-judged mark
+in the bank is `$\spadesuit$`; the summary's legend explains it wherever it
+appears.
 `scripts/render_quick_answers.py` regenerates `qa_<stem>.tex` from the verify
 JSON on every build — a compact multi-column "answers at a glance" block for
 fast grading, placed by the one `\input{qa_<stem>}` line directly under
@@ -916,13 +924,15 @@ Two optional macros implement the two best-supported upgrades from the worked-ex
 egin{tryitbox}
 Legs 6 and 8. What is the hypotenuse?
 adestep{$c = \sqrt{36 + 64}$}
-\hfillotatebox{180}{ootnotesize check: $ns{c = 10}$}
+\hfill
+otatebox{180}{ootnotesize check: $ns{c = 10}$}
 \end{tryitbox}
 ```
 
 - `\why{...}` — a one-line self-explanation aside, small and indented under its step. Write the *reason the move is legal*, never a restatement ("dividing keeps the equality because both sides change together", not "we divide by 3"). At most one per example: a why on a routine move buries the one that matters. Keep it number-free — the prose checker reads any numbers against the JSON entry.
 - `adestep{...}` — turns the try-it into a **completion problem**: prints "Started for you: ⟨setup⟩ / Finish it:". Backwards-fading (example → partly-worked → bare problem) beats the straight jump on multi-step skills; skip it on one-move skills. The shown setup's numbers must come from the entry's expr, like any printed intermediate.
-- **Dual coding**: when the skill is spatial, put a small **value-free** diagram in the formulabox beside the rule — `efrt` for trig ratios, a mini `wsgridq1` axis for graphing vocabulary, `raclinefig` for fraction placement. A rule the student can see beats the same rule in symbols alone. Two or more diagrams usually justify `"pages": 3`.
+- **Dual coding**: when the skill is spatial, put a small **value-free** diagram in the formulabox beside the rule — `
+efrt` for trig ratios, a mini `wsgridq1` axis for graphing vocabulary, `raclinefig` for fraction placement. A rule the student can see beats the same rule in symbols alone. Two or more diagrams usually justify `"pages": 3`.
 
 ### Grade level: answer key only
 

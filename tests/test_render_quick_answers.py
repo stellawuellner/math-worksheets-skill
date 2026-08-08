@@ -4,7 +4,7 @@ scripts/render_quick_answers.py.
 
 Construction is the guarantee for the quick-answer bank, so the CONSTRUCTOR
 is what gets tested: every rendering rule (numeric-verbatim via Decimal,
-sympify->latex with the "---" no-injection fallback, lists, dicts,
+sympify->latex with the MANUAL no-injection fallback, lists, dicts,
 manual-only, multi-entry ids), the adaptive column thresholds, byte-for-byte
 determinism, the two preflight teaching failures, and the curriculum block —
 the level and standards codes that appear on the ANSWER KEY only, derived from
@@ -46,11 +46,11 @@ check("injection-shaped string is escaped, never injected",
 check("list comma-joined", rqa._fmt([2, 3]) == "2, 3")
 check("dict as var = value pairs",
       rqa._fmt({"x": 3, "y": 2}) == "$x = $ 3, $y = $ 2")
-check("bool is not a bankable value", rqa._fmt(True) == "---")
+check("bool is not a bankable value", rqa._fmt(True) == rqa.MANUAL)
 
 print("per-problem entries:")
 check("manual-only id prints ---",
-      rqa.render_entry([{"type": "manual", "desc": "proof"}]) == "---")
+      rqa.render_entry([{"type": "manual", "desc": "proof"}]) == rqa.MANUAL)
 check("multi-entry id joins all expected values",
       rqa.render_entry([{"expected": 5}, {"expected": [Decimal("2.5"), 4]}])
       == "5, 2.5, 4")
@@ -68,7 +68,8 @@ data = {"problem_count": 3, "problems": [
 ]}
 text = rqa.render(data)
 check("one numbered entry per problem id 1..problem_count",
-      "1.~6.30" in text and "2.~2" in text and "3.~---" in text)
+      "1.~6.30" in text and "2.~2" in text
+      and f"3.~{rqa.MANUAL}" in text)
 body = "\n".join(l for l in text.split("\n") if not l.startswith("%"))
 check("entries are plain text — no \\ans/\\boxed in the bank",
       "\\ans" not in body and "\\boxed" not in body)
@@ -214,7 +215,8 @@ check("every compare relation survives",
 _rel = rqa.render_entry([{"type": "compare", "expected": "<"}])
 _man = rqa.render_entry([{"type": "manual", "desc": "proof"}])
 check("verified and manual no longer print the same glyph", _rel != _man)
-check("--- stays reserved for 'no machine check exists'", _man == "---")
+check("the manual mark stays reserved for 'no machine check exists'",
+      _man == rqa.MANUAL)
 
 print("post-eval review — defect 2: python builtins must never typeset")
 
@@ -266,7 +268,7 @@ print("post-eval review — defect 5: a verified empty solution set")
 check("a verified empty solution set prints the empty set",
       rqa.render_entry([{"type": "solve", "expected": []}]) == r"$\emptyset$")
 check("no solution is never confused with no check",
-      rqa.render_entry([{"type": "solve", "expected": []}]) != "---")
+      rqa.render_entry([{"type": "solve", "expected": []}]) != rqa.MANUAL)
 _dangle = rqa.render_entry([{"expected": 0}, {"type": "solve", "expected": []}])
 check("no dangling comma on a mixed empty/non-empty id",
       _dangle == r"0, $\emptyset$")
@@ -278,7 +280,8 @@ print("post-eval review — defect 6: a partially manual id says so")
 # complete answer where half of it was never checked.
 check("a machine + manual id still shows the manual marker",
       rqa.render_entry([{"type": "approx", "expected": 5},
-                        {"type": "manual", "desc": "sketch"}]) == "5, ---")
+                        {"type": "manual", "desc": "sketch"}])
+      == f"5, {rqa.MANUAL}")
 check("an all-machine id carries no manual marker",
       rqa.render_entry([{"type": "approx", "expected": 5},
                         {"type": "approx", "expected": 7}]) == "5, 7")
@@ -293,10 +296,12 @@ check("each manual response gets its own marker under its own label",
       rqa.render_entry([
           {"type": "manual", "desc": "a", "slot": "(a) always/sometimes/never"},
           {"type": "manual", "desc": "b", "slot": "(b) always/sometimes/never"},
-      ]) == "(a) always/sometimes/never = ---, (b) always/sometimes/never = ---")
+      ]) == f"(a) always/sometimes/never = {rqa.MANUAL}, "
+         f"(b) always/sometimes/never = {rqa.MANUAL}")
 check("two unlabelled manual responses still show as two",
       rqa.render_entry([{"type": "manual", "desc": "a"},
-                        {"type": "manual", "desc": "b"}]) == "---, ---")
+                        {"type": "manual", "desc": "b"}])
+      == f"{rqa.MANUAL}, {rqa.MANUAL}")
 
 # Manual entries used to be forced to the END of the row regardless of where
 # they were declared. Measured across all four runs: of 1041 ids carrying two
@@ -306,7 +311,7 @@ check("two unlabelled manual responses still show as two",
 check("declaration order is preserved, so a manual part stays in its place",
       rqa.render_entry([{"type": "manual", "desc": "why", "slot": "(a)"},
                         {"type": "approx", "expected": 4, "slot": "(b)"}])
-      == "(a) = ---, (b) = 4")
+      == f"(a) = {rqa.MANUAL}, (b) = 4")
 
 print("post-eval review — defect 7: multi-slot answers are labelled")
 
@@ -370,8 +375,9 @@ check("the new renderings still emit no \\ans/\\boxed",
       "\\ans" not in _mbody and "\\boxed" not in _mbody)
 check("every id still gets exactly one numbered line",
       all(f"\n{i}.~" in "\n" + _mtext for i in range(1, 7)))
-check("only the manual id prints ---",
-      "5.~---" in _mtext and "1.~$<$" in _mtext and "6.~20-29" in _mtext)
+check("only the manual id prints the manual mark",
+      f"5.~{rqa.MANUAL}" in _mtext and "1.~$<$" in _mtext
+      and "6.~20-29" in _mtext)
 
 # ── Unchecked answers must be visible to the instructor ────────────────────
 # The bank had two states: a value, or "---" for a manual item. A printed
@@ -404,8 +410,8 @@ check("a problem with an uncovered printed slot is marked unchecked",
       "2.~18~\\unchecked" in _with)
 check("a fully covered problem carries NO mark",
       "1.~AC = " in _with and "\\unchecked" not in _with.split("2.~")[0])
-check("a manual id still prints --- and is not called unchecked",
-      "3.~---" in _with)
+check("a manual id still prints the manual mark, not \\unchecked",
+      f"3.~{rqa.MANUAL}" in _with)
 # Counted in ANSWERS, not problems: an error-analysis sheet whose every item
 # is a correction plus a diagnosis has zero fully-machine-checked PROBLEMS, and
 # one shipped key read "0 of 8" with eleven passing SymPy checks behind it.
@@ -522,3 +528,32 @@ check("a dict expected prints each variable assignment",
       "x = " in rqa._fmt({"x": 3, "y": 4}))
 check("a negative fraction keeps its sign through the math printer",
       "-" in rqa._math("-3/4"))
+
+
+# ── The v3.6 answer-key layout contract ─────────────────────────────────────
+# Reading order: header, Quick Answers, worked solutions, then a FINAL page
+# carrying the verification/curriculum summary. The bank achieves the last
+# part with \AtEndDocument{\clearpage...}, which is what keeps the one-\input
+# author contract unchanged — so the hook's presence and position ARE the
+# layout, and this pins them.
+print("v3.6 layout contract:")
+_lay = rqa.render({"problem_count": 2, "problems": [
+    {"id": 1, "type": "solve", "expr": "x-4", "expected": [4],
+     "standard": "7.EE.B.4", "difficulty": 2},
+    {"id": 2, "type": "manual", "desc": "explain"}]}, "Grade 7")
+check("the bank comes before the end-document hook",
+      _lay.index("Quick Answers") < _lay.index(r"\AtEndDocument"))
+check("the hook opens with a clearpage, so the summary owns its page",
+      r"\AtEndDocument{\clearpage" in _lay)
+check("the summary page carries its own heading",
+      "Verification \\& Curriculum Summary" in _lay)
+_hook = _lay[_lay.index(r"\AtEndDocument"):]
+for section in ("What is verified", "Curriculum"):
+    check(f"'{section}' lives inside the hook, not beside the bank",
+          section in _hook and section not in _lay[:_lay.index(r"\AtEndDocument")])
+check("bank rows carry breathing room (\\\\[2pt])",
+      "\\\\[2pt]" in _lay)
+check("the hook body contains no blank line (a \\par-in-argument hazard)",
+      "\n\n" not in _hook)
+check("blank separators inside the hook became explicit \\par",
+      r"\par" in _hook)

@@ -544,7 +544,7 @@ could actually learn the skill from rather than a formula dump.
 - **Stale-rubric lint (hard fail).** A `manual` desc that names a person or
   thing absent from its printed problem fails. Write the desc against the stem
   you actually shipped, not the draft you started from.
-- **The Quick Answers bank now has three states** (value / `---` for
+- **The Quick Answers bank now has three states** (value / `$\spadesuit$` for
   instructor-judged / `[unchecked]`), a "What is verified" tally, and it
   preserves your written form (`9/12` stays `9/12`, factored stays factored).
   Relations print as relations. If your bank row looks wrong, fix the JSON —
@@ -611,3 +611,16 @@ could actually learn the skill from rather than a formula dump.
   computed from the problem set, not capped at a flat number, so a sheet that
   genuinely needs the pages is allowed them — reduce the PROBLEM COUNT if the
   total is more than intended, never the work space.
+
+## Answer-key layout since 2026-08-08 (v3.6)
+
+- The key reads: header → Quick Answers → worked solutions → a FINAL page
+  carrying "Verification & Curriculum Summary" (what-is-verified, curriculum,
+  common wrong answers). The generated bank emits that page via
+  `\AtEndDocument`; you write nothing extra, and the single
+  `\input{qa_...}` contract is unchanged.
+- The hand-judged mark is `$\spadesuit$`, not `---`. The dash sat one glyph
+  from a minus sign; the spade appears nowhere else, so it carries one
+  meaning. The legend on the summary page explains it.
+- `\akheader` gives the key rubber inter-problem space and \raggedbottom.
+  Do not fight it with hand \vspace between problems.

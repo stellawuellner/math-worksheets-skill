@@ -551,3 +551,63 @@ could actually learn the skill from rather than a formula dump.
   the bank is generated, and it now agrees with the slot gate by construction.
 - **Multi-entry ids: give each entry a `"slot"` label** ("AC", "the ones
   digit", "(b)") so the bank can say which value answers which question.
+
+## New gates and capabilities since 2026-08-08 — build against these too
+
+- **Slot-form lint (`answer-slots-ws`, hard fail).** A slot label is a promise
+  about the FORM of its value, and three narrow rules now hold you to it, each
+  measured 100%-precise over 2953 slotted entries before shipping:
+  - A slot whose **head noun is "equation"** must have `=` in its value. The
+    defect it catches shipped twice: a bank row reading `the equation = 6` where
+    the student writes `y = 6x` and the check verified the slope. Fix it by
+    keying the equation itself — see the equiv equation form below — or by
+    renaming the slot to what the check actually verifies. Slots naming a *part*
+    of an equation are exempt and correct: "both solutions **of the** equation",
+    "right-hand side of the equation", "equation **value** at 4", "litres
+    **from the** equation".
+  - A **`colon form`** slot must contain `:`, and a **`word form`** slot must
+    contain a word. These name transcriptions the expression grammar cannot
+    hold (`3:5`, "three fifths"). Declare that response `manual` with the
+    printed form in the desc and let the fraction-form entry carry the machine
+    check. One shipped sheet gave `word form` / `colon form` / `fraction form`
+    all the identical value `3/5`, so two of its three printed answers were
+    wrong for the label above them.
+- **`equiv` accepts an equation.** Where the student's answer IS an equation,
+  write it as one — `"expr": "y - 6*x"`, `"expected": "y = 6*x"`, or
+  `"expected": "(x-3)**2 + (y+5)**2 = 25"` — and the check compares `lhs - rhs`
+  exactly as before. Use it whenever the ask is "write it in ⟨form⟩" for a
+  locus. Before this existed the only way to key such a problem was to verify
+  some component of it and label the slot as the whole, which is the defect
+  above.
+- **Decimal comparison is scale-aware, so stop rewriting the mathematics.**
+  A decimal literal on either side is compared at the precision the expected
+  value is *written* to. Five separate authors in the 300-case review changed
+  correct mathematics to satisfy exact float comparison — `9.4−0.4x` became
+  `9.5−0.5x`, the physical constant `4.9t²` became `5t²`. Write the numbers the
+  problem calls for. Two exact values are still compared exactly.
+- **Use the figure HOUSE STYLES before raw TikZ** (`references/latex-templates.md`
+  → "Figure house style"). The preamble ships `wsgrid`/`wsgridwide`/`wsgridq1`/
+  `wstrig`/`wsfuntall` for graphs, `wsbar`/`wshist`/`wsboxplot`/`wsboxplot pair`/
+  `\wsdotplot`/`wsstemleaf`/`\wspictorow` for data displays, and
+  `figure-macros.tex` ships the geometry marks, solids-with-nets and the K-4
+  model set (`\tenframefig`, `\arrayfig`, `\basetenfig`, `\clockfig`,
+  `\fraclinefig`, `\tapefig`, `\coinrowfig`, …). Four rendered-page reviews found
+  the raw-TikZ route producing grids with no gridline at any odd integer on the
+  sheet whose job is plotting integer points, bar charts printing each bar's
+  value and answering their own `read_data` question, solids overprinting their
+  own labels, and a fraction comparison distinguishing two points by red vs blue
+  — two identical dots after photocopying. Below grade 5 there were essentially
+  no templates, so every K-4 sheet hand-rolled its models. The styles encode all
+  of that once.
+- **The box-plot quartile trap, which no gate can see.** Hand pgfplots raw data
+  and it computes quartiles by an interpolating convention; `verify.py`'s `stats`
+  type uses school median-of-halves. On `[4, 6, 7, 9, 11, 12, 18]` verify says
+  median 9, q1 6, q3 12 while pgfplots draws median 8 with a box from 5 to 11.5.
+  The sheet would print a figure contradicting its own answer key and every gate
+  would stay green — nothing reads inside a plot. Declare the five-number
+  summary as `stats` entries and pass those values with `boxplot prepared`.
+- **Figures are space-generous by policy.** Budget `workspace_cm` for the
+  style's natural size rather than scaling the figure down. The page budget is
+  computed from the problem set, not capped at a flat number, so a sheet that
+  genuinely needs the pages is allowed them — reduce the PROBLEM COUNT if the
+  total is more than intended, never the work space.

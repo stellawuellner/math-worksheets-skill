@@ -1,6 +1,10 @@
 # Testing & Evaluation
 
-Three layers, from fastest to most thorough.
+Four layers, from fastest to most thorough. Layers 1–2 are deterministic and
+their numbers mean what they say. Layer 3 is an LLM judge, and layer 4 exists
+because a judge's numbers do **not** mean what they say until something
+independent has measured the judge — read layer 4 before quoting anything from
+layer 3.
 
 ## 1. Regression suite (seconds, run on every change)
 
@@ -121,6 +125,44 @@ the official score immutable. `aggregate` folds shared issue keys into a
 deduplicated backlog. The complete protocol is in `evals/author-review.md`, and
 `.github/workflows/eval-results.yml` validates submitted verdicts, reports, and
 author reviews.
+
+## 4. Judge calibration (run before believing any layer-3 number)
+
+```bash
+python3 evals/seed_defects.py --help
+```
+
+A judge that scores every sheet 4/5 and a judge that reads nothing produce the
+same report, and a 300-case run cannot tell them apart because nobody knows its
+true defect count. `evals/seed_defects.py` supplies that denominator: it plants
+catalogued defects in sheets a previous pass accepted, keeps untouched controls
+so false positives have a denominator too, admits a case **only while every gate
+stays green** (a defect a gate already catches says nothing about the territory
+the judge covers), and seals the manifest outside the run directory so judging
+stays blind.
+
+The first calibration ran 15 seeded cases and 10 controls
+(`evals/analysis/curriculum-shardX-20260808T033421Z/CALIBRATION.md`):
+
+| measurement | result |
+| --- | --- |
+| planted defects detected | **3 of 15** — all of one class (a corrupted equality in a worked step) |
+| ramp-inversion / vague-rubric detected | **0 of 5 each** — defects in pedagogical metadata, not in a printed statement |
+| clean controls failed | **1 of 10**, on a citation the judge fabricated (adjudicated against the TikZ source and the rendered PDF) |
+| verdict agreement between two passes over identical artifacts | **68%**, mean absolute difference 2.20 / 32 |
+
+Three consequences for how layer 3 is reported:
+
+- **Do not quote a single-pass ACCEPT rate.** At 68% inter-pass agreement it is
+  a property of the judging pass, not of the worksheets.
+- **A rejection is not a detection** unless it cites the planted defect. Two
+  seeded cases were rejected for unrelated, pre-existing reasons; scoring those
+  as hits would have doubled the apparent detection rate.
+- **Score citations against the manifest's location, never by keyword.** The
+  first scoring pass grepped verdict text for the seeder's vocabulary and
+  reported 0 of 15. The judge had described the defects concretely instead.
+
+## SkillsBench
 
 **SkillsBench** — the community benchmark for agent skills
 (https://github.com/benchflow-ai/skillsbench, paper: arXiv:2602.12670), built

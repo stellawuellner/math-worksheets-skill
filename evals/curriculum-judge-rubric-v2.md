@@ -134,11 +134,15 @@ artifacts) is met. You checked each claim, not the overall impression.
 against the generator's own build-time filenames, and the harness renames
 every artifact to a canonical name (`worksheet.pdf`, `verify.json`, …) when
 recording the run. Measured on run 2: of 285 responses that name a file,
-**285** name at least one that is absent from the packet under that name.
-Treating that as a false claim made this dimension unscoreable — a constant 3
-across all 300 cases, no 2 and no 4. A response naming `ws_slope_0421.tex`
-where the packet holds `worksheet.tex` is describing the same artifact; score
-what it says about the CONTENT.
+**285** name at least one that is absent from the packet under that name. Run
+2's judge treated that as a false claim and scored this dimension a constant 3
+across all 300 cases — no 2 and no 4, which is a measurement carrying no
+information. (A later judge, reading this same rubric unchanged, used the full
+2–4 range on it; so the wording was ambiguous rather than impossible, and this
+paragraph exists to remove the ambiguity, not to explain a defect in the
+packet.) A response naming `ws_slope_0421.tex` where the packet holds
+`worksheet.tex` is describing the same artifact; score what it says about the
+CONTENT.
 
 ## Acceptance
 

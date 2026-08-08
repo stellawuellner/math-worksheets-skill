@@ -59,6 +59,33 @@ BLANK_INK_FRACTION = 0.0005
 LOW_INK_FRACTION = 0.0015
 EDGE_INK_FRACTION = 0.02
 
+# build.sh names its outputs `<prefix>_<role><variant>_<stem>.pdf`; `record`
+# renames them to canonical roles, so a delivery message and a retained
+# artifact refer to the same file under two different names.
+BUILD_ROLE_TAGS = {
+    "student_worksheet": "ws",
+    "step_by_step_answer_key": "ak",
+    "study_guide": "ss",
+}
+TAG_TO_ROLE = {tag: role for role, tag in BUILD_ROLE_TAGS.items()}
+ROLE_PHRASES = {
+    "student_worksheet": ("worksheet",),
+    "step_by_step_answer_key": ("answer key", "answer-key", "answer_key"),
+    "study_guide": ("study guide", "study-guide", "skills summary", "skills-summary"),
+}
+# Verdict fields whose prose can quote artifact values.
+CLAIM_FIELDS = (
+    "hard_failures",
+    "incorrect_or_ambiguous_items",
+    "errors",
+    "critical_observations",
+    "artifact_findings",
+    "rationale",
+)
+# A claim in one of these fields is what a REJECT rests on, so an unsupported
+# value there blocks the verdict from being counted without adjudication.
+BLOCKING_CLAIM_FIELDS = ("hard_failures",)
+
 
 class HarnessError(RuntimeError):
     """A harness/configuration failure, distinct from a rejected eval task."""
@@ -396,7 +423,18 @@ def resolve_artifacts(case_dir, case_record):
         surfaced = local_record.get("surfaced_artifacts")
     metrics = dict(local_record.get("metrics", {}))
     metrics.update(case_record.get("metrics", {}))
-    return resolved, ambiguities, surfaced, metrics
+    originals = {}
+    for source in (local_record, case_record):
+        declared = source.get("original_filenames") or {}
+        if isinstance(declared, dict):
+            for role, names in declared.items():
+                if isinstance(names, str):
+                    names = [names]
+                originals.setdefault(role, [])
+                originals[role].extend(
+                    name for name in names if name not in originals[role]
+                )
+    return resolved, ambiguities, surfaced, metrics, originals
 
 
 def find_case_directory(run_dir, task_id):
@@ -499,18 +537,870 @@ def extract_problem_numbers(text):
     return sorted(set(values))
 
 
-def response_surfaces(response, role, path):
-    lower = response.lower()
-    if path and Path(path).name.lower() in lower:
+def wrap_tolerant(literal):
+    """Regex for ``literal`` that survives line wrapping inside the token.
+
+    A delivery message is prose: the filename it names can be broken across a
+    line, and a role phrase can be split by the same wrap. Matching the raw
+    string misses both, so every character is separated by optional space.
+    """
+    return r"\s*".join(re.escape(char) for char in literal)
+
+
+def build_name_pattern(role):
+    """Match build.sh's own output naming for ``role``, wrap tolerantly.
+
+    The retained artifact is `worksheet.pdf`; the response names
+    `ws_addstories_curr023.pdf`. Nothing records that mapping, so the role tag
+    plus the stem convention is what identifies the file.
+    """
+    tag = BUILD_ROLE_TAGS[role]
+    return (rf"(?<![a-z0-9])(?:[a-z]+\s*_\s*)*{tag}\s*[scx]?\s*_\s*"
+            rf"[a-z0-9_][a-z0-9_\s]*\.\s*pdf")
+
+
+BUILD_NAME_RE = re.compile(
+    r"(?<![A-Za-z0-9])((?:[a-z]+_)*(ws|ak|ss)[scx]?_[A-Za-z0-9_]+\.pdf)"
+)
+
+
+def discover_original_names(texts):
+    """Recover per-role build filenames from recorded evidence (e.g. gate logs)."""
+    names = defaultdict(list)
+    for text in texts:
+        for match in BUILD_NAME_RE.finditer(text or ""):
+            role = TAG_TO_ROLE[match.group(2)]
+            if match.group(1) not in names[role]:
+                names[role].append(match.group(1))
+    return dict(names)
+
+
+def surfacing_evidence(response, role, path=None, original_names=()):
+    """How — not merely whether — the delivery message surfaces ``role``.
+
+    Naming the file is the only evidence that an artifact was handed over;
+    saying the word "worksheet" near the word "PDF" is vocabulary. Both are
+    reported, distinguishably, so the gate can be read for what it measured.
+    """
+    lower = (response or "").lower()
+    collapsed = re.sub(r"\s+", " ", lower)
+    candidates = []
+    if path:
+        candidates.append(Path(path).name)
+    candidates.extend(original_names or ())
+    for name in candidates:
+        name = str(name).strip().lower()
+        if not name:
+            continue
+        match = re.search(rf"(?<![a-z0-9]){wrap_tolerant(name)}", lower)
+        if match:
+            return {"surfaced": True, "basis": "declared_filename",
+                    "match": re.sub(r"\s+", "", match.group(0))}
+    if role in BUILD_ROLE_TAGS:
+        match = re.search(build_name_pattern(role), lower)
+        if match:
+            return {"surfaced": True, "basis": "build_filename",
+                    "match": re.sub(r"\s+", "", match.group(0))}
+    if re.search(r"(?:\.pdf\b|\bpdfs?\b)", collapsed):
+        for phrase in ROLE_PHRASES[role]:
+            if phrase in collapsed:
+                return {"surfaced": True, "basis": "description", "match": phrase}
+    return {"surfaced": False, "basis": None, "match": None}
+
+
+def response_surfaces(response, role, path=None, original_names=()):
+    return surfacing_evidence(response, role, path, original_names)["surfaced"]
+
+
+# ---------------------------------------------------------------------------
+# Claim auditing: a finding that quotes a value must quote one the artifact has
+#
+# pdftotext flattens `\frac{3}{5}` to "35", splits a display fraction across
+# lines, and mangles radicals, so a literal comparison would flag correct
+# findings constantly. Every check below therefore normalises first, accepts
+# every plausible extraction of the same value, and reports "not found" as a
+# review flag — never as an automatic overturn of the judge.
+
+DASHES = "−–—‐‑‒"
+NUMBER_RE = re.compile(r"(?<![\w.])-?\d+(?:\.\d+)?")
+REF_WORDS = (r"problems?|items?|questions?|pages?|steps?|parts?|sections?|rows?|"
+             r"columns?|lines?|tasks?|figures?|standards?|grades?|dimensions?|"
+             r"scores?|totals?|facets?|boxes?|examples?|entry|entries|no|number|"
+             r"factor(?: of)?")
+REF_BEFORE_RE = re.compile(rf"(?:{REF_WORDS})\W{{0,3}}$", re.I)
+COMPOUND_BEFORE_RE = re.compile(r"[A-Za-z]-$")
+RADICAL_BEFORE_RE = re.compile(r"(?:√|sqrt|root)\s*\(?$", re.I)
+COUNT_AFTER_RE = re.compile(
+    r"^\s*(?:manual|problems?|items?|questions?|pages?|steps?|examples?|"
+    r"dimensions?|facets?|boxes?|sections?|figures?|rows?|columns?)\b", re.I)
+FRACTION_RE = re.compile(r"(?<![\d/])(-?\d+)\s*/\s*(\d+)(?![\d/])")
+PAIR_RE = re.compile(
+    r"\(\s*((?<![\w.])-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)\s*,"
+    r"\s*(-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)\s*\)")
+RELATION_RE = re.compile(
+    r"(-?\d+(?:\.\d+)?)\s*(<=|>=|!=|<|>|=)\s*(-?\d+(?:\.\d+)?)")
+ASSIGN_RE = re.compile(
+    r"\b([A-Za-z][A-Za-z0-9_']{0,7}(?:\([^)]{0,6}\))?)\s*=\s*"
+    r"(-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)")
+
+
+def normalize_math_text(text):
+    """Fold the characters PDF extraction varies on, so matching is stable."""
+    text = str(text or "")
+    for dash in DASHES:
+        text = text.replace(dash, "-")
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+    return text
+
+
+def artifact_value_index(texts):
+    """Every numeric token the artifacts contain, plus their joined text."""
+    numbers = set()
+    parts = []
+    for text in texts:
+        if not text:
+            continue
+        normalized = normalize_math_text(text)
+        parts.append(normalized)
+        for match in NUMBER_RE.finditer(normalized):
+            numbers.add(match.group(0))
+            numbers.add(match.group(0).lstrip("-"))
+    return {"numbers": numbers, "text": "\n".join(parts)}
+
+
+def extract_claim_values(claim):
+    """Pull the checkable values a finding quotes, ignoring artifact references.
+
+    "problem 7" and "four pages" describe where to look; "36" and "12 < 16"
+    assert what is printed there. Only the second kind is checkable.
+    """
+    text = normalize_math_text(claim)
+    values = []
+    spans = []
+
+    def covered(match):
+        return any(start <= match.start() and match.end() <= end
+                   for start, end in spans)
+
+    for kind, pattern, parts in (
+        ("pair", PAIR_RE, lambda m: [m.group(1), m.group(2)]),
+        ("relation", RELATION_RE, lambda m: [m.group(1), m.group(3)]),
+        ("assignment", ASSIGN_RE, lambda m: [m.group(2)]),
+        ("fraction", FRACTION_RE, lambda m: [m.group(1), m.group(2)]),
+    ):
+        for match in pattern.finditer(text):
+            if covered(match):
+                continue
+            values.append({"kind": kind, "value": match.group(0).strip(),
+                           "components": parts(match)})
+            spans.append(match.span())
+    for match in NUMBER_RE.finditer(text):
+        if covered(match):
+            continue
+        before = text[max(0, match.start() - 24):match.start()]
+        after = text[match.end():match.end() + 20]
+        if (REF_BEFORE_RE.search(before) or COMPOUND_BEFORE_RE.search(before)
+                or RADICAL_BEFORE_RE.search(before) or COUNT_AFTER_RE.match(after)):
+            continue
+        values.append({"kind": "number", "value": match.group(0),
+                       "components": [match.group(0)]})
+    unique = []
+    seen = set()
+    for item in values:
+        key = (item["kind"], item["value"].replace(" ", ""))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique
+
+
+def number_present(value, index):
+    value = value.replace(" ", "")
+    if value in index["numbers"] or value.lstrip("-") in index["numbers"]:
         return True
-    if not re.search(r"(?:\.pdf\b|\bpdfs?\b)", lower):
+    try:
+        number = float(value)
+    except ValueError:
         return False
-    phrases = {
-        "student_worksheet": ("worksheet",),
-        "step_by_step_answer_key": ("answer key", "answer-key", "answer_key"),
-        "study_guide": ("study guide", "study-guide", "skills summary", "skills-summary"),
-    }
-    return any(phrase in lower for phrase in phrases[role])
+    return number == int(number) and str(int(number)) in index["numbers"]
+
+
+def fraction_present(numerator, denominator, index):
+    numerator = numerator.replace(" ", "")
+    denominator = denominator.replace(" ", "")
+    # `\frac{a}{b}` extracts as "a/b", as "ab", or as "a" and "b" on two lines.
+    if re.search(rf"(?<![\d.]){re.escape(numerator)}\s*/?\s*{re.escape(denominator)}"
+                 r"(?![\d.])", index["text"]):
+        return True
+    if (numerator.lstrip("-") + denominator) in index["numbers"]:
+        return True
+    # "115/65" is as often two values written with a slash as it is a fraction,
+    # so both parts being present is enough to keep the claim out of the ledger.
+    return (number_present(numerator, index)
+            and number_present(denominator, index))
+
+
+def _pair_alternatives(component):
+    component = component.replace(" ", "")
+    if "/" in component:
+        numerator, denominator = component.split("/", 1)
+        return [re.escape(numerator) + r"\s*/?\s*" + re.escape(denominator),
+                re.escape(denominator + numerator.lstrip("-"))]
+    return [re.escape(component)]
+
+
+def claim_value_supported(item, index):
+    kind, components = item["kind"], item["components"]
+    if kind == "fraction":
+        return fraction_present(components[0], components[1], index)
+    if kind == "assignment" and "/" in components[0]:
+        numerator, denominator = components[0].replace(" ", "").split("/", 1)
+        return fraction_present(numerator, denominator, index)
+    if kind == "pair":
+        left, right = (_pair_alternatives(part) for part in components)
+        pattern = (r"(?<![\w.\-])(?:" + "|".join(left)
+                   + r")\s*[,;]\s*(?:[A-Za-z][A-Za-z0-9_]{0,3}\s*=\s*)?(?:"
+                   + "|".join(right) + r")(?![\d.])")
+        return bool(re.search(pattern, index["text"]))
+    return all(number_present(part, index) for part in components)
+
+
+def audit_claim(claim, index):
+    """Values this finding quotes that no artifact contains."""
+    return [item for item in extract_claim_values(claim)
+            if not claim_value_supported(item, index)]
+
+
+def iter_verdict_claims(verdict):
+    for field in CLAIM_FIELDS:
+        value = (verdict or {}).get(field)
+        if isinstance(value, str):
+            if value.strip():
+                yield field, value, None
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    yield field, item, None
+                elif isinstance(item, dict) and isinstance(item.get("description"), str):
+                    yield field, item["description"], item.get("severity")
+
+
+def audit_verdict_claims(verdict, index):
+    """Findings for verdict claims quoting values absent from the artifacts.
+
+    A blocking claim is one a REJECT rests on. It is flagged for adjudication,
+    never silently dropped and never silently believed: PDF extraction is lossy
+    enough that "not found" means "a person has to look", not "the judge lied".
+    """
+    findings = []
+    if not index["text"].strip():
+        # Nothing was extracted, so nothing can be looked up. A task with no
+        # readable artifacts already fails on its own evidence; flagging every
+        # value in its verdict would bury that under noise.
+        return findings
+    for field, claim, severity in iter_verdict_claims(verdict):
+        unsupported = audit_claim(claim, index)
+        if not unsupported:
+            continue
+        blocking = field in BLOCKING_CLAIM_FIELDS or severity == "critical"
+        for item in unsupported:
+            findings.append({
+                "code": "claim_value_not_in_artifact",
+                "severity": "critical" if blocking else "review",
+                "field": field,
+                "value": item["value"],
+                "value_kind": item["kind"],
+                "blocking": blocking,
+                "claim": claim,
+                "message": (
+                    f"{field} quotes {item['value']!r}, which does not appear in "
+                    "the artifacts' extracted text or verification data."
+                ),
+            })
+    return findings
+
+
+def machine_artifact_index(machine):
+    """Build a value index from a prepared task's recorded artifacts."""
+    texts = []
+    artifacts = (machine or {}).get("artifacts", {})
+    for role in PDF_ROLES:
+        texts.append(artifacts.get(role, {}).get("extracted_text", ""))
+    for role in ("worksheet_verification", "study_guide_verification"):
+        path = artifacts.get(role, {}).get("path")
+        if path and Path(path).is_file():
+            try:
+                texts.append(Path(path).read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                pass
+    return artifact_value_index(texts)
+
+
+# ---------------------------------------------------------------------------
+# Bank-diff contradiction: the shipped Quick Answers bank vs the verify JSON
+#
+# The 300-case author review found the judge scored answer_key_quality 4/4 in
+# 107 of 124 cases whose bank was defective — it never opened the bank. The
+# bank is deterministic (scripts/render_quick_answers.py renders it FROM the
+# verify JSON), so the harness can regenerate it and compare against what the
+# shipped answer_key.pdf actually prints. pdftotext flattening is real —
+# \frac{3}{2} extracts as "32", radicals mangle, columns interleave — so rows
+# are anchored on their leading "N." markers, comparison is numeric, and an
+# ambiguous extraction is FLAGGED for adjudication, never used to block on its
+# own ("a miss is a flag, not proof" — same philosophy as the claim audit).
+
+BANK_HEADING = "Quick Answers"
+BANK_END_HEADINGS = ("What is verified", "Curriculum", "Common wrong answers",
+                     "Answer Key", "Worked Solutions")
+# Two spaces marks a -layout column gap. But a row wide enough to eat the gap
+# collapses to ONE space, and the `slot` labels added in 2026-08 do exactly
+# that: "2. first empty box = 47, second empty box = 49 6. first empty box..."
+# read as one row, convicting row 2 of printing row 6's values. So a
+# single-space anchor is allowed too, and _line_anchors() keeps only ascending
+# ids — multicol rows always ascend across a line, while a decimal or a stray
+# "3. " inside a value does not.
+BANK_ANCHOR_RE = re.compile(r"(?:^|(?<=\s))(\d{1,3})\.(?=\s)")
+
+
+def _line_anchors(line):
+    """Row anchors on one -layout line, left to right, ids strictly ascending."""
+    kept, last = [], 0
+    for m in BANK_ANCHOR_RE.finditer(line):
+        pid = int(m.group(1))
+        if pid <= last:
+            continue
+        kept.append(m)
+        last = pid
+    return kept
+# The manual dash. LaTeX "---" always prints an em dash; pdftotext may emit an
+# em/en/figure dash. A minus sign attached to a digit is NOT a manual dash.
+BANK_DASH_RE = re.compile(r"(?<![\w∞.])(?:—|–|‒|-{2,3})(?![\w∞])")
+# A Python repr leaking into a delivered key ("<built-in function open>"; OT1
+# text encoding turns the angle brackets into ¡ ¿ before pdftotext sees them).
+BANK_BUILTIN_RE = re.compile(
+    r"built-?\s?in\s+(?:function|method)|<\s*function\b|<\s*bound\s+method"
+    r"|<\s*built-?in\b|\bobject\s+at\s+0x|<\s*class\b|\blambda\b", re.I)
+# Glyphs whose presence means the extraction of this row is not trustworthy
+# enough to block on a numeric mismatch.
+BANK_MANGLE_CHARS = "√∞⁄∪≤≥≠×·∅¡¿"
+REGEN_MANGLE_RE = re.compile(r"\\(?:frac|sqrt|cup|emptyset|pi|le|ge|neq)\b|\^")
+
+
+def _bank_number_tokens(text):
+    """Numeric tokens in one bank row, as floats (unparseable ones dropped)."""
+    values = []
+    for match in NUMBER_RE.finditer(normalize_math_text(text)):
+        try:
+            values.append(float(match.group(0)))
+        except ValueError:
+            pass
+    return values
+
+
+def _float_in(value, pool):
+    return any(abs(value - other) < 1e-9 for other in pool)
+
+
+def shipped_quick_answers(key_text):
+    """Parse the Quick Answers section out of pdftotext -layout key text.
+
+    Returns (rows, meta): rows maps problem id -> the anchored row text on the
+    id's own line (continuation lines cannot be attributed reliably under
+    column interleaving, so they are recorded in meta["unanchored"] and never
+    used to convict). meta["found"] is False when the key has no bank at all.
+    """
+    rows = {}
+    meta = {"found": False, "unanchored": [], "duplicate_ids": []}
+    lines = key_text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == BANK_HEADING:
+            start = index + 1
+            break
+    if start is None:
+        return rows, meta
+    meta["found"] = True
+    for line in lines[start:]:
+        stripped = line.strip()
+        if "\f" in line or any(stripped.startswith(h) for h in BANK_END_HEADINGS):
+            break
+        anchors = _line_anchors(line)
+        if not anchors:
+            if stripped:
+                meta["unanchored"].append(stripped)
+            continue
+        if anchors[0].start() > 0 and line[:anchors[0].start()].strip():
+            meta["unanchored"].append(line[:anchors[0].start()].strip())
+        for pos, match in enumerate(anchors):
+            end = anchors[pos + 1].start() if pos + 1 < len(anchors) else len(line)
+            pid = int(match.group(1))
+            text = line[match.end():end].strip()
+            # -layout separates multicol columns with wide gaps; text after a
+            # long space run is a NEIGHBOURING column's unanchored wrap, not
+            # part of this row. Keeping it would convict row N of printing a
+            # value that belongs to row N+4.
+            cut = re.search(r"\s{6,}", text)
+            if cut:
+                meta["unanchored"].append(text[cut.end():].strip())
+                text = text[:cut.start()].strip()
+            if pid in rows:
+                meta["duplicate_ids"].append(pid)
+            else:
+                rows[pid] = text
+    return rows, meta
+
+
+def _verify_by_id(verify_data):
+    by_id = {}
+    for entry in (verify_data or {}).get("problems", []):
+        if isinstance(entry, dict) and isinstance(entry.get("id"), int):
+            by_id.setdefault(entry["id"], []).append(entry)
+    return by_id
+
+
+def _expected_numbers(value, out=None):
+    """Every numeric literal an expected value contains, including the ones
+    inside an expression string ("6*sqrt(2)" -> 6, 2)."""
+    out = [] if out is None else out
+    if isinstance(value, bool):
+        return out
+    if isinstance(value, (int, float)):
+        out.append(float(value))
+    elif isinstance(value, str):
+        out.extend(_bank_number_tokens(value))
+    elif isinstance(value, list):
+        for item in value:
+            _expected_numbers(item, out)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _expected_numbers(item, out)
+    else:  # Decimal and friends
+        try:
+            out.append(float(value))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def _regen_row_numbers(latex_row):
+    """Numeric tokens of one regenerated bank row, with LaTeX markup removed."""
+    text = re.sub(r"\\[A-Za-z]+", " ", latex_row or "")
+    text = re.sub(r"[{}$~]", " ", text)
+    return _bank_number_tokens(text)
+
+
+def regenerate_bank(verify_data, level="", ws_tex=""):
+    """{problem id -> rendered row LaTeX} via render_quick_answers.render.
+
+    Imports the real generator — never a reimplementation — so the comparison
+    baseline is exactly what a correct build would have printed. Returns None
+    when the generator is unavailable or refuses the data; the caller must
+    then degrade every numeric mismatch to a flag.
+    """
+    scripts_dir = str(ROOT / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    try:
+        import render_quick_answers
+        rendered = render_quick_answers.render(verify_data, level, ws_tex)
+    except Exception:
+        return None
+    rows = {}
+    for line in rendered.splitlines():
+        match = re.match(r"^(\d{1,3})\.~(.*?)(?:\s*\\\\)?$", line)
+        if match:
+            rows[int(match.group(1))] = match.group(2)
+    return rows
+
+
+def given_as_answer_ids(ws_tex, verify_data):
+    """{problem id -> expected-number pool} for entries the slot gate's
+    advisory given-as-answer signature fires on (the curr-326 class: the check
+    feeds the answer in as an input and verifies a printed given, so the bank
+    delivers the given to the grader as the answer).
+
+    Uses tests/check_answer_slots.py's own decision function — one definition,
+    two callers, per that module's history lesson. Empty on any failure.
+    """
+    if not ws_tex or not verify_data:
+        return {}
+    tests_dir = str(ROOT / "tests")
+    if tests_dir not in sys.path:
+        sys.path.insert(0, tests_dir)
+    try:
+        from check_answer_slots import (blank_comments, given_as_answer_notes,
+                                        segment_spans)
+        tex = blank_comments(ws_tex)
+        spans = segment_spans(tex)
+        if spans is None:
+            return {}
+        segments = [tex[a:b] for a, b in spans]
+        notes = given_as_answer_notes(segments, verify_data)
+    except Exception:
+        return {}
+    flagged = {}
+    by_id = _verify_by_id(verify_data)
+    for note in notes:
+        match = re.match(r"problem (\d+):", note)
+        if not match:
+            continue
+        pid = int(match.group(1))
+        pool = []
+        for entry in by_id.get(pid, []):
+            if "expected" in entry:
+                _expected_numbers(entry["expected"], pool)
+        if pool:
+            flagged[pid] = pool
+    return flagged
+
+
+def _bank_finding(kind, blocking, pid, message):
+    return {"type": kind, "blocking": blocking, "problem_id": pid,
+            "message": message}
+
+
+def audit_shipped_bank(key_text, verify_data, level="", ws_tex=""):
+    """Compare the shipped Quick Answers bank against the verify JSON.
+
+    Returns {"found", "regenerated", "rows", "findings"}. Finding types:
+      bank_dash_hides_verified — the manual dash on an id whose entries
+        include a machine check and no manual entry (a verified answer
+        presented as "nobody checked this"); blocking.
+      bank_value_unbacked — a numeric bank value matching NO expected value
+        and NO regenerated-bank value for its id (a wrong answer delivered to
+        the grader); blocking when the row extraction is clean, a flag when
+        the row or its regenerated form is extraction-mangled.
+      bank_prints_given — the id's check verifies a printed given (inverse
+        item, curr-326 class) and the bank delivers exactly those givens as
+        the answer; blocking, with an adjudication note because the signature
+        is a heuristic (a legitimate answer can coincide with a printed value).
+      bank_builtin_repr — a Python repr or other non-mathematical token in a
+        delivered answer bank; blocking.
+    """
+    rows, meta = shipped_quick_answers(key_text or "")
+    result = {"found": meta["found"], "regenerated": False,
+              "rows": {str(k): v for k, v in sorted(rows.items())},
+              "unanchored_line_count": len(meta["unanchored"]),
+              "findings": []}
+    if not meta["found"]:
+        return result
+    by_id = _verify_by_id(verify_data)
+    declared = (verify_data or {}).get("problem_count")
+    count = declared if isinstance(declared, int) and declared > 0 else \
+        (max(by_id) if by_id else 0)
+    regen = regenerate_bank(verify_data, level, ws_tex)
+    result["regenerated"] = regen is not None
+    flagged_givens = given_as_answer_ids(ws_tex, verify_data)
+    findings = result["findings"]
+    for pid in sorted(rows):
+        text = rows[pid]
+        entries = by_id.get(pid, [])
+        if BANK_BUILTIN_RE.search(text):
+            findings.append(_bank_finding(
+                "bank_builtin_repr", True, pid,
+                f"bank row {pid} prints a non-mathematical token "
+                f"({text!r}) — a Python repr reached the delivered key."))
+        machine_entries = [e for e in entries if "expected" in e]
+        manual_entries = [e for e in entries if "expected" not in e]
+        if BANK_DASH_RE.search(text) and machine_entries and not manual_entries:
+            findings.append(_bank_finding(
+                "bank_dash_hides_verified", True, pid,
+                f"bank row {pid} prints the manual dash ({text!r}) but every "
+                f"verify entry for id {pid} is a machine check "
+                f"({', '.join(sorted({str(e.get('type')) for e in machine_entries}))})"
+                " — a verified answer is presented as unchecked."))
+        if pid > count and count:
+            findings.append(_bank_finding(
+                "bank_row_out_of_range", False, pid,
+                f"bank row {pid} exceeds the declared problem count {count}; "
+                "adjudicate the extraction."))
+            continue
+        shipped_values = _bank_number_tokens(text)
+        if not shipped_values:
+            continue
+        if pid in flagged_givens and all(
+                _float_in(v, flagged_givens[pid]) for v in shipped_values):
+            findings.append(_bank_finding(
+                # NON-BLOCKING, and the precision is why. This signature was
+                # measured at roughly one true positive in seven over 300 cases
+                # (see check_answer_slots.given_as_answer_notes, where the same
+                # rule is advisory for the same reason). Blocking an ACCEPT on a
+                # 14%-precision signal trains a reviewer to overrule it by
+                # reflex, which is worse than not raising it — and it was
+                # blocking here only because the spec that commissioned this
+                # check said so, against the evidence already in the repo.
+                "bank_prints_given", False, pid,
+                f"bank row {pid} prints {text!r}, and the id's check carries "
+                "the given-as-answer signature (every expected value is a "
+                "printed stem value while a check input is not) — the bank may "
+                "deliver a given to the grader as the answer. ADJUDICATE: this "
+                "signature is right about 1 time in 7; confirm against the "
+                "stem before acting on it."))
+            continue
+        allowed = []
+        for entry in machine_entries:
+            _expected_numbers(entry["expected"], allowed)
+            if entry.get("answer_unit") is not None:
+                _expected_numbers(entry.get("answer_unit"), allowed)
+        regen_row = (regen or {}).get(pid, "")
+        allowed.extend(_regen_row_numbers(regen_row))
+        # pdftotext flattens \frac{2}{5} into "25" — and, column-flow
+        # permitting, into "52". The claim audit already counts "ab" as a
+        # present rendering of a/b (fraction_present); the same tolerance
+        # applies here, so a flattened fraction is a MATCH, not a finding.
+        digit_pool = {re.sub(r"[^0-9]", "", f"{v:g}") for v in allowed}
+        digit_pool.discard("")
+        joined = {a + b for a in digit_pool for b in digit_pool}
+
+        def _backed(value):
+            if _float_in(value, allowed):
+                return True
+            return re.sub(r"[^0-9]", "", f"{value:g}") in joined
+
+        unbacked = [v for v in shipped_values if not _backed(v)]
+        if not unbacked:
+            continue
+        mangled = (regen is None
+                   or any(ch in text for ch in BANK_MANGLE_CHARS)
+                   or any(ord(ch) < 32 for ch in text)  # glyph escapes
+                   or bool(REGEN_MANGLE_RE.search(regen_row)))
+        shown = ", ".join(f"{v:g}" for v in unbacked)
+        if mangled:
+            findings.append(_bank_finding(
+                "bank_value_unbacked", False, pid,
+                f"bank row {pid} prints {text!r}; value(s) {shown} match no "
+                f"expected value for id {pid}, but the extraction or the "
+                "regenerated row is math-mangled — adjudicate, do not block."))
+        else:
+            findings.append(_bank_finding(
+                "bank_value_unbacked", True, pid,
+                f"bank row {pid} prints {text!r}; value(s) {shown} match no "
+                f"expected value for id {pid} and no value of the regenerated "
+                "bank — a wrong answer delivered to the grader."))
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Slot-gate observation: tests/check_answer_slots.py per case
+#
+# The frozen pre-fix corpus fails this on most cases under the newest gate —
+# correct-by-design for the old corpus — so every observation carries a gate
+# version note, keeping a run-1 vs run-2 comparison honest about WHICH gate
+# each run was measured against.
+
+SLOT_GATE_SCRIPT = ROOT / "tests" / "check_answer_slots.py"
+
+
+def slot_gate_version():
+    """Content-addressed gate identity, with the lint generation named."""
+    try:
+        source = SLOT_GATE_SCRIPT.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "check_answer_slots@missing"
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:12]
+    lints = []
+    if "OPEN_ASK_RE" in source:
+        lints.append("open-ask-lint")
+    if "stale_desc_faults" in source:
+        lints.append("stale-desc-lint")
+    return f"check_answer_slots@{digest}" + (f" ({', '.join(lints)})" if lints else "")
+
+
+def run_slot_gate(ws_tex_path, verify_path):
+    """Run the answer-slot gate on one case; record, never interpret.
+
+    Returns {"checked", "exit_code", "faults", "gate_version", ...}. A nonzero
+    exit is the caller's contradiction to raise; a missing input is recorded
+    as unchecked rather than invented as a pass or a fail.
+    """
+    observation = {"checked": False, "exit_code": None, "faults": [],
+                   "gate_version": slot_gate_version()}
+    if not ws_tex_path or not Path(ws_tex_path).is_file():
+        observation["skipped"] = "no worksheet source (ws .tex) to gate"
+        return observation
+    if not verify_path or not Path(verify_path).is_file():
+        observation["skipped"] = "no verify JSON to gate"
+        return observation
+    if not SLOT_GATE_SCRIPT.is_file():
+        observation["skipped"] = "tests/check_answer_slots.py is not present"
+        return observation
+    proc = run_command([sys.executable, SLOT_GATE_SCRIPT, ws_tex_path, verify_path])
+    output = (proc.stdout or "") + (proc.stderr or "")
+    observation.update({
+        "checked": True,
+        "exit_code": proc.returncode,
+        "faults": [line.strip() for line in output.splitlines()
+                   if "❌" in line or "⚠" in line],
+        "output_tail": "\n".join(output.splitlines()[-30:]),
+    })
+    return observation
+
+
+# ---------------------------------------------------------------------------
+# Standards-map cross-check: printed Curriculum codes and verify.json
+# "standard" tags must exist in references/standards-map.md, and a K-8 code
+# more than one grade below the task's declared band is suspect. Band
+# inference is a heuristic, so every finding here is a flag for adjudication,
+# never a block.
+
+STANDARDS_MAP_PATH = ROOT / "references" / "standards-map.md"
+BAND_MIN_GRADE = {
+    "foundations-k1": 0,
+    "elementary-2-3": 2,
+    "upper-elementary-4-5": 4,
+    "middle-grades-6-7": 6,
+    "grade8-prealgebra": 8,
+    "algebra-1": 9,
+    "geometry": 9,
+    "algebra-2": 9,
+    "precalculus-statistics": 9,
+    "calculus-ab-bc": 13,
+}
+_MAP_ROW_RE = re.compile(r"^\|[^|]+\|([^|]+)\|\s*$")
+_CODE_TOKEN_RE = re.compile(r"^[A-Z0-9][A-Za-z0-9.\-]{2,}$")
+
+
+def _norm_code(code):
+    out = str(code or "").strip()
+    for dash in "–—‒":
+        out = out.replace(dash, "-")
+    return out
+
+
+def load_standards_map(path=None):
+    """{"tokens": set, "prefixes": set} from the read-only standards map."""
+    path = Path(path or STANDARDS_MAP_PATH)
+    tokens, prefixes = set(), set()
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"tokens": tokens, "prefixes": prefixes, "loaded": False}
+    for line in text.splitlines():
+        match = _MAP_ROW_RE.match(line.strip())
+        if not match:
+            continue
+        cell = re.sub(r"\([^)]*\)", " ", match.group(1))  # strip parentheticals
+        for raw in re.split(r"[/,]", cell):
+            token = _norm_code(raw)
+            if not _CODE_TOKEN_RE.match(token) or token in {"Code"}:
+                continue
+            tokens.add(token)
+            prefixes.add(token)
+            # Expand a range token into the family prefix it covers:
+            # "K.CC.A.1-K.CC.C.7" -> "K.CC"; "HSN-CN.A.1-A.3" -> "HSN-CN.A".
+            for pos in [i for i, ch in enumerate(token) if ch == "-"]:
+                left, right = token[:pos], token[pos + 1:]
+                if not left or not right or "." not in left:
+                    continue
+                if "." in right and len(right) > 3:
+                    common = os.path.commonprefix([left, right])
+                    common = common.rstrip(".-")
+                    if "." in common or "-" in common:
+                        prefixes.add(common)
+                elif len(right) <= 4:
+                    parts = left.split(".")
+                    head = right.split(".")[0]
+                    if len(parts) >= 2 and parts[-2] == head:
+                        prefixes.add(".".join(parts[:-1]))
+                    elif len(parts) >= 2:
+                        prefixes.add(".".join(parts[:-1]))
+    return {"tokens": tokens, "prefixes": prefixes, "loaded": True}
+
+
+def code_in_standards_map(code, map_data):
+    code = _norm_code(code)
+    if not code:
+        return True  # nothing to check is not a miss
+    if code in map_data["tokens"]:
+        return True
+    for prefix in map_data["prefixes"]:
+        if code == prefix or code.startswith(prefix + "."):
+            return True
+        if code.startswith(prefix):
+            rest = code[len(prefix):]
+            if len(rest) <= 2 and rest.isalnum():
+                return True
+    return False
+
+
+def code_grade(code):
+    """K-8 numeric grade of a code, or None (HS/AP codes never band-flag)."""
+    code = _norm_code(code)
+    if code.startswith("K."):
+        return 0
+    match = re.match(r"^(\d)\.", code)
+    return int(match.group(1)) if match else None
+
+
+def printed_curriculum_codes(key_text):
+    """Standards codes the shipped answer key's Curriculum block prints."""
+    codes = []
+    lines = (key_text or "").splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip() == "Curriculum":
+            start = index + 1
+            break
+    if start is None:
+        return codes
+    for line in lines[start:]:
+        stripped = line.strip()
+        if "\f" in line or any(stripped.startswith(h) for h in
+                               ("Common wrong answers", "Quick Answers",
+                                "What is verified")):
+            break
+        if not stripped or stripped.startswith(("Level", "Difficulty")):
+            continue
+        head = stripped.split()[0]
+        token = _norm_code(head)
+        # A code has letters ("2.NBT.A"); a wrapped problems list ("10.") or a
+        # stray number does not.
+        if (_CODE_TOKEN_RE.match(token) and ("." in token or "-" in token)
+                and re.search(r"[A-Za-z]", token)):
+            if token not in codes:
+                codes.append(token)
+    return codes
+
+
+def standards_map_flags(codes, band, map_data=None):
+    """Flags (never blocks) for codes absent from the map or off-band.
+
+    ``codes`` is {code: source_label}. Band inference reads only the leading
+    K-8 grade digit, so high-school and AP codes are exempt from the band
+    comparison by construction.
+    """
+    map_data = map_data or load_standards_map()
+    flags = []
+    if not map_data.get("loaded", True):
+        return flags
+    min_grade = BAND_MIN_GRADE.get(band)
+    components = {}
+    for code, source in (codes or {}).items():
+        # An author may tag with a map cell verbatim ("4.NBT.A / 5.NBT.A");
+        # each component code is checked on its own.
+        for part in re.split(r"[/,]", str(code)):
+            norm = _norm_code(part)
+            if norm:
+                components.setdefault(norm, source)
+    for norm, source in sorted(components.items()):
+        if not code_in_standards_map(norm, map_data):
+            flags.append({
+                "type": "standard_code_not_in_map", "blocking": False,
+                "code": norm, "source": source,
+                "message": f"standards code {norm!r} ({source}) does not "
+                           "appear in references/standards-map.md — either "
+                           "an invented code or a map gap; adjudicate."})
+            continue
+        grade = code_grade(norm)
+        if grade is not None and min_grade is not None and min_grade - grade > 1:
+            flags.append({
+                "type": "standard_code_below_band", "blocking": False,
+                "code": norm, "source": source,
+                "message": f"standards code {norm!r} ({source}) is a "
+                           f"grade-{'K' if grade == 0 else grade} code on a "
+                           f"task declared {band!r} — more than one grade "
+                           "below the declared level; adjudicate."})
+    return flags
 
 
 def case_record_for(task_id, run_dir, run_cases):
@@ -529,6 +1419,7 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
     task_out.mkdir(parents=True, exist_ok=True)
     findings = []
     artifacts = {}
+    machine_extras = {}
     record, case_dir, duplicate_dirs = case_record_for(task_id, run_dir, run_cases)
     if duplicate_dirs:
         findings.append(finding(
@@ -544,8 +1435,12 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
         ))
         resolved = {}
         surfaced = None
+        original_names = {}
+        surfacing = {}
     else:
-        resolved, ambiguities, surfaced, discovered_metrics = resolve_artifacts(case_dir, record)
+        resolved, ambiguities, surfaced, discovered_metrics, original_names = (
+            resolve_artifacts(case_dir, record)
+        )
         metrics.update(discovered_metrics)
         for role, choices in ambiguities.items():
             findings.append(finding(
@@ -616,15 +1511,116 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
                 ))
         response = artifacts.get("final_response", {}).get("text", "")
         surfaced_set = set(surfaced or [])
-        for role in PDF_ROLES:
-            visible = role in surfaced_set if surfaced is not None else response_surfaces(
-                response, role, resolved.get(role),
+        # `record` renames build outputs to canonical roles, so the response
+        # and the retained file disagree by construction. Recover the build
+        # names from the evidence that kept them before matching.
+        for role, names in discover_original_names([gate_text]).items():
+            original_names.setdefault(role, [])
+            original_names[role].extend(
+                name for name in names if name not in original_names[role]
             )
-            if not visible:
+        surfacing = {}
+        for role in PDF_ROLES:
+            if surfaced is not None:
+                evidence = {"surfaced": role in surfaced_set,
+                            "basis": "declared_surfaced_list" if role in surfaced_set else None,
+                            "match": None}
+            else:
+                evidence = surfacing_evidence(
+                    response, role, resolved.get(role), original_names.get(role, ()),
+                )
+            surfacing[role] = evidence
+            if not evidence["surfaced"]:
                 findings.append(finding(
                     "artifact_not_surfaced", "critical",
                     f"Final delivery evidence does not surface {role}.", artifact=role,
                     hard_failure=True,
+                ))
+            elif evidence["basis"] == "description":
+                findings.append(finding(
+                    "artifact_surfaced_without_filename", "warning",
+                    f"Final delivery evidence describes {role} but never names a file; "
+                    "surfacing is inferred from wording alone.",
+                    artifact=role, evidence=evidence["match"],
+                ))
+
+        # ---- machine cross-checks the judge cannot be trusted to have run ----
+        def _find_source(*names):
+            for name in names:
+                hits = sorted(Path(case_dir).glob(name))
+                if hits:
+                    return hits[0]
+            return None
+
+        ws_tex_path = _find_source("worksheet.tex", "ws_*.tex")
+        ak_tex_path = _find_source("answer_key.tex", "ak_*.tex")
+        verify_path = resolved.get("worksheet_verification")
+        verify_data = None
+        if verify_path and Path(verify_path).is_file():
+            try:
+                verify_data = load_json(verify_path, "worksheet verification")
+            except HarnessError:
+                verify_data = None
+
+        slot_gate = run_slot_gate(ws_tex_path, verify_path)
+        machine_extras["slot_gate"] = slot_gate
+        if slot_gate["checked"] and slot_gate["exit_code"] != 0:
+            findings.append(finding(
+                "answer_slot_gate_failed", "critical",
+                f"tests/check_answer_slots.py exits {slot_gate['exit_code']} "
+                f"on this case's worksheet + verify JSON "
+                f"[{slot_gate['gate_version']}] — printed responses ship "
+                "unchecked or ungraded.",
+                artifact="worksheet_verification",
+                evidence=slot_gate["faults"][:20], hard_failure=True,
+            ))
+
+        key_text = artifacts.get("step_by_step_answer_key", {}).get("extracted_text", "")
+        if verify_data is not None:
+            level = ""
+            ws_tex = ""
+            try:
+                if ak_tex_path:
+                    match = re.search(r"\\aktitleblock\{[^{}]*\}\{([^{}]*)\}",
+                                      ak_tex_path.read_text(encoding="utf-8",
+                                                            errors="replace"))
+                    level = match.group(1).strip() if match else ""
+                if ws_tex_path:
+                    ws_tex = ws_tex_path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+            bank = audit_shipped_bank(key_text, verify_data, level, ws_tex)
+            machine_extras["quick_answers_bank"] = {
+                key: bank[key] for key in ("found", "regenerated",
+                                           "unanchored_line_count", "findings")
+            }
+            if key_text and not bank["found"]:
+                findings.append(finding(
+                    "quick_answers_section_missing", "warning",
+                    "No Quick Answers section was found in the extracted "
+                    "answer-key text; the bank-diff check could not run.",
+                    artifact="step_by_step_answer_key",
+                ))
+            for item in bank["findings"]:
+                findings.append(finding(
+                    item["type"],
+                    "critical" if item["blocking"] else "warning",
+                    item["message"], artifact="step_by_step_answer_key",
+                    hard_failure=item["blocking"],
+                ))
+
+            codes = {}
+            for entry in verify_data.get("problems", []):
+                if isinstance(entry, dict) and entry.get("standard"):
+                    codes.setdefault(str(entry["standard"]), "verify.json standard tag")
+            for code in printed_curriculum_codes(key_text):
+                codes.setdefault(code, "printed Curriculum block")
+            standards = standards_map_flags(codes, task.get("band"))
+            machine_extras["standards_map_flags"] = standards
+            for item in standards:
+                findings.append(finding(
+                    item["type"], "warning", item["message"],
+                    artifact="step_by_step_answer_key",
                 ))
 
     manual_count = sum(
@@ -642,9 +1638,11 @@ def prepare_task(task, run_dir, run_cases, output_dir, *, render_dpi=110,
         "machine_status": status,
         "machine_hard_failures": hard_failures,
         "manual_item_count": manual_count,
+        "artifact_surfacing": surfacing,
         "metrics": metrics,
         "artifacts": artifacts,
         "findings": findings,
+        **machine_extras,
     }
     write_json(task_out / "machine.json", machine)
 
@@ -869,6 +1867,9 @@ def write_summary_markdown(path, summary):
         f"- Rejected: {counts['rejected']}",
         f"- Pending: {counts['pending']}",
         f"- Invalid verdicts: {counts['invalid']}",
+        f"- Verdicts quoting values absent from the artifacts: "
+        f"{counts.get('verdicts_with_unsupported_claims', 0)}",
+        f"- Verdicts needing adjudication: {counts.get('needs_adjudication', 0)}",
         f"- Acceptance rate: {metrics['acceptance_rate']}",
         f"- Hard-gate pass rate: {metrics['hard_gate_pass_rate']}",
         f"- Mean quality score among hard-gate passes: {metrics['mean_quality_score_among_hard_gate_passes']}",
@@ -880,6 +1881,20 @@ def write_summary_markdown(path, summary):
         lines.append(
             f"| {name} | {item['accepted']} | {item['completed']} | {item['expected']} | {item['acceptance_rate']} |"
         )
+    claims = summary.get("unsupported_claims", [])
+    if claims:
+        lines.extend([
+            "", "## Claims not found in the artifacts", "",
+            "A finding is evidence only if the value it quotes is printed in the",
+            "artifact it cites. PDF extraction is lossy, so these are flagged for a",
+            "person to adjudicate, not counted as judge errors.", "",
+            "| Task | Field | Value | Blocking |", "|---|---|---|---|",
+        ])
+        for item in claims[:100]:
+            lines.append(
+                f"| `{item['task_id']}` | {item['field']} | `{item['value']}` | "
+                f"{'yes' if item['blocking'] else 'no'} |"
+            )
     lines.extend(["", "## Errors", ""])
     errors = summary.get("errors", [])
     lines.extend(
@@ -910,6 +1925,8 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
     rows = []
     issues = []
     invalid_details = []
+    unsupported_claims = []
+    needs_adjudication = []
     for task_id in manifest["task_ids"]:
         task = tasks[task_id]
         task_dir = grading_dir / "tasks" / task_id
@@ -960,6 +1977,27 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             status, source, score, scores, combined_hard = "INVALID", "judge", None, {}, machine_hard
         else:
             status, source, score, scores, combined_hard = "PENDING", None, None, {}, machine_hard
+
+        # A judge's finding is evidence only if the value it quotes is in the
+        # artifact it cites. Audited here rather than in validate_verdict,
+        # because only aggregation has the extracted text to check against.
+        claim_findings = []
+        if verdict is not None:
+            index = machine_artifact_index(machine)
+            claim_findings = audit_verdict_claims(verdict, index)
+            for item in claim_findings:
+                unsupported_claims.append({"task_id": task_id, **item})
+                issues.append({
+                    "task_id": task_id, "source": "harness", "kind": "unsupported_claim",
+                    **item,
+                })
+        blocking_claims = [item for item in claim_findings if item["blocking"]]
+        if blocking_claims:
+            needs_adjudication.append({
+                "task_id": task_id,
+                "status": status,
+                "values": sorted({item["value"] for item in blocking_claims}),
+            })
         row = {
             "task_id": task_id,
             "band": task.get("band"),
@@ -975,6 +2013,8 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
                 verdict and verdict.get("manual_items_reviewed", 0)
             ),
             "hard_failures": combined_hard,
+            "unsupported_claim_count": len(claim_findings),
+            "hard_failure_claims_unverified": bool(blocking_claims),
             "metrics": machine.get("metrics", {}),
         }
         rows.append(row)
@@ -1015,6 +2055,10 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             "machine_rejected": sum(
                 row["status"] == "REJECT" and row["decision_source"] == "machine" for row in rows
             ),
+            "verdicts_with_unsupported_claims": len(
+                {item["task_id"] for item in unsupported_claims}
+            ),
+            "needs_adjudication": len(needs_adjudication),
         },
         "metrics": {
             "completion_rate": rate(accepted + rejected, expected),
@@ -1024,12 +2068,17 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
                 round(statistics.mean(scored_hard_passes), 4) if scored_hard_passes else None
             ),
             "manual_review_rate": rate(sum(row["manual_review"] for row in rows), expected),
+            "unsupported_claim_rate": rate(
+                len({item["task_id"] for item in unsupported_claims}), expected,
+            ),
             "median_latency_seconds": numeric_metric(rows, "latency_seconds"),
             "median_cost": numeric_metric(rows, "cost"),
         },
         "by_band": group_metrics(rows, "band"),
         "by_domain": group_metrics(rows, "domain"),
         "invalid_verdicts": invalid_details,
+        "unsupported_claims": unsupported_claims,
+        "needs_adjudication": needs_adjudication,
         "errors": errors,
         "critical_observations": observations,
         "task_results": rows,
@@ -1053,14 +2102,29 @@ def aggregate_run(grading_dir, output_dir=None, require_complete=False):
             flat.update(row["dimension_scores"])
             flat["hard_failure_count"] = len(row["hard_failures"])
             writer.writerow(flat)
+    with open(output_dir / "unsupported-claims.jsonl", "w", encoding="utf-8") as handle:
+        for item in unsupported_claims:
+            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
     print(
         f"Scored {accepted + rejected}/{expected}: {accepted} ACCEPT, {rejected} REJECT, "
         f"{pending} PENDING, {invalid} INVALID"
     )
+    if unsupported_claims:
+        print(
+            f"⚠️  {len(unsupported_claims)} judge claim(s) across "
+            f"{len({item['task_id'] for item in unsupported_claims})} task(s) quote values "
+            "absent from the artifacts; see unsupported-claims.jsonl"
+        )
+    if needs_adjudication:
+        print(
+            f"❌ {len(needs_adjudication)} verdict(s) rest on a hard failure whose cited "
+            "value is not in the artifact — adjudicate before using these scores"
+        )
     print(f"Results: {output_dir}")
     if invalid:
         return 2
-    if require_complete and (pending or accepted + rejected != expected):
+    if require_complete and (pending or accepted + rejected != expected
+                             or needs_adjudication):
         return 1
     return 0
 

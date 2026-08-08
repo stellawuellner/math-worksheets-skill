@@ -50,6 +50,15 @@
 %              "answer_unit" in the verify JSON (tests/check_answer_line.py
 %              enforces the pairing in both directions). Also suppresses the
 %              auto \ansline so a unit problem never gets two blanks.
+%   \scratchblank  a blank that is NOT an answer: a scaling multiplier, a
+%              partial product the student carries forward, a table cell used
+%              as working space. Prints exactly like \ansblank and clears the
+%              auto-line flag the same way, but tests/check_answer_slots.py
+%              does not require a verify entry for it. Using it is a claim —
+%              "no answer worth checking lands here" — so do not reach for it
+%              to quiet the slot gate on a blank that really does hold an
+%              answer. That gate exists because 172 of 300 reviewed cases
+%              shipped a printed answer nobody verified.
 \makeatletter
 \newif\ifmws@sans
 \newif\ifmws@bigblanks
@@ -71,6 +80,10 @@
 % needs 17pt type also needs a blank big enough to write 17pt digits in.
 \newcommand{\ansline}{\global\mws@ansfalse\par\nopagebreak\vspace{2pt}\noindent\hfill Answer: \ifmws@bigblanks\rule[-2pt]{5cm}{0.8pt}\else\rule[-1pt]{3.5cm}{0.4pt}\fi}
 \newcommand{\ansblank}{\global\mws@ansfalse\ifmws@bigblanks\rule[-2pt]{2.6cm}{0.8pt}\else\rule[-1pt]{1.8cm}{0.4pt}\fi}
+% Same rule on the page as \ansblank, deliberately NOT an answer slot. See the
+% header note: check_answer_slots.py skips it, so it must only mark working
+% space. Defined via \ansblank so the two can never drift apart visually.
+\newcommand{\scratchblank}{\ansblank}
 \newcommand{\answerline}[1]{\global\mws@ansfalse\par\nopagebreak\vspace{4pt}\hfill\textbf{Answer:}\ \rule[-2pt]{3.5cm}{0.4pt}\ #1}
 
 % ── Problem numbering ───────────────────────────────────────────────────────
@@ -171,6 +184,13 @@
 % compile-ak. Found by an eval-run agent, not by a test: the feature shipped
 % with no fixture that declared a trap and compiled the key.
 \newcommand{\commonerror}[3]{\par\noindent{\small #1.~\textit{If they got #2: #3}}\par}
+% ANSWER KEY ONLY. Marks a printed response that no verification entry covers,
+% so the instructor can see at a glance which answers carry a machine guarantee
+% and which are theirs to check. Bold, because the failure this exists to
+% prevent is a grader assuming a complete-looking row was verified. Emitted by
+% scripts/render_quick_answers.py, never hand-typed — and never \ans/\boxed, so
+% check_answer_key.py's per-problem binding of CORRECT answers stays strict.
+\newcommand{\unchecked}{\textbf{[unchecked]}}
 
 % ── Shrink-to-fit title: \LARGE when it fits on one line, otherwise scale
 % down to the text width — never enlarges, never wraps mid-phrase. (\resizebox

@@ -110,15 +110,28 @@ now degrades the artifact.
 
 ## Traps that remain, and how to avoid them
 
-- **KNOWN, OPEN: on a flat SSA triangle the swing side's `a = N` label prints
-  across the base line.** The renderer computes the FIXED side's label position
-  and still places the two swing-side labels at flat fractions, so when the
-  given angle is small (A below about 30 degrees) the swing side is nearly
-  parallel to the base and its label lands on it. No gate sees this:
-  `check_overprint` reads word boxes, and a label over a TikZ path leaves
-  nothing to overlap. Confirmed on rendered pages at (15,30,20), (15,26,25) and
-  (25,40,27). Until it is fixed, prefer A >= 30 degrees on ambiguous-SSA
-  problems, and render a page and look at it if you cannot.
+- **KNOWN, OPEN: the SSA swing figure mislays its swing-side labels, and the
+  given angle does NOT bound the defect.** The renderer computes the FIXED
+  side's label position and still places the two swing-side labels at flat
+  fractions, so where they land moves with the whole shape of the triangle.
+  There are two collisions, and they behave differently at the gate:
+  - **Label over the base LINE**, on a flat triangle: with A small the swing
+    side is nearly parallel to the base and its `a = N` label lands on it. No
+    gate sees this one — `check_overprint` reads word boxes, and a label over a
+    TikZ path leaves nothing to overlap. Confirmed on rendered pages at
+    (15,30,20), (15,26,25) and (25,40,27).
+  - **Label over another LABEL**, at the swing apex: the `?` arc label lands on
+    the `a = N` label. `check_overprint` DOES catch this one, and hard-fails the
+    build. Reproduced at `a=310, b=400, A=44`, which reports
+    `'?' and '310' overlap by 54% of the smaller`.
+
+  An earlier version of this note said the defect is avoided by preferring
+  A >= 30 degrees. That is WRONG and was removed: 44 degrees is well above the
+  threshold and still collides, while the same sides at A = 30, 35 and 50 are
+  clean. The angle alone does not predict it. Render a page and look at it; if
+  the overprint gate names `'?'` against a side length, the figure is the cause
+  and different givens are the only lever you have.
+
   Three attempts to fix it by computing the swing placement each made things
   worse — they pushed labels into the arc labels, which IS gated, taking
   collisions from 0 of 15 to 4 and then 7. The fixed-side computation stands;
@@ -345,6 +358,21 @@ agent a rebuild.
   cubics AND exponentials both. `2**(x+1) - 2**(3*x-5)` and `2**x - (1/2)**x`
   each fail without it, because `b**u = b**v` always carries complex branches.
   Four problems on one sheet failed this way at once.
+- **…and `solve` for an INVERSE needs the opposite field, `"domain":
+  "complex"`,** which is counter-intuitive on a problem with nothing complex in
+  it. The default `"real"` keeps only roots SymPy can PROVE real, and a root
+  written in the other variable usually cannot be proved real (`sqrt(y-3)` is
+  real only for `y >= 3`). The check then prints an empty root list —
+  `solve(x**2 + 3 - y, domain=real) → [] (expected [sqrt(y - 3), ...])` — which
+  reads as "your expected answer is wrong" and is not: the same entry passes
+  unchanged with `"domain": "complex"`. Checked on `x**2+3-y`, `exp(x)-y` and
+  `x**3-y`. Say the restriction in the printed stem instead.
+- **Do NOT transcribe "round to two decimals" as `"tol": 0.01` — omit `tol`.**
+  The explicit-tol cap is max(1% of |expected|, half a unit in the last written
+  place), so `"tol": 0.01` is rejected for every |expected| < 1: it passes on
+  `6.30` and hard-fails on `0.34` on the same sheet. Omitting `tol` is the
+  stronger reading of the ask — the scale-aware default accepts exactly what
+  rounds to the precision you wrote. (Both halves checked directly.)
 - **`integrate` wants the `Abs` form of a log antiderivative.** `x*tan(x) +
   ln(cos(x))` is rejected as undefined where the integrand is real;
   `ln(Abs(cos(x)))` passes, and it is also the form a key should print.
@@ -392,8 +420,23 @@ agent a rebuild.
 - **Long prose does not belong inside `\ans{}`.** The box is unbreakable, so a
   sentence in it always overflows. Box the short answer; put the grading note
   outside.
-- **A shared display placed before problem 1 is invisible to the page budget.**
-  Charge it to the problems that consume it via `workspace_cm`.
+- **A chart or table SEVERAL problems read from goes above the first
+  `\problem`.** The figure-scope rule is all-or-nothing per problem list, and a
+  data display IS its values, so the rule's own remedy (a value-free reference
+  figure) cannot apply to it — a bar chart inside problem 3 of a mixed
+  graph/table/algebra sheet fails `check_layout` beside its figureless
+  neighbours. Problem regions start at the first `\problem`, so a display above
+  it is scoped to none of them. Caption it with the problem numbers that use it
+  ("Problems 4-7 refer to this chart"). Five batches arrived at this
+  independently and it is now the standard answer; SKILL.md → "Figure scope"
+  and `references/latex-templates.md` → "Shared display bank" carry it.
+  **Its cost, stated honestly:** outside every problem region, so
+  `figure_label_numbers` never checks its printed values — a drifted tick on a
+  shared graph is invisible to the whole chain — and the page budget never
+  charges its height. Source the plotted values from the `read_data` `data`
+  array, charge the height to the consuming problems via `workspace_cm`, and
+  read the rendered page yourself. Do not hoist a figure only ONE problem uses:
+  that trades a working check for one that cannot run.
 - **Declare stem furniture in `workspace_cm` BEFORE the first compile.** The
   budget charges a flat 0.6 cm of stem per problem, so a stem holding a table, a
   drawing, or displayed math costs 1.5–2 cm the model cannot see. Note the
@@ -460,3 +503,30 @@ could actually learn the skill from rather than a formula dump.
 - Do not edit anything outside `/tmp/evalbuild/$TASK` and the run folder.
 - Do not hand-roll the LaTeX preamble; `\input{worksheet-preamble}` always.
 - Do not re-record a task another agent already recorded.
+
+## New gates since the last run (2026-08-06) — build against them, don't discover them
+
+- **Answer-slot coverage (`answer-slots-ws`, hard fail).** Every printed
+  `\ansline`/`\ansblank`/`\answerline` — and every lettered `(a)`/`(b)` sub-part
+  in a stem — needs its own verify entry. One entry per problem id is no longer
+  enough. A `compare`/`midpoint`/`intersection`/`system` entry covers as many
+  blanks as its list fills; a `solve` root list is ONE answer on ONE line. A
+  blank that is genuinely working space (a transcribed given, a carried partial
+  product) is printed with `\scratchblank` — but the answer key TELLS the
+  instructor how many blanks you claimed as working space, so claiming a real
+  answer is visible, not free.
+- **Open-ask lint (hard fail).** "Explain / describe / justify / say why /
+  name the error / sketch / shade / circle the / prove" in a stem requires a
+  `manual` entry on that id. The fix is ALWAYS to add the manual entry with a
+  real rubric — never to delete the ask. 184 of the 300 previous cases would
+  fail this today; your sheet should not be case 185.
+- **Stale-rubric lint (hard fail).** A `manual` desc that names a person or
+  thing absent from its printed problem fails. Write the desc against the stem
+  you actually shipped, not the draft you started from.
+- **The Quick Answers bank now has three states** (value / `---` for
+  instructor-judged / `[unchecked]`), a "What is verified" tally, and it
+  preserves your written form (`9/12` stays `9/12`, factored stays factored).
+  Relations print as relations. If your bank row looks wrong, fix the JSON —
+  the bank is generated, and it now agrees with the slot gate by construction.
+- **Multi-entry ids: give each entry a `"slot"` label** ("AC", "the ones
+  digit", "(b)") so the bank can say which value answers which question.

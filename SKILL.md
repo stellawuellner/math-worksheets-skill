@@ -61,7 +61,7 @@ See `references/problem-library.md` for topic-specific problem type menus.
 
 **The grade level never prints on the worksheet or the study guide.** `\wstitleblock` takes a course argument and does not typeset it: a child working a grade below or above reads the label before the mathematics, and it tells the student nothing they need. The level is the adult's information, so it prints on the ANSWER KEY — in the title block and again in a generated **Curriculum** section beside the standards codes and the difficulty range, which is where a parent or teacher actually looks. Keep passing the course argument: it is the one place the level is declared, and the answer key's curriculum section reads it from there.
 
-**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes), `"difficulty"` (1–5 per that file's ladders), `"bloom"` (recall/apply/analyze/justify, same file), and `"skill"` (a short stable name for the skill the problem exercises, e.g. `"right-triangle-trig"` — reuse the same name across problems of the same Part). Skill tags are all-or-nothing and GATING: the study guide must contain an entry tagged with each distinct worksheet skill, enforced by `build.sh`'s `coverage-ss` gate; a partially tagged sheet fails it. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, the skill mix (the set the study guide must cover), and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
+**Tag every problem** with `"standard"` (a code from `references/standards-map.md` — never invent codes, and **grep that file before concluding it lacks a row**: 11 reviewed cases asserted a missing row that was there, two of them naming the exact code they called absent, and then tagged a high-school sheet with a grade-8 standard), `"difficulty"` (1–5 per that file's ladders), `"bloom"` (recall/apply/analyze/justify, same file), and `"skill"` (a short stable name for the skill the problem exercises, e.g. `"right-triangle-trig"` — reuse the same name across problems of the same Part). Skill tags are all-or-nothing and GATING: the study guide must contain an entry tagged with each distinct worksheet skill, enforced by `build.sh`'s `coverage-ss` gate; a partially tagged sheet fails it. Ramp difficulty: start at 1–2, majority 2–3, end with one or two 4–5 challenges. Verification reports standards coverage, the bloom mix, the skill mix (the set the study guide must cover), and flags ramp drops, so a parent can see exactly which standards the sheet exercises and at what cognitive level.
 
 **Facets (skill coverage):** a facet is a distinct method the sheet tests (e.g. `side-from-angle` vs `angle-from-sides` vs `pythagorean`) — standards codes are usually one constant per sheet and cannot show this. For sheets of 10+ problems, declare top-level `"facets": [...]` in the verify JSON and tag **every** problem with a `"facet"` from that list; consult `references/problem-library.md` → "Facet checklists" (topics without a table use your own lowercase-kebab names). The gate is strict: an unlisted facet, a planned facet with zero problems, or an untagged problem is a build failure. Tag TRUTH is your responsibility — the gate verifies plan/tag consistency, not that a tag describes its problem. Tag the `verify_ss_` entries' `"facet"` too: the facet-coverage gate (step 5) requires every worksheet facet to have a study-guide worked example.
 
@@ -124,6 +124,26 @@ fails a worksheet whose problems get under 2.5cm and flags workspace `\vspace` l
 a minipage. A sheet with correct answers and nowhere to write them is a sheet the student
 cannot use.
 
+**Page overrun: count problems per page BEFORE choosing a remedy.** `page_budget.py`
+prints two NOTEs whose fixes point in opposite directions, and applying the wrong one
+makes the sheet worse. `pdftotext` the failing PDF and look at what actually landed on
+a page:
+- **2 or more problems per page** — the blocks pack fine and the budget is simply
+  under-measuring them (its stem charge is a flat 0.6cm). **Declare `workspace_cm`**
+  covering the block's real height. That is the honest move: the declaration is a
+  measurement, and it raises the ceiling without adding content.
+- **1 problem per page** — the block is taller than half a page, so nothing can share
+  with it and the rest of every page is stranded. **Shorten the block** — a smaller
+  figure, or the work space *beside* the figure instead of under it. A larger
+  `workspace_cm` here raises the ceiling without recovering one centimetre of the
+  stranded space, and it is no longer a measurement of anything.
+
+A side-by-side `minipage[t]` figure/question layout is the usual way to recover that
+stranded whitespace, and it compresses no work space — but put `\vspace{0pt}` first in
+BOTH columns, or a `tikzpicture`'s bottom-sitting baseline makes the columns stack and
+doubles the block instead (the tell: shrinking the figure changes the page count by
+exactly zero).
+
 **Answer location (every problem gets one):** `\problem` sheets emit the right-aligned
 answer blank automatically whenever the workspace argument is positive — write nothing
 extra. On enumerate/`\item` sheets, end every item with `\ansline` (or an inline
@@ -163,6 +183,31 @@ the renderer-built `\probfig` figures share one page, so
 `render_figures.py` ever mark the right angle at different vertices.
 `tests/check_layout.py` enforces the scope rule.
 
+**A data display several problems read from goes ABOVE the first `\problem`.**
+The scope rule is all-or-nothing per problem list, and a data display IS its
+values, so the rule's usual remedy — make the figure value-free — cannot apply
+to it. A bar chart set inside problem 3 of a mixed graph/table/algebra sheet is
+a valued figure beside figureless problems, and `check_layout` fails the sheet;
+an author who does not know the pattern deletes the chart or fights the gate.
+Problem regions run from one `\problem` to the next, so a display placed before
+the first one belongs to no region and is scoped to none of them. Caption it
+with the problems that use it — "Problems 4-7 refer to this chart" — so a
+student is never left guessing which givens are theirs. Five eval batches
+arrived at this independently; it is the standard answer for mixed-representation
+sheets.
+
+**Know what that costs, because nothing else will tell you.** A display above
+problem 1 is outside every problem region, so `figure_label_numbers` never reads
+its printed values against the JSON: a drifted axis tick or a mis-plotted point
+on a SHARED graph is invisible to the entire gate chain, on the one figure the
+most problems depend on. It is also invisible to the page budget — charge its
+height to the problems that consume it via `workspace_cm`. So: source the
+plotted values from the same `data` array the `read_data` checks use (never
+retype them), and read the rendered page yourself before shipping. Hoisting a
+figure out of a problem to quiet the scope check, when only that problem uses
+it, trades a gate that works for one that cannot run — keep a single problem's
+figure inside its own block.
+
 **Triangle figures MUST come from the renderer, never hand-drawn TikZ with values.**
 Step 4b generates `\probfig{N}` macros from the verify JSON — every `triangle` problem
 automatically, plus `approx` and `eval` problems that declare a `"figure"` object. A
@@ -186,7 +231,16 @@ Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file
 
 **Field reference that cannot go stale:** `python3 "$SKILL_DIR/scripts/verify.py" --schema` prints every type's required/optional fields, the allowed functions/constants/variables, and one working example per type, generated live from the enforced schema (`--schema json` for machine-readable output).
 
-**JSON format** — always set `problem_count` to the number of problems on the worksheet; verification hard-fails unless every problem id 1..N has at least one check (use `manual` for the unverifiable ones), so a partially-verified answer key can never slip through:
+**JSON format** — always set `problem_count` to the number of problems on the worksheet. Two gates enforce coverage, and they are not the same gate:
+
+- `verify.py` hard-fails unless every problem id 1..N has at least one check. This counts **problems**.
+- `tests/check_answer_slots.py` hard-fails unless every id has **one entry per response the problem asks for** — every printed `\ansline`/`\ansblank`/`\answerline`, and every lettered `(a)`/`(b)`/`(c)` sub-part in the stem. This counts **answers**.
+
+**The answer key says what it can and cannot vouch for.** Its Quick Answers bank has three states, and a "What is verified" note names the problems in each: a plain value is machine-checked; `---` marks an answer only the instructor can judge, with the worked solution stating what a correct response must contain; and **`[unchecked]`** marks a problem printing more responses than the verification covers, where at least one printed answer carries no guarantee. The note is silent on a fully verified sheet — a legend explaining marks that never appear is the noise that makes real warnings invisible. Aim for a key with no `[unchecked]` marks; when one is unavoidable, the instructor at least knows where to look instead of trusting a complete-looking column.
+
+When a problem carries more than one entry, give each a `"slot"` — the name of the response it covers (`"AC"`, `"the ones digit"`, `"(b)"`). No check reads it; the Quick Answers bank prints it, so a grader can tell which value answers which question. Without it the bank joins values in array order, and a sheet asking for "AC and BD" printed `2. 2.83, 8.49` with BD first.
+
+The second gate exists because the first was mistaken for it. "At least one check per problem" was read as "a partially-verified answer key can never slip through", and those are different promises: a problem printing three blanks satisfies the per-id rule with one entry. In a 300-case review, **172 shipped a printed answer that nothing verified** — often the very skill the problem was tagged with. If a problem asks the student to write the number word *and* the ones digit, that is two entries. If a blank is working space rather than an answer, print it with `\scratchblank` and it is not counted. Use it for a **scaffolding blank that transcribes a given** — "$y$ of $C$ ___ $-$ $y$ of $B$ ___" where both coordinates are printed in the stem — and for **a value the problem already asked for elsewhere**. A check on either is vacuous, and dressing one up as a verified answer is the same overclaim the gate exists to stop:
 ```json
 {
   "topic": "derivatives and trig",
@@ -246,15 +300,37 @@ Before compiling, write `/tmp/verify_TOPIC_DATE.json` — a structured data file
 | `compare` | ✅ | Order `values` (`order`: `asc`/`desc`) or state a `relation` (`<`/`>`/`=`) between the first two |
 | `manual` | 👁 | Flagged for human review — never fails automatically |
 
-**Reframe "understanding" topics as checkable tasks** (see `references/problem-library.md` → "Reframing…"): missing-number → `solve`, fact-family → `eval`, estimation → `estimate`, ordering → `compare`, and **error-analysis** ("find and fix the mistake") via the ordinary types — the planted wrong result is checkably wrong and the correction checkably right. Reserve `manual` for genuinely open reasoning (proofs, "explain why", construction).
+**Reframe "understanding" topics as checkable tasks** (see `references/problem-library.md` → "Reframing…"): missing-number → `solve`, fact-family → `eval`, estimation → `estimate`, ordering → `compare`.
+
+**A check must exercise the work the problem asks for.** No gate can enforce this — it is a relationship between the printed stem and the JSON that no static rule reads reliably, so it is on you. Two shipped failures show the shape:
+
+- A problem gives `f(x) = (x²−5x−14)/(x−7)` for `x ≠ 7` and asks for the `c` that makes `f` continuous at 7. Its check was `solve(c − 9, c) == [9]` — it asserts that 9 solves `c − 9 = 0` and never touches the function. Green gate, response claiming "machine-verified with SymPy", nothing verified. Check the limit.
+- A problem gives midpoint `M(3,5)` and endpoint `A(−1,2)` and asks for `B`. Its check was `midpoint([[−1,2],[7,8]]) == [3,5]` — the answer fed in as an input, a given verified as the output. It cannot fail, and the answer bank printed `6. 3, 5`, so a student with the correct `(7,8)` marks themselves wrong. **For an inverse item, compute the asked value.**
+
+`tests/check_answer_slots.py` prints an advisory when a check's expected values are all already in the stem, but it is deliberately advisory: measured over 300 cases it is right about one time in seven.
+
+**Error-analysis ("find and fix the mistake") is TWO responses, not one.** The *correction* is a value, so it takes an ordinary type — the planted wrong result is checkably wrong and the corrected one checkably right. The *diagnosis* ("name the error", "say what rule it breaks", "explain what he did wrong") is prose, so it takes a `manual` entry alongside. Declare both. Routing the whole item through an ordinary type leaves the diagnosis unchecked and, worse, makes the sheet claim it is fully machine-verified: in the 300-case review **202 cases** did exactly that, and many then stated "Nothing is flagged for manual review" in the delivered response, two paragraphs from an answer key printing a grading rubric for the explanation they had just called machine-checked. Deciding per *response* rather than per *problem* is what resolves this — the two rules below are not in tension once you stop asking which one the problem belongs to.
 
 **Data charts:** render bar/line/pictogram charts with pgfplots (see `references/latex-templates.md`), sourcing the plotted values from the same `data` array the `read_data` check uses — never retype them. `solve_interval` on a transcendental equation now confirms *completeness* by mpmath root-enumeration (PASS when the key's roots match all numerically-found roots; MANUAL if counts differ)."
 
 **Complex numbers:** `I` is available in expressions, so `eval` handles complex arithmetic (e.g. `(3+2*I)*(1-4*I)` expected `"11 - 10*I"`). For `solve`/`zeros`, non-real roots are no longer dropped silently — set `"domain": "complex"` to require the full root set (e.g. `x**4-1` → `[1, -1, "I", "-I"]`) or `"domain": "real"` to restrict to real roots.
 
+**An INVERSE solved with `solve` usually needs `"domain": "complex"`, on a problem with nothing complex in it.** `"real"` (the default) keeps only the roots SymPy can prove real, and a root written in the *other* variable often cannot be proved real — `sqrt(y-3)` is real only where `y >= 3`, which the solver does not know. The check then reports an empty root list against your answer:
+```
+❌ solve(x**2 + 3 - y, domain=real) → [] (expected [sqrt(y - 3), -sqrt(y - 3)])
+```
+That reads as "your expected answer is wrong", and it is not — the same entry with `"domain": "complex"` passes unchanged. Confirmed on `x**2+3-y`, `exp(x)-y` and `x**3-y`. Restrict the domain in the PRINTED problem ("for $y \ge 3$"); do not let the field name talk you out of a correct key.
+
 For geometry, **state the givens and let the script compute**: pass raw coordinates to `distance`/`midpoint`/`slope`/`polygon_area` and raw triangle data to `triangle` rather than doing the formula yourself in `expr`. Angle convention: side `a` is opposite angle `A` (matches the figure templates).
 
-Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments, and any explanation/reasoning answer.
+Use `manual` for: graph sketches, sign charts, word problem setups, two-column proofs, constructions, Riemann sum tables, series convergence arguments, drawn or marked representations (circle it, shade it, plot it), a named misconception, and any explanation/reasoning answer — **per response**, so a problem whose (a) is a number and whose (b) is "explain why" gets one ordinary entry and one `manual` entry, not a choice between them.
+
+Two lints in `tests/check_answer_slots.py` enforce this per response, both measured on the 300-case corpus before shipping:
+
+- **Open-ask lint** (hard fail): a stem containing an open ask — explain, describe, justify, say why/whether/which, name the error, sketch, shade, circle the, prove, construct — must have a `manual` entry on that id. 471 problems in 184 of 300 reviewed cases violated this. Do **not** delete or weaken the ask to quiet the gate: the written reasoning is the pedagogy, and a sheet stripped of its explain-items to build green is a worse sheet. "Sketch it if it helps" is scaffolding and is exempt.
+- **Stale-rubric lint** (hard fail): a `manual` desc naming a person or thing that appears nowhere in its problem fails — that is a rubric left over from an earlier draft, and it grades the wrong problem while every other gate stays green. Fires on exactly 1 of the corpus's 299 manual entries: the real defect.
+
+A `manual` entry's `desc` is the rubric a human grader actually reads, so it must describe **the problem as printed**. Nothing binds it automatically: one reviewed case shipped a `desc` grading a scale-spacing argument about a student named "Priya" who appears nowhere in the worksheet — a rubric left over from an earlier draft, green through every gate. Re-read the `desc` against the stem before shipping.
 
 **Optional review aid for `manual` content:** proofs and explanations can't be CAS-verified, but an independent LLM-judge pass can flag likely errors before a human reviews them. See `references/manual-review-aid.md`. This is a review aid, NOT a gate — a `manual` problem stays `manual`; never mark it verified on a judge's say-so.
 
@@ -267,6 +343,8 @@ Use `manual` for: graph sketches, sign charts, word problem setups, two-column p
 **Strict schema:** an unknown `type`, a misspelled field, or a missing required field is a hard failure (exit 1) — never a silent skip. If you need an unverifiable problem, declare it `manual` explicitly.
 
 **Explicit `tol` is capped.** A `tol` wider than max(1% of |expected|, half a unit in the expected value's last written place) is rejected — an unbounded tolerance is a one-field bypass of the whole gate. For genuine estimation problems, add `"tol_reason": "<why>"` to acknowledge the widened tolerance: the run then passes with exit 2 and a visible `⚠` tally, never silently.
+
+**So do not transcribe "round to two decimals" as `"tol": 0.01` — OMIT `tol` instead.** Run the cap on a small answer: with `expected: 0.34` the ceiling is max(0.0034, 0.005) = 0.005, and `"tol": 0.01` is rejected outright. The rule falls out of the arithmetic: **`"tol": 0.01` is illegal whenever |expected| < 1**, so the reflexive transcription passes on `6.30` and fails on `0.34` — the same sheet, two decimals both times. Writing no `tol` at all is not a weaker check but the RIGHT one: the scale-aware default already accepts exactly what rounds to the precision you wrote (`0.005` here), which is what "round to two decimals" means. Reach for an explicit `tol` only when you want something *other* than the written precision, and for a widened one write the `tol_reason` too.
 
 **If verification fails (exit 1):** fix the LaTeX answer key and re-run. Do not compile until the answer key is correct.
 

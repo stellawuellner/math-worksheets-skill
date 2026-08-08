@@ -50,6 +50,11 @@
 #    9 layout-ws       tests/check_layout.py (figure scope + work space +
 #                      answer location)
 #   10 answer-line-ws  tests/check_answer_line.py (answer_unit <-> \answerline)
+#   10b answer-slots-ws tests/check_answer_slots.py — every PRINTED response
+#                      slot, and every lettered sub-part the stem asks for,
+#                      needs its own verify entry. The per-problem-id rule this
+#                      supplements counts problems, not answers; 172 of 300
+#                      reviewed cases shipped an answer nobody checked.
 #   11 compile-*       scripts/compile.sh for ws, ak, ss (ws first — it warms
 #                      the tectonic package cache for the other two). Each
 #                      compile enforces a page budget read from the engine's
@@ -134,8 +139,9 @@ fi
 # Plain arrays only — macOS ships bash 3.2, no associative arrays.
 GATES=(discover template-ws template-ak template-ss verify-ws verify-ss \
        coverage-ss facet-coverage render-figures render-meta quick-answers \
-       layout-ws answer-line-ws compile-ws compile-ak compile-ss \
-       answer-key-ak answer-key-ss ss-structure prose-ws prose-ss overprint)
+       layout-ws answer-line-ws answer-slots-ws compile-ws compile-ak \
+       compile-ss answer-key-ak answer-key-ss ss-structure prose-ws prose-ss \
+       overprint)
 RESULTS=()
 MANUALS=0
 FAILED_GATE=""
@@ -379,7 +385,11 @@ else
   # never serve a stale bank, so no staleness lint exists to drift. The
   # generator also preflights the ak_ source — a generated bank the key never
   # \inputs, or a hand-rolled preamble, is a loud teaching failure here.
-  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX"; then
+  # --ws lets the bank report which printed responses NOTHING verifies. Without
+  # it the key still renders, it just cannot tell the instructor what is
+  # unchecked — so pass it whenever the worksheet source is known.
+  if "$SYMPY_PY" "$SCRIPT_DIR/render_quick_answers.py" "$WS_JSON" "$AK_TEX" \
+       ${WS_TEX:+--ws="$WS_TEX"}; then
     record quick-answers "PASS"
   else
     fail quick-answers
@@ -398,6 +408,13 @@ if "$PYTHON3" "$TESTS_DIR/check_answer_line.py" "$WS_TEX" "$WS_JSON"; then
   record answer-line-ws "PASS"
 else
   fail answer-line-ws
+fi
+
+banner "answer-slot coverage on $(basename "$WS_TEX")"
+if "$PYTHON3" "$TESTS_DIR/check_answer_slots.py" "$WS_TEX" "$WS_JSON"; then
+  record answer-slots-ws "PASS"
+else
+  fail answer-slots-ws
 fi
 
 # Compile ws first: the first tectonic run downloads packages into the shared

@@ -222,6 +222,44 @@ def find_one(d, pattern, what):
     return os.path.join(d, hits[0]), None
 
 
+# A build directory holding two `verify_<stem>.json` files — the usual cause is a
+# stale stem from an earlier attempt in a reused /tmp dir — used to be recorded as
+# a WARNING: discovery returned nothing, no artifact was copied, `result.json` was
+# written anyway with only `task_id` and `recorded`, and the run still printed a
+# line beginning "recorded". Three agents in the 2026-08-06 run hit it and had to
+# catch it by eye; one nearly did not. `package` would have failed the task later
+# as missing-artifact, far from the cause. Discovery that cannot name the artifact
+# is now fatal: nothing is written, nothing is claimed, and the exit code says so.
+def record_abort(task_id, headline, detail=""):
+    print(f"❌ NOT recorded: {task_id} — {headline}", file=sys.stderr)
+    if detail:
+        print(f"   {detail}", file=sys.stderr)
+    print("   Nothing was written: no artifact copied, no observation, no\n"
+          "   result.json — so this capture cannot be mistaken for a success\n"
+          "   later. Build each task in its own EMPTY directory (or delete the\n"
+          "   stale files), then re-run `record`.", file=sys.stderr)
+    return 2
+
+
+def copy_artifact(src_path, dest_path, landed, problems):
+    """Copy, then CONFIRM the destination exists and is non-empty.
+
+    `record` reports what it copied; it must not report a copy it did not make.
+    A silently truncated or unwritten artifact reads downstream as a generator
+    that produced nothing.
+    """
+    try:
+        shutil.copy(src_path, dest_path)
+    except OSError as exc:
+        problems.append(f"copy failed: {os.path.basename(dest_path)} ({exc})")
+        return False
+    if not os.path.isfile(dest_path) or os.path.getsize(dest_path) == 0:
+        problems.append(f"copy did not land on disk: {os.path.basename(dest_path)}")
+        return False
+    landed.append(os.path.basename(dest_path))
+    return True
+
+
 def pdf_page_count(path):
     try:
         r = subprocess.run(["pdfinfo", path], capture_output=True, text=True)
@@ -242,42 +280,59 @@ def cmd_record(a):
         die(f"not a directory: {src}")
 
     out = os.path.join(d, "tasks", a.task_id)
-    os.makedirs(out, exist_ok=True)
     problems = []
+    landed = []
+
+    # DISCOVERY FIRST, and before anything is written. Every artifact name is
+    # derived from the stem of the one verify_<stem>.json in the build dir, so an
+    # ambiguous stem means the whole retention list is unresolvable — there is no
+    # partial record worth keeping, and writing one hides the fault.
+    stem_json, err = find_one(src, r"verify_(?!ss_).+\.json", "verify_<stem>.json")
+    if err:
+        return record_abort(
+            a.task_id, "cannot tell which verify JSON is this task's", err)
+
+    stem = re.sub(r"^verify_|\.json$", "", os.path.basename(stem_json))
+    plan = []          # (source path, destination name)
+    for role, dest in (("ws", "worksheet"), ("ak", "answer_key"), ("ss", "study_guide")):
+        for ext in ("pdf", "tex"):
+            hits = sorted(f for f in os.listdir(src)
+                          if re.fullmatch(rf"(?:[a-z]+_)?{role}[SCX]?_{re.escape(stem)}\.{ext}", f))
+            if len(hits) > 1:
+                return record_abort(
+                    a.task_id, f"more than one {role} {ext} matches stem {stem!r}",
+                    f"candidates: {', '.join(hits)}")
+            if len(hits) == 1:
+                plan.append((os.path.join(src, hits[0]), f"{dest}.{ext}"))
+            elif ext == "pdf":
+                problems.append(f"{role} pdf: found no {role}_{stem}.pdf")
+
+    os.makedirs(out, exist_ok=True)
 
     # Copy the retention list, following build.sh's own naming convention so a
     # task directory is whatever the gate chain actually produced.
-    stem_json, err = find_one(src, r"verify_(?!ss_).+\.json", "verify_<stem>.json")
-    if err:
-        problems.append(err)
-    else:
-        shutil.copy(stem_json, os.path.join(out, "verify.json"))
-        stem = re.sub(r"^verify_|\.json$", "", os.path.basename(stem_json))
-        for role, dest in (("ws", "worksheet"), ("ak", "answer_key"), ("ss", "study_guide")):
-            for ext in ("pdf", "tex"):
-                hits = [f for f in os.listdir(src)
-                        if re.fullmatch(rf"(?:[a-z]+_)?{role}[SCX]?_{re.escape(stem)}\.{ext}", f)]
-                if len(hits) == 1:
-                    shutil.copy(os.path.join(src, hits[0]),
-                                os.path.join(out, f"{dest}.{ext}"))
-                elif ext == "pdf":
-                    problems.append(f"{role} pdf: found {len(hits)} candidates")
-        ss_json = os.path.join(src, f"verify_ss_{stem}.json")
-        if os.path.isfile(ss_json):
-            shutil.copy(ss_json, os.path.join(out, "verify_study_guide.json"))
+    copy_artifact(stem_json, os.path.join(out, "verify.json"), landed, problems)
+    for src_path, dest_name in plan:
+        copy_artifact(src_path, os.path.join(out, dest_name), landed, problems)
+    ss_json = os.path.join(src, f"verify_ss_{stem}.json")
+    if os.path.isfile(ss_json):
+        copy_artifact(ss_json, os.path.join(out, "verify_study_guide.json"),
+                      landed, problems)
 
     log = os.path.join(src, a.gate_log) if a.gate_log else None
     if log and os.path.isfile(log):
-        shutil.copy(log, os.path.join(out, "gate_log.txt"))
+        copy_artifact(log, os.path.join(out, "gate_log.txt"), landed, problems)
     elif os.path.isfile(os.path.join(src, "gate_log.txt")):
-        shutil.copy(os.path.join(src, "gate_log.txt"), os.path.join(out, "gate_log.txt"))
+        copy_artifact(os.path.join(src, "gate_log.txt"),
+                      os.path.join(out, "gate_log.txt"), landed, problems)
     else:
         problems.append("no gate_log.txt — capture build.sh output with `| tee gate_log.txt`")
 
     if a.response_file:
         if not os.path.isfile(a.response_file):
             die(f"no such response file: {a.response_file}")
-        shutil.copy(a.response_file, os.path.join(out, "final_response.md"))
+        copy_artifact(a.response_file, os.path.join(out, "final_response.md"),
+                      landed, problems)
 
     # The judge gets the prompt and the task's own expectations — nothing about
     # who or what generated the artifacts.
@@ -332,6 +387,13 @@ def cmd_record(a):
           f"{declared}/{expected} problems, "
           f"gates {'passed' if obs['gate_chain_passed'] else 'DID NOT PASS'}, "
           f"{obs['worksheet_pages']} ws page(s)")
+    # Name the files that are actually on disk, not the ones a copy was attempted
+    # for. "copied 11 artifacts" is a claim; this is the check behind it.
+    if landed:
+        print(f"   {len(landed)} artifact(s) copied and confirmed on disk: "
+              f"{', '.join(sorted(landed))}")
+    else:
+        print("   NO artifacts landed on disk")
     for p in problems:
         print(f"   • {p}")
     return 0

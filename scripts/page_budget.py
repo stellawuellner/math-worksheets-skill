@@ -43,7 +43,15 @@ Per problem:
     otherwise use)
 
 Two-column drill sheets pack two problems per row, so a sheet whose problems are
-ALL compact is charged half the per-problem height.
+ALL compact is charged half the per-problem height. Compact means the room a
+problem ACTUALLY gets — what its author declared, or the type default when
+nobody declared anything — not what its type would have got by default.
+
+A problem's several verifier entries are one BLOCK on the page, so the budget
+merges them: the block is charged the tallest workspace any of its entries
+claims, carries a figure if any entry does, and is a word problem if any entry
+says so. Reading those facts off the first entry alone is what made the budget
+under-measure and then fail correct sheets at compile.
 
 Exit 0 always when the JSON parses (this computes a budget, it does not judge a
 document). --max-pages prints just the ceiling, for build.sh to pass to
@@ -185,14 +193,11 @@ def unpriced_pictures(spec, tex):
     regions = stem_regions(tex)
     if not regions:
         return []
-    ws_declared, order = {}, []
-    for p in spec.get("problems", []):
-        pid = p.get("id")
-        if not isinstance(pid, int):
-            continue
-        if pid not in ws_declared:
-            order.append(pid)
-        ws_declared[pid] = ws_declared.get(pid) or p.get("workspace_cm")
+    # SAME merge the charge uses, deliberately: this note and the cost model
+    # must never again disagree about whether an author declared a workspace.
+    # When they did, the note asked for a field the sheet already carried.
+    order, merged = merged_problems(spec, require_int_id=True)
+    ws_declared = {pid: m.get("workspace_declared") for pid, m in zip(order, merged)}
     out = []
     for i, region in enumerate(regions):
         pid = order[i] if i < len(order) else i + 1
@@ -213,19 +218,104 @@ def to_cm_unit(value, unit):
     return value * {"cm": 1.0, "mm": 0.1, "in": 2.54, "pt": 0.0352778}.get(unit, 1.0)
 
 
-def problem_cost(p, scale=1.0):
-    """Column height one problem deserves, in cm, at the document's type size."""
-    ptype = p.get("type", "manual")
+def effective_workspace(p):
+    """The workspace this problem ACTUALLY gets, in cm.
+
+    A declared workspace_cm replaces the type default rather than adding to it:
+    the author measured the block, the table only guessed at it. Everything that
+    reasons about how much room a problem has must ask this one function —
+    reading WORKSPACE directly is how the two-column halving came to be decided
+    by a number no problem on the sheet was actually using (see budget()).
+    """
+    default = WORKSPACE.get(p.get("type", "manual"), STANDARD)
     ws = p.get("workspace_cm")
     # verify.py runs first and rejects a non-numeric workspace_cm, but this
     # module is also called directly, so it degrades to the type default rather
     # than dying on input it did not validate.
     try:
-        ws = float(ws) if ws is not None else WORKSPACE.get(ptype, STANDARD)
+        return float(ws) if ws is not None else default
     except (TypeError, ValueError):
-        ws = WORKSPACE.get(ptype, STANDARD)
+        return default
+
+
+def merge_entries(entries):
+    """One problem's several verifier entries collapsed into the one BLOCK the
+    page gives them.
+
+    Several checks bind to a single problem id — a numeric answer, a rubric for
+    the explanation, a second part — and they arrive as separate JSON entries.
+    The page does not care: \\problem lays down one block per id. So the facts
+    that describe that block have to be gathered from ALL of the id's entries,
+    not read off whichever one happens to be first.
+
+    Keeping only the first entry is what this used to do, and it lost every
+    workspace_cm an author wrote on a later one — while unpriced_pictures, forty
+    lines up in this same file, merged across entries and therefore stayed
+    quiet. The budget under-measured, the ceiling came out short, and the
+    compile then failed the sheet asking the author to declare a field they had
+    already declared. Reproduced in a run: the same numbers moved from the last
+    entry of each id to the first took a sheet from 65cm to 129cm, ideal 3 to
+    ideal 6, against a real 7 pages.
+
+    WHERE ENTRIES DISAGREE THE BLOCK GETS THE TALLEST CLAIM. Each entry claims
+    the room it needs — what it declared, or its type's default when it declared
+    nothing — and the block has to hold all of them, so the block is as tall as
+    the tallest. A problem that computes a value AND asks for the reasoning is
+    two entries, `eval` and `manual`, and the writing part still needs its prose
+    room whether or not the arithmetic part put a number on itself.
+
+    That matters because a default is a CLAIM, not a blank. Taking only the
+    declared numbers would let a 5.5cm written on the `eval` half quietly shrink
+    the 8cm the `manual` half was asking for, and an author who declared one
+    number for one check would have silently resized a part they never touched.
+    Measured against the compiled page count of the 600 recorded worksheets:
+    counting defaults as claims puts 50 more sheets closer to their real length
+    and 7 further than reading the declared numbers alone. Single-entry problems
+    — most of any sheet — are unaffected either way: the max of one number is
+    that number.
+    """
+    merged = dict(entries[0])
+    merged["workspace_cm"] = max(effective_workspace(e) for e in entries)
+    # What the cost model charges and what the AUTHOR actually wrote are two
+    # different questions, and the advisory note needs the second one: a block
+    # sized by a type default has not been measured by anybody, and saying so is
+    # the whole point of the note. Both answers come out of this one merge so
+    # the charge and the note can never again disagree about the same sheet.
+    declared = [e.get("workspace_cm") for e in entries]
+    declared = [d for d in declared if d is not None]
+    merged["workspace_declared"] = declared[0] if declared else None
+    for e in entries:
+        if isinstance(e.get("figure"), dict):
+            merged["figure"] = e["figure"]
+            break
+    if any(e.get("word_problem") for e in entries):
+        merged["word_problem"] = True
+    return merged
+
+
+def merged_problems(spec, require_int_id=False):
+    """(ids in document order, one merged problem per id).
+
+    The single place this module turns a verify JSON's entry list into the list
+    of blocks a reader will see. Everything that counts problems, charges them
+    or reports on them goes through here.
+    """
+    groups, order = {}, []
+    for p in spec.get("problems", []):
+        pid = p.get("id")
+        if require_int_id and not isinstance(pid, int):
+            continue
+        if pid not in groups:
+            groups[pid] = []
+            order.append(pid)
+        groups[pid].append(p)
+    return order, [merge_entries(groups[i]) for i in order]
+
+
+def problem_cost(p, scale=1.0):
+    """Column height one problem deserves, in cm, at the document's type size."""
     stem = WORD_PROBLEM_STEM_CM if p.get("word_problem") else STEM_CM
-    cost = (OVERHEAD_CM + stem) * scale + ws
+    cost = (OVERHEAD_CM + stem) * scale + effective_workspace(p)
     if isinstance(p.get("figure"), dict):
         cost += FIGURE_CM
     return cost
@@ -235,18 +325,11 @@ def budget(spec, paper=DEFAULT_PAPER, size=DEFAULT_SIZE, access=DEFAULT_ACCESS):
     """Return the budget dict for a parsed verify JSON."""
     page_cm = PAPER_CM.get(paper, PAPER_CM[DEFAULT_PAPER])
     scale = text_scale(size, access)
-    problems = spec.get("problems", [])
-    # one entry per problem id: several checks may bind to the same problem,
-    # and charging a problem twice would inflate the budget
-    by_id, order = {}, []
-    for p in problems:
-        pid = p.get("id")
-        if pid not in by_id:
-            by_id[pid] = p
-            order.append(pid)
-        elif isinstance(p.get("figure"), dict):
-            by_id[pid] = p          # prefer the entry that carries the figure
-    unique = [by_id[i] for i in order]
+    # one BLOCK per problem id: several checks may bind to the same problem, and
+    # charging a problem twice would inflate the budget — but the id's facts are
+    # spread across its entries, so they are merged rather than picked from the
+    # first one. See merge_entries.
+    _, unique = merged_problems(spec)
 
     declared = spec.get("problem_count", len(unique))
     costs = [problem_cost(p, scale) for p in unique]
@@ -272,9 +355,28 @@ def budget(spec, paper=DEFAULT_PAPER, size=DEFAULT_SIZE, access=DEFAULT_ACCESS):
         packed = sum(c for c in costs if c <= page_cm / 2)
         total = sum(math.ceil(c / page_cm) * page_cm for c in tall) + packed
 
-    # an all-compact sheet is the two-column drill format: two per row
+    # AN ALL-COMPACT SHEET IS THE TWO-COLUMN DRILL FORMAT: TWO PER ROW, so it
+    # is charged half height. What makes a sheet compact is the room its
+    # problems actually get, and this used to ask the TYPE DEFAULT instead —
+    # a number that stops being true the moment an author declares
+    # workspace_cm, which is precisely when it matters.
+    #
+    # The types with the compact default are `compare` and `estimate` (and
+    # `read_data`, `probability`): the elementary comparison and estimation
+    # bands. So a sheet of eight compare problems each declaring 6cm of work
+    # space, set as ordinary single-column \problem with no multicols anywhere
+    # in the .tex, was silently charged half of what it had declared.
+    # Reproduced by changing ONE type field and nothing else: 32.0cm -> 64.1cm,
+    # ideal 2 -> 3, against a real 3 pages; a second sheet 43.8 against a true
+    # 87.6, ideal 2 against a real 4.
+    #
+    # The consequence lands on the author twice. The ceiling derives from the
+    # ideal, so the sheet gets one one to two pages tighter than its content
+    # needs; and the remedy this module prints — declare more workspace_cm —
+    # then buys half of every centimetre it declares, so following the advice
+    # literally cannot close the gap. Asking effective_workspace ends both.
     all_compact = bool(unique) and all(
-        WORKSPACE.get(p.get("type", "manual"), STANDARD) == COMPACT
+        effective_workspace(p) <= COMPACT
         and not isinstance(p.get("figure"), dict) for p in unique)
     if all_compact:
         total /= 2.0

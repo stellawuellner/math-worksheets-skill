@@ -107,7 +107,17 @@ Use repeated `--task-id curr-NNN` options for a smoke test or shard. Each
 
 - `judge-packet.json`: blind prompt, expectations, rubric, and artifact paths;
 - `rendered/`: PNGs for every PDF page;
-- `machine.json`: deterministic evidence and findings;
+- `machine.json`: deterministic evidence and findings. Its `artifact_surfacing`
+  block records, per role, **how** the delivery response was matched —
+  `canonical_filename`, `original_filename`, `stem_convention` or
+  `description_only`. A role matched only by description also raises
+  `artifact_surfaced_without_filename`. That distinction exists because the
+  check used to collapse it: the filename branch compared against the canonical
+  `worksheet.pdf` while responses name the build filename
+  (`ws_numbermatch_curr003.pdf`), so across 300 cases **204 responses named all
+  three artifacts and none were credited** — every pass came from spotting the
+  word "PDF" near a role phrase. Matching is now whitespace-tolerant, so a
+  line-wrapped filename or role phrase still counts;
 - `verdict.template.json`: the exact judge response shape.
 
 The judge must inspect PDFs first, then the secondary evidence, and save a

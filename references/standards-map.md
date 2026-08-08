@@ -3,12 +3,31 @@
 Tag every verify-JSON problem with `"standard"` (a code from THIS file — never
 invent codes) and `"difficulty"` (1–5 per the ladders below).
 
-**If the topic you need has no row, say so rather than reaching for the nearest
-one.** "Never invent a code" is the right rule, but when the map is short it
-quietly forces an off-grade tag: a grade 4–5 measurement sheet was labelled
-`2.MD / 3.MD` because grades 4–5 measurement was missing, which is worse than an
-honest gap. Add the row (with the real CCSS/AP code) in the same change as the
-worksheet that needed it. Ramp difficulty
+**Before you claim a topic has no row, SEARCH THIS FILE.** Not "recall whether
+it has one" — grep it. In a 300-case review, **11 cases stated in the delivered
+response that the map lacked a row that is in fact here**, and then tagged the
+sheet with a lower-grade code:
+
+| the response said | the file says |
+|---|---|
+| "no HSG-CO entry" | `Congruence: transformations, triangle congruence, proofs \| HSG-CO.A–HSG-CO.D` |
+| "no HSG-GMD or HSG-MG entry" | both rows, verbatim |
+| "no complex-number code" | `HSN-CN.A.1–A.3, HSN-CN.B.4–B.6` |
+| "no code for radical equations (the natural code would be HSA-REI.A.2)" | the row **is** `HSA-REI.A.2` |
+| "no row for … increasing/decreasing, concavity and inflection (FUN-4.A)" | `Analytical applications (increasing/decreasing, concavity, inflection) \| FUN-4.A` |
+
+The last two name the exact code they say is missing. One of those sheets then
+tagged all twelve problems of a High School Geometry worksheet with the grade-8
+code `8.G.C.9`. A wrong grade band on every problem is worse than the honest gap
+the rule below is meant to produce, and it is worse precisely because it looks
+like diligence.
+
+**If the topic genuinely has no row after you have searched, say so rather than
+reaching for the nearest one.** "Never invent a code" is the right rule, but
+when the map is short it quietly forces an off-grade tag: a grade 4–5
+measurement sheet was labelled `2.MD / 3.MD` because grades 4–5 measurement was
+missing, which is worse than an honest gap. Add the row (with the real CCSS/AP
+code) in the same change as the worksheet that needed it. Ramp difficulty
 across the worksheet; `verify.py` reports coverage and flags ramp drops.
 
 ## Common Core codes by topic (grades K–4, early elementary)

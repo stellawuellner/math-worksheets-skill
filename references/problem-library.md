@@ -201,6 +201,7 @@ Map each problem to its verify-JSON type as you design it. Geometry rule of thum
 | Inequalities (linear/quadratic) | `inequality` | Solution set vs interval spec |
 | Complex-number arithmetic | `eval` with `I` | e.g. `(3+2*I)*(1-4*I)` |
 | Find ALL roots incl. complex | `solve`/`zeros` + `"domain":"complex"` | non-real roots no longer dropped |
+| Inverse: solve for the OTHER variable | `solve` + `"domain":"complex"` | Counter-intuitive but required. The default `"real"` keeps only roots provably real, and `sqrt(y-3)` is real only for `y >= 3`, so the check returns `[]` and reads as "your answer is wrong". State the restriction in the printed stem |
 | Series & partial sums (incl. Taylor) | `series` | `summation`, finite or `"to":"oo"` |
 | Estimation / rounding | `estimate` | round operands to a place, then evaluate |
 | Ordering / comparing numbers | `compare` | `order`: asc/desc, or `relation` (`<`/`>`/`=`) |

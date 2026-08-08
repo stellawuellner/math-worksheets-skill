@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Contract checks for the end-to-end capability and smoke eval manifests."""
+"""Contract checks for the end-to-end capability and smoke eval manifests, plus
+the `run_eval.py record` capture contract."""
 
+import contextlib
+import io
 import json
 import os
+import shutil
 import sys
+import tempfile
 
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -124,6 +129,94 @@ for item in smoke_evals:
     check(f"{item.get('eval_name')}: expected output is actionable",
           isinstance(item.get("expected_output"), str)
           and "zero incorrect answers" in item["expected_output"])
+
+print("Record capture contract (run_eval.py):")
+# WHAT WENT WRONG. A build directory holding two `verify_<stem>.json` files — a
+# stale stem from an earlier attempt in a reused /tmp dir — made discovery return
+# nothing. `record` then copied NO artifact, wrote a `result.json` containing only
+# `task_id` and `recorded`, and still printed a line beginning "recorded", so the
+# task looked captured and only failed much later, in `package`, as
+# missing-artifact. Three agents in the 2026-08-06 run hit it and caught it by
+# hand. A partial record must never be reported as success.
+sys.path.insert(0, os.path.join(ROOT, "evals"))
+import run_eval  # noqa: E402
+
+
+def _build_dir(stems):
+    """A build directory as build.sh leaves it, one artifact set per stem."""
+    d = tempfile.mkdtemp()
+    for stem in stems:
+        json.dump({"problem_count": 8, "problems": [{"id": i} for i in range(1, 9)]},
+                  open(os.path.join(d, f"verify_{stem}.json"), "w"))
+        for role in ("ws", "ak", "ss"):
+            with open(os.path.join(d, f"{role}_{stem}.pdf"), "w") as fh:
+                fh.write("%PDF-1.4\n")
+    with open(os.path.join(d, "gate_log.txt"), "w") as fh:
+        fh.write("BUILD PASSED\n")
+    return d
+
+
+def _record(run_id, task_id, source):
+    """Run `record`, returning (exit code, everything it printed)."""
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = run_eval.main(["record", task_id, "--run", run_id, "--from", source])
+    return code, out.getvalue() + err.getvalue()
+
+
+real_runs = run_eval.RUNS
+sandbox = tempfile.mkdtemp()
+builds = []
+try:
+    # Never touch evals/runs: a judge may be reading a real run right now.
+    run_eval.RUNS = os.path.join(sandbox, "runs")
+    task_id = load(os.path.join(ROOT, "evals", "curriculum-suite-500.json"))["tasks"][0]["id"]
+    with contextlib.redirect_stdout(io.StringIO()):
+        run_eval.main(["start", "--suite", "curriculum", "--tasks", task_id,
+                       "--generator-agent", "test", "--generator-model", "test-model"])
+    run_id = os.listdir(run_eval.RUNS)[0]
+    result = os.path.join(run_eval.RUNS, run_id, "tasks", task_id, "result.json")
+    observation = os.path.join(run_eval.RUNS, run_id, "observations", f"{task_id}.json")
+
+    clean = _build_dir(["good_curr001"])
+    builds.append(clean)
+    code, said = _record(run_id, task_id, clean)
+    check("record: an unambiguous build dir is recorded", code == 0)
+    check("record: it writes result.json", os.path.isfile(result))
+    check("record: it confirms the artifacts landed on disk",
+          "confirmed on disk" in said and "worksheet.pdf" in said)
+
+    os.remove(result)
+    os.remove(observation)
+    colliding = _build_dir(["good_curr001", "stale_curr001"])
+    builds.append(colliding)
+    code, said = _record(run_id, task_id, colliding)
+    check("record: two verify_<stem>.json files is a HARD failure", code != 0)
+    check("record: the collision is reported with ❌, never as 'recorded'",
+          "❌" in said and "NOT recorded" in said)
+    check("record: both colliding stems are named",
+          "verify_good_curr001.json" in said and "verify_stale_curr001.json" in said)
+    check("record: no partial result.json is left behind",
+          not os.path.isfile(result))
+    check("record: no observation is left behind", not os.path.isfile(observation))
+    check("record: the task stays pending, so `next` hands it out again",
+          not os.path.isfile(result))
+
+    # Same class: a stem that resolves but whose PDFs are ambiguous cannot name
+    # the artifact either, and must not be captured as a guess.
+    two_pdfs = _build_dir(["good_curr001"])
+    builds.append(two_pdfs)
+    shutil.copy(os.path.join(two_pdfs, "ws_good_curr001.pdf"),
+                os.path.join(two_pdfs, "draft_ws_good_curr001.pdf"))
+    code, said = _record(run_id, task_id, two_pdfs)
+    check("record: two candidate worksheet PDFs is a HARD failure", code != 0)
+    check("record: no partial result.json from an ambiguous PDF",
+          not os.path.isfile(result))
+finally:
+    run_eval.RUNS = real_runs
+    shutil.rmtree(sandbox, ignore_errors=True)
+    for d in builds:
+        shutil.rmtree(d, ignore_errors=True)
 
 if FAILS:
     print(f"\n❌ {len(FAILS)} eval-suite contract check(s) failed")

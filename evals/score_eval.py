@@ -226,6 +226,12 @@ def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--run")
     p.add_argument("--allow-self-judging", action="store_true")
+    p.add_argument("--require-single-judge", action="store_true",
+                   help="refuse to score when verdicts span more than one "
+                        "judge model (automatic for calibration runs)")
+    p.add_argument("--allow-mixed-judges", action="store_true",
+                   help="score a multi-model calibration anyway; every "
+                        "per-class rate it reports is a mixed estimate")
     p.add_argument("--skip-machine-checks", action="store_true",
                    help="skip the bank-diff/slot-gate/standards layer "
                         "(harness debugging only)")
@@ -280,6 +286,30 @@ def main(argv=None):
               "   self-contained — hand another agent the JUDGING.md brief and let it\n"
               "   write into verdicts/. Nothing needs regenerating.")
         return 1
+
+    # ---- one instrument, or say so
+    # A calibration run exists to produce PER-CLASS detection rates. Split the
+    # verdicts across two judge models and every one of those rates becomes an
+    # estimate over 4-5 cases from a mixed instrument, which is not a
+    # measurement of either model. The first calibration did exactly that --
+    # 9 verdicts by gpt-5, 16 by gpt-5.6-sol, and the split was uneven by class
+    # (all 5 ramp-inversions to one, 4 of 5 vague-rubrics to the other), so the
+    # only near-clean number it produced was worked-step-error at 3 of 4.
+    judge_models = {m for _, m in judges if m and m != "?"}
+    if len(judge_models) > 1:
+        print(f"⚠ {len(judge_models)} judge models across these verdicts: "
+              f"{', '.join(sorted(judge_models))}")
+        if run.get("calibration") or a.require_single_judge:
+            print("❌ refusing to score: this run needs ONE judge model.")
+            print("   Per-class rates over a mixed instrument measure neither "
+                  "model. Re-judge the whole run with one, or pass\n"
+                  "   --allow-mixed-judges to score it anyway and label every "
+                  "rate an estimate.")
+            if not a.allow_mixed_judges:
+                return 1
+        else:
+            print("   Not a calibration run, so this is reported, not blocked "
+                  "— but any per-class rate drawn from it is a mixed estimate.")
 
     missing_verdicts = [t for t in run["task_ids"] if t not in verdicts]
     stray = [t for t in verdicts if t not in run["task_ids"]]

@@ -382,6 +382,20 @@ def main():
     if not a.dry_run and manifest and a.record_run:
         copy_packet(a.source, a.record_run, len(manifest))
         print(f"\njudging packet copied from {a.source} with counts fixed up")
+        # Mark the run as a calibration so score_eval.py can require a single
+        # judge model without being told. The first calibration split its 25
+        # verdicts across gpt-5 and gpt-5.6-sol -- unevenly, all five
+        # ramp-inversions to one model and four of five vague-rubrics to the
+        # other -- so every per-class rate was an estimate over 4-5 cases from
+        # a MIXED instrument. That is not a detail to remember next time; it is
+        # a property of the run, so it belongs in the run.
+        rj = os.path.join(RUNS, a.record_run, "run.json")
+        if os.path.isfile(rj):
+            meta = json.load(open(rj, encoding="utf-8"))
+            meta["calibration"] = True
+            json.dump(meta, open(rj, "w", encoding="utf-8"), indent=2)
+            print("run.json marked calibration=true — scoring will require "
+                  "one judge model across all verdicts")
     if not a.dry_run and manifest:
         os.makedirs(os.path.join(ANALYSIS, a.run), exist_ok=True)
         path = os.path.join(ANALYSIS, a.run, "seed-manifest.json")

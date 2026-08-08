@@ -200,12 +200,38 @@ if os.path.isfile(V2):
     # an exact-substring assertion breaks on a line fill rather than on meaning.
     check("and says what to score instead",
           "score what it says about the CONTENT" in " ".join(v2.split()))
+    # The two classes the calibration measured at 0 of 5 are both metadata
+    # fitness, not printed mathematics: a reversed difficulty ramp and a rubric
+    # hollowed to "grade the explanation". Transcription is what closed the
+    # same gap for the answer bank, so both are now transcribed before they are
+    # scored, and the scoring anchors point at the transcription rather than at
+    # an impression.
+    flat = " ".join(v2.split())
+    check("v2 makes the difficulty ramp a transcription, not an inference",
+          "## Mandatory ramp transcription" in v2 and "ramp: 1 2 2" in v2)
+    check("and problem_set_design is scored against that transcription",
+          "against the ramp you transcribed above" in flat)
+    check("a falling ramp on a non-drill sheet is capped",
+          "falling or mixed ramp" in flat and '"format": "drill"` is at most 2'
+          in flat)
+    check("v2 makes a manual rubric a transcription too",
+          "## Mandatory rubric transcription" in v2
+          and "grader decision:" in v2)
+    check("and an unstatable grader decision caps answer_key_quality",
+          "caps `answer_key_quality` at 2" in flat)
+    check("both cite the measured miss rate rather than asserting a rule",
+          flat.count("zero times out of five") == 2)
 pkg = open(os.path.join(ROOT, "evals", "run_eval.py"), encoding="utf-8").read()
 check("run_eval.py package copies the standards map into the run",
       'shutil.copy(smap, os.path.join(d, "standards-map.md"))' in pkg)
 seed = open(os.path.join(ROOT, "evals", "seed_defects.py"), encoding="utf-8").read()
 check("the calibration seeder carries the map too",
       '"standards-map.md"' in seed)
+check("the seeder marks its run so scoring can require one judge model",
+      'meta["calibration"] = True' in seed)
+sev = open(os.path.join(ROOT, "evals", "score_eval.py"), encoding="utf-8").read()
+check("scoring refuses a multi-model calibration by default",
+      'run.get("calibration") or a.require_single_judge' in sev)
 
 if FAILS:
     print(f"\n❌ {len(FAILS)} curriculum-eval contract check(s) failed:")

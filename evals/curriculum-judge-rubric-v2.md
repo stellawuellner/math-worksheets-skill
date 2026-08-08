@@ -61,6 +61,55 @@ off the page is mechanically detectable. If the key has no Quick Answers
 section, write `bank row N: <no bank>` and treat `answer_key_quality` as
 capped at 2.
 
+`answer_key_quality` is also capped at 2 when the rubric transcription below
+yields no statable grader decision.
+
+## Mandatory ramp transcription
+
+Read the `difficulty` field of every problem in `verify.json`, in id order, and
+transcribe the sequence verbatim into `artifact_findings`:
+
+```
+ramp: 1 2 2 3 3 3 4 4 5 5
+```
+
+Then write one line stating what that sequence does — `rising`, `flat`,
+`falling`, or `mixed` — and, if the sheet declares `"format": "drill"`, say so.
+
+**Why this is mandatory rather than left to judgement.** A seeded-defect run
+reversed the declared ramp on five sheets so each opened at its hardest, and the
+judge remarked on it **zero times out of five**, while catching 3 of 5 corrupted
+worked steps on the same run. The difference is not difficulty: a corrupted
+equality is a printed mathematical statement, and a ramp is a property of a
+metadata field nobody is asked to look at. Transcription is what closed the same
+gap for the answer bank. A falling ramp on a sheet that does not declare itself
+a drill is a `problem_set_design` score of at most 2.
+
+## Mandatory rubric transcription
+
+Pick one `manual` entry from `verify.json` — the first one — and transcribe its
+`desc` verbatim into `artifact_findings`, then write one sentence naming the
+decision a grader could make with it:
+
+```
+manual rubric (id 7): "Full credit names the plus-or-minus ambiguity AND says
+an initial value fixes the branch. Half credit for naming only one."
+grader decision: award full credit only if BOTH the ambiguity and the
+initial-value fix are stated.
+```
+
+If you cannot state a decision — because the desc says only "Grade the
+student's explanation", or names a criterion the printed problem does not
+contain — say so in that line. That is the defect, not a formatting problem:
+the desc IS the rubric a human grader reads, and one that names no criterion
+means the item is unscored in practice while the sheet reports it as covered.
+The same seeded run hollowed five rubrics to a bare "grade the explanation" and
+the judge mentioned it **zero times out of five**. A desc from which no grader
+decision can be stated caps `answer_key_quality` at 2.
+
+If the sheet has no `manual` entry, write `manual rubric: <none>` and skip the
+decision line.
+
 ## Behavioral anchors
 
 Score 0–4 per dimension. General scale: **0** the behavioral test cannot even
@@ -84,7 +133,10 @@ not against memory.
 **Test for 4:** read the problems in order as a student would. Difficulty
 ramps (or the sheet declares itself a flat drill), no problem is redundant
 with a neighbor, distractors and traps are deliberate, and every sub-part
-asks for something the sheet actually teaches or exercises.
+asks for something the sheet actually teaches or exercises. **Score this
+against the ramp you transcribed above, not against an impression of the
+sheet** — a falling or mixed ramp on a sheet that does not declare
+`"format": "drill"` is at most 2, however good the individual problems are.
 
 ### mathematical_correctness
 **Test for 4:** you independently recomputed **every** final answer and every

@@ -1218,6 +1218,70 @@ if shutil.which("pdftotext"):
 else:
     print("  skip  pdftotext is not available")
 
+# ── A calibration run must be scored by ONE judge model ─────────────────────
+# The first seeded-defect calibration split its 25 verdicts across two models,
+# 9 by gpt-5 and 16 by gpt-5.6-sol, and the split was uneven BY DEFECT CLASS:
+# all five ramp-inversions went to one model, four of five vague-rubrics to the
+# other. Every per-class rate it produced was therefore an estimate over 4-5
+# cases from a mixed instrument, measuring neither model. That is a property of
+# the run, so seed_defects.py stamps calibration=true into run.json and scoring
+# refuses rather than leaving it to whoever reads the report later.
+print("\ncalibration runs need one instrument:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    dump(temp / "suite.json", {"suite": {"name": "t"}, "judge_protocol": SE_DIMS})
+    run_dir = temp / "runs" / "cal-t"
+    for tid in ("c-001", "c-002"):
+        td = run_dir / "tasks" / tid
+        td.mkdir(parents=True)
+        dump(td / "task.json", {"id": tid, "band": "b", "domain": "d"})
+        dump(td / "verify.json", {"topic": "t", "problem_count": 1,
+                                  "problems": [{"id": 1, "type": "eval",
+                                                "expr": "20+7", "expected": 27}]})
+        (td / "worksheet.tex").write_text(
+            "\\problem[2cm]{Add 20 + 7.\\ansline}\n", encoding="utf-8")
+        mk_pdf(td / "answer_key.pdf",
+               ["Quick Answers", "", "1. 27", "", "Worked Solutions"])
+
+    def write_run(calibration, models):
+        dump(run_dir / "run.json", dict(
+            run_id="cal-t", suite="t", suite_file="suite.json", shard="t",
+            repo_commit="deadbeef",
+            generator={"agent": "gen", "model": "gen-model"},
+            task_ids=["c-001", "c-002"],
+            **({"calibration": True} if calibration else {})))
+        vd = run_dir / "verdicts"
+        vd.mkdir(exist_ok=True)
+        for tid, model in zip(("c-001", "c-002"), models):
+            dump(vd / f"{tid}.json", se_verdict(
+                tid, judge={"agent": "test-judge", "model": model}))
+
+    def score(*argv):
+        original = se.ROOT, se.RUNS
+        se.ROOT, se.RUNS = str(temp), str(temp / "runs")
+        try:
+            return se.main(["--run", "cal-t", *argv])
+        finally:
+            se.ROOT, se.RUNS = original
+
+    write_run(True, ("judge-a", "judge-b"))
+    check("a calibration run judged by two models is refused", score() == 1)
+    check("--allow-mixed-judges scores it anyway, deliberately",
+          score("--allow-mixed-judges") == 0)
+
+    write_run(True, ("judge-a", "judge-a"))
+    check("one model across every verdict scores normally", score() == 0)
+
+    # Ordinary runs are NOT blocked: a 300-case acceptance run split across
+    # three graders is how run 2 was judged, and its headline is an aggregate,
+    # not a per-class rate. The flag exists for the case that needs it.
+    write_run(False, ("judge-a", "judge-b"))
+    check("a NON-calibration run with two models is reported, not blocked",
+          score() == 0)
+    check("--require-single-judge blocks it on demand",
+          score("--require-single-judge") == 1)
+
+
 if FAILS:
     print(f"\nFAIL: {len(FAILS)} scoring-harness check(s)")
     for failure in FAILS:

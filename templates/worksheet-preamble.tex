@@ -25,8 +25,44 @@
 \usepackage{tikz, pgfplots}
 \usepackage{enumitem, fancyhdr, multicol, array, booktabs}
 \usepackage{mdframed, xcolor}
+% adjustbox: shrink an oversized figure to the text width instead of letting it
+% run into the margin. The lever it replaces is worse — an author who cannot fit
+% a figure otherwise redraws it smaller by hand, or drops detail from it.
+\usepackage{adjustbox}
 \pgfplotsset{compat=1.18}
-\usetikzlibrary{calc, angles, quotes}   % needed by the geometric figure macros
+% TikZ libraries. Each one below is loaded because a MATH worksheet needs it;
+% see references/latex-templates.md for which problem shapes use which, with
+% worked snippets. Measured cost of the four added here plus the three pgfplots
+% libraries plus adjustbox: 0.443s -> 0.517s per document on an empty file, so
+% about two minutes across a 1800-document run. Cheap enough to load once for
+% every document rather than have authors guess which to request.
+\usetikzlibrary{calc, angles, quotes,   % the geometric figure macros
+                arrows.meta,            % -{Stealth} number lines, vectors, maps
+                patterns,               % shaded fraction / area models
+                decorations.pathreplacing,  % braces annotating an interval
+                positioning,            % relative node placement
+                intersections,          % named paths; construction problems
+                shapes.geometric}       % flowchart / sorting-diagram nodes
+\usepgfplotslibrary{fillbetween,        % area between curves (definite_integral)
+                    statistics,         % BOXPLOTS, binding to the stats type
+                    groupplots}         % side-by-side comparison axes
+
+% NOT loaded, deliberately, so the reason survives the next person who reads a
+% package list and starts adding:
+%   forest      tree diagrams. Real math content (factor trees, probability
+%               trees), but it costs +0.22s per document on top of everything
+%               above -- more than every other addition combined -- and TikZ's
+%               built-in tree layout draws both. Use \node ... child { }.
+%   tikz-cd     commutative diagrams. Category theory, not K-12 or intro
+%               college worksheets.
+%   circuitikz, chemfig, quantikz, bytefield
+%               circuits, chemistry, quantum gates, packet layouts. Not maths.
+%   standalone  precompiling figures to separate PDFs. It would break the
+%               guarantee this pipeline is built on: figures are generated from
+%               the verify JSON at build time so a figure CANNOT disagree with
+%               the answer it illustrates. A precompiled PDF is an artifact that
+%               can go stale against the JSON. Compile time is also not the
+%               bottleneck here -- a whole document is about half a second.
 
 % ── Answer location (constructed, never hand-typed) ─────────────────────────
 % A worksheet problem with workspace but no designated answer blank makes the

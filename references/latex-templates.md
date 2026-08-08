@@ -567,6 +567,105 @@ Two costs, both silent:
 Use it only for a display genuinely shared by several problems. A figure one problem
 owns stays inside that problem's block, where both checks still run.
 
+### Box plot — `boxplot prepared`, matching `stats`
+
+**Never hand pgfplots the raw data and let it compute the quartiles.** It uses an
+interpolating convention; `verify.py`'s `stats` type uses school median-of-halves. On
+`[4, 6, 7, 9, 11, 12, 18]` they disagree — verify says median 9, q1 6, q3 12, while
+pgfplots draws median 8 and a box from 5 to 11.5. A sheet asking "find the median"
+would print a figure contradicting its own answer key, and no gate reads inside a
+plot. Declare the five-number summary as `stats` entries and pass those SAME numbers:
+
+```latex
+% median/q1/q3 below are the values the stats entries verify -- not retyped by eye
+\begin{center}\begin{tikzpicture}
+\begin{axis}[width=9cm, height=3.2cm, xmin=0, xmax=20, ytick=\empty,
+             axis lines=left, xlabel={Minutes}]
+  \addplot+[boxplot prepared={lower whisker=4, lower quartile=6, median=9,
+                              upper quartile=12, upper whisker=18},
+            black, fill=gray!20] coordinates {};
+\end{axis}\end{tikzpicture}\end{center}
+```
+
+### Area between two curves — matches `definite_integral`
+`name path` + `fill between`. Keep the plotted functions the same expressions the
+`definite_integral` entry integrates, and the `domain` its `from`/`to`.
+```latex
+\begin{center}\begin{tikzpicture}
+\begin{axis}[width=8cm, height=5cm, domain=0:2, samples=60,
+             axis lines=middle, xlabel={$x$}, ylabel={$y$}, ymin=0, ymax=4.5]
+  \addplot[thick, name path=f]{x^2};
+  \addplot[thick, name path=g]{2*x};
+  \addplot[gray, opacity=0.35] fill between[of=f and g, soft clip={domain=0:2}];
+\end{axis}\end{tikzpicture}\end{center}
+```
+
+### Shaded area model (fractions, percent, probability)
+`patterns` rather than a solid fill: hatching survives photocopying and greyscale
+printing, which a light `fill=gray!30` does not. Shade the numerator's parts.
+```latex
+% 3/8 shaded
+\begin{center}\begin{tikzpicture}[scale=0.7]
+  \foreach \i in {0,...,7}{\draw (\i,0) rectangle (\i+1,1);}
+  \foreach \i in {0,1,2}{\fill[pattern=north east lines] (\i,0) rectangle (\i+1,1);}
+\end{tikzpicture}\end{center}
+```
+
+### Number line — matches `inequality` / `compare`
+`arrows.meta` gives a real arrowhead (`-{Stealth}`); a bare `->` is thin and reads as
+a tick at small sizes. Closed dot for `<=`/`>=`, open (`draw, fill=white`) for strict.
+```latex
+% x >= -1
+\begin{center}\begin{tikzpicture}[scale=0.9]
+  \draw[-{Stealth}] (-4.4,0) -- (4.4,0);
+  \foreach \x in {-4,...,4}{\draw (\x,0.12) -- (\x,-0.12) node[below]{\scriptsize$\x$};}
+  \draw[very thick] (-1,0) -- (4.3,0);
+  \fill (-1,0) circle (2.5pt);
+  \draw[-{Stealth}, very thick] (4.0,0) -- (4.4,0);
+\end{tikzpicture}\end{center}
+```
+
+### Brace annotating a part — bar models, ratio and part-whole problems
+`decorations.pathreplacing`. This is how a "twice as long as" relation is shown
+rather than asserted, and the labels are the same symbols the check uses.
+```latex
+\begin{center}\begin{tikzpicture}
+  \draw[thick] (0,0) -- (6,0);
+  \foreach \x in {0,2,6}{\draw (\x,0.1)--(\x,-0.1);}
+  \draw[decorate, decoration={brace, amplitude=6pt}] (0,0.25) -- (2,0.25)
+        node[midway, above=6pt]{\small $x$};
+  \draw[decorate, decoration={brace, amplitude=6pt}] (2,0.25) -- (6,0.25)
+        node[midway, above=6pt]{\small $3x$};
+\end{tikzpicture}\end{center}
+```
+
+### Two displays side by side — `groupplots`
+For compare-the-distributions items, so both axes are built once with shared limits
+instead of two `tikzpicture`s that can drift apart in height or scale.
+```latex
+\begin{center}\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
+                  width=5cm, height=3.6cm, axis lines=left, ymin=0]
+  \nextgroupplot[title={\small Class A}, symbolic x coords={A,B,C}, xtick=data, ybar]
+    \addplot coordinates {(A,4) (B,7) (C,2)};
+  \nextgroupplot[title={\small Class B}, symbolic x coords={A,B,C}, xtick=data, ybar]
+    \addplot coordinates {(A,6) (B,3) (C,8)};
+\end{groupplot}\end{tikzpicture}\end{center}
+```
+
+### Fitting an oversized figure — `adjustbox`
+When a figure is genuinely wider than the column, scale it; do not redraw it smaller
+by hand and do not drop detail to make it fit.
+```latex
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture} ... \end{tikzpicture}
+\end{adjustbox}
+```
+`max width` only shrinks — a figure already narrower is untouched, so this is safe to
+wrap around anything wide. It scales the FONT too, so a figure shrunk far enough stops
+being legible: if `adjustbox` is doing more than about 15%, the figure wants fewer
+labels, not more scaling.
+
 ### 3D solids (volume & surface area problems)
 Cylinder:
 ```latex

@@ -96,6 +96,23 @@ See `references/latex-templates.md` → "Skills Summary / Study Guide Template" 
 
 See `references/latex-templates.md` for document templates, coordinate planes, tables, geometric figures, and answer key patterns.
 
+**Draw diagrams in TikZ, not as imported images.** TikZ uses the document's own fonts and line weights, so a figure's labels match the surrounding mathematics exactly — an imported bitmap or an externally-drawn PDF does not, and cannot be regenerated when the numbers change. The shipped preamble loads TikZ, pgfplots and the libraries below for every document, so nothing needs requesting:
+
+| Library | Use it for | Template |
+|---|---|---|
+| `arrows.meta` | number lines, vectors, mapping diagrams — `-{Stealth}` reads as an arrow at small sizes where a bare `->` reads as a tick | "Number line" |
+| `patterns` | shaded fraction / percent / probability area models; hatching survives photocopying where a light grey fill does not | "Shaded area model" |
+| `decorations.pathreplacing` | braces on bar models and part-whole diagrams | "Brace annotating a part" |
+| `pgfplots: statistics` | box plots | "Box plot" |
+| `pgfplots: fillbetween` | area between curves | "Area between two curves" |
+| `pgfplots: groupplots` | two displays with shared limits | "Two displays side by side" |
+| `adjustbox` | scaling a figure that is genuinely too wide | "Fitting an oversized figure" |
+| `positioning`, `intersections`, `shapes.geometric` | relative node placement, named-path constructions, sorting-diagram nodes | — |
+
+**The binding rule applies to every one of them: a figure's numbers come from the same JSON the checker reads.** The sharpest trap is the box plot. Hand pgfplots raw data and it computes quartiles by an interpolating convention, while `verify.py`'s `stats` type uses school median-of-halves — on `[4, 6, 7, 9, 11, 12, 18]` verify says median 9, q1 6, q3 12 and pgfplots draws median 8 with a box from 5 to 11.5. The sheet would print a figure contradicting its own answer key, and no gate reads inside a plot. Declare the five-number summary as `stats` entries and pass those values with `boxplot prepared`.
+
+`forest`, `tikz-cd`, `circuitikz`, `chemfig` and `quantikz` are deliberately NOT loaded — see the reasons in `templates/worksheet-preamble.tex`. Factor trees and probability trees, the one genuinely mathematical case, draw fine with TikZ's built-in `child` syntax at no extra load cost.
+
 **Answer-key shell:** the `ak_` document starts exactly like the worksheet
 (`\input{worksheet-preamble}`), then `\akheader{TOPIC}` + `\aktitleblock{...}`, and ONE
 `\input{qa_TOPIC_DATE}` line directly under the title block — the build driver's

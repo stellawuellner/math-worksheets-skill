@@ -114,21 +114,34 @@ four runs:
   "slope of JK" and "slope of the image J'K'" are equal *because* rigid
   motions preserve slope.
 
-The rules that DO hold up are narrow but real:
+The rules that DO hold up are narrow but real — and the first version of this
+section overclaimed them, so the correction is recorded here rather than
+papered over. An earlier draft counted "18 entries across 8 cases, 18 for 18"
+for the equation rule. Reading each slot in full context halves it: "both
+solutions **of the** equation", "right-hand side **of the** equation",
+"equation **value** at 4" and "litres **from the** equation" all name a part
+of an equation or a value derived from one, and those keys are correct. The
+word "equation" appearing in a slot is not the same fact as the slot asking
+for an equation.
 
-- a slot containing "colon form" whose value has no `:`, or "word form" whose
-  value has no letters — 3 hits, 3 true (both curr-151 rows).
-- a slot naming **"the equation"** whose value contains no `=` — **18 entries
-  across 8 cases**: curr-188 (the one the judge caught), plus curr-190 ×5,
-  curr-225 ×3, curr-338 ×3, curr-400 ×2, curr-244, curr-245, curr-373.
-  Excluding "…solved for y", which names a side rather than a whole equation.
+What survives full-context reading, measured over 2953 slotted entries:
 
-That second count is the finding worth acting on: the judge caught **1 of 8**
-affected cases. It rejected curr-188 and passed the other seven, which carry
-the identical defect — curr-190 five times over. So this is not a rare slip,
-it is a systematic 8-case pattern that a single sampled judgement surfaced.
-Worth shipping as a lint; it is cheap and its precision on this corpus is 18
-for 18.
+- a slot whose **head noun is "equation"** (excluding of/from/in/using-the-
+  equation, "equation value", "solved for") with no `=` in the value —
+  **9 entries across 3 cases**: curr-188 ×2 (the one the judge caught),
+  curr-190 ×5, curr-400 ×2. 9 for 9.
+- "colon form" with no `:`, or "word form" with no word — 3 entries, 1 case
+  (curr-151), 3 for 3.
+
+The judge caught **1 of the 3** affected equation cases — curr-190 carries
+the identical defect five times and was ACCEPTED. A single sampled judgement
+surfaced a systematic pattern; the lint finishes it.
+
+**Shipped**: `slot_form_faults` in `tests/check_answer_slots.py`, hard-fail,
+12/12 precise on this corpus, with the four part-of-an-equation shapes and the
+percent-of-a-count shape pinned as must-not-fire tests. The fix it teaches is
+the `equiv` equation form landed this session: key `expr "y - 6*x"`,
+`expected "y = 6*x"`, and the bank prints the equation.
 
 ## 6. Consistency check
 

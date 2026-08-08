@@ -221,6 +221,53 @@ def main():
     check("\\item[(a)] sub-parts still FAIL when uncovered",
           rc == 1, out.strip()[-160:])
 
+    # 20. SLOT-FORM CONTRACT. The run-2 judge rejected curr-188 for a bank row
+    #     reading "the equation = 6" and curr-151 for word/colon/fraction-form
+    #     slots all keyed "3/5" — a slot label promising a FORM the value is
+    #     not in. The judge caught 1 of the 3 affected cases (curr-190 carries
+    #     the identical defect FIVE times and was ACCEPTED); this gate catches
+    #     all of them. Measured 12/12 precise over the four runs' 2953 slotted
+    #     entries.
+    rc, out = run(r"\problem[5cm]{The graph shows distance $y$ after $x$ "
+                  r"seconds. (a) Write the equation. \ansblank}",
+                  [{"id": 1, "type": "slope", "points": [[0, 0], [1, 6]],
+                    "expected": 6, "slot": "(a) the equation"}])
+    check("an 'equation' slot keyed to a bare slope FAILS",
+          rc == 1 and "promises an EQUATION" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[5cm]{The graph shows distance $y$ after $x$ "
+                  r"seconds. (a) Write the equation. \ansblank}",
+                  [{"id": 1, "type": "equiv", "expr": "y - 6*x",
+                    "expected": "y = 6*x", "slot": "(a) the equation"}])
+    check("the same slot keyed to the equation itself passes", rc == 0,
+          out.strip()[-160:])
+    # "equation" naming a PART of one is a correct key — all four corpus
+    # shapes, which the first cut of the lint flagged as 9 false positives.
+    for slot in ("both solutions of the equation",
+                 "(c) right-hand side of the equation",
+                 "(b) equation value at 4",
+                 "(b) litres from the equation"):
+        rc, out = run(r"\problem[4cm]{Solve. \ansblank}",
+                      [entry(1, slot=slot)])
+        check(f"a part-of-the-equation slot does not fire ({slot!r})",
+              rc == 0, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Write the ratio two ways. "
+                  r"colon form: \ansblank \quad fraction form: \ansblank}",
+                  [entry(1, expected="3/5", type="eval", expr="3/5",
+                         slot="colon form"),
+                   entry(1, expected="3/5", type="eval", expr="3/5",
+                         slot="fraction form")])
+    check("a 'colon form' slot keyed to a fraction FAILS",
+          rc == 1 and "COLON form" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Write it in word form. \ansblank}",
+                  [entry(1, expected=35, slot="(a) word form")])
+    check("a 'word form' slot keyed to a number FAILS",
+          rc == 1 and "WORD form" in out, out.strip()[-160:])
+    rc, out = run(r"\problem[4cm]{Ten percent of the 350 seats. \ansblank}",
+                  [entry(1, expected=35, slot="(a) ten percent of the seats")])
+    check("a 'percent of' slot asking for a COUNT does not fire "
+          "(the rejected broad detector was 0-for-23 here)", rc == 0,
+          out.strip()[-160:])
+
     print()
     if FAILS:
         print(f"❌ {len(FAILS)} answer-slot check(s) failed:")

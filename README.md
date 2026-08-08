@@ -1,7 +1,7 @@
 # math-worksheets — Agent Skill
 
 [![tests](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/stellawuellner/math-worksheets-skill/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](tests/coverage.sh)
+[![coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](tests/coverage.sh)
 [![verifier](https://img.shields.io/badge/false%20accepts-0%2F6993%20corpus-brightgreen)](tests/eval_gsm8k.py)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)

@@ -238,6 +238,233 @@ with tempfile.TemporaryDirectory() as temp:
     except review.ReviewError:
         check("CI rejects absence of scored runs", True)
 
+# ── Rejection branches ──────────────────────────────────────────────────────
+# The suite above proves the happy path and three refusals. Everything else in
+# validate_review -- roughly a third of this module -- was untested, and a
+# validator's REJECTIONS are its contract: an author-review response that
+# should have been refused and was not becomes a backlog item nobody can act
+# on, with the schema saying it was fine.
+print("\nValidator refusals:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    run_dir = temp / "run"
+    create_run(run_dir, ("curr-001",), rejected=False)
+    packets = temp / "packets"
+    review.prepare_run(run_dir, packets)
+    packet = json.loads((packets / "tasks" / "curr-001" / "packet.json").read_text())
+
+    def refuses(label, mutate, needle):
+        data = completed_review("curr-001")
+        mutate(data)
+        errors = review.validate_review(data, packet)
+        check(label, any(needle in e for e in errors),
+              f"expected {needle!r}, got {errors}")
+
+    check("a non-object review is refused outright",
+          review.validate_review(["not", "a", "dict"], packet)
+          == ["review must be a JSON object"])
+
+    refuses("a missing top-level field is named",
+            lambda d: d.pop("case_summary"), "missing fields")
+    refuses("a wrong schema_version is refused",
+            lambda d: d.update(schema_version="0.0.0"), "schema_version must be")
+    refuses("a run_id that is not this run is refused",
+            lambda d: d.update(run_id="some-other-run"), "run_id must be")
+    refuses("a task_id that is not this case is refused",
+            lambda d: d.update(task_id="curr-999"), "task_id must be")
+    refuses("a reviewer missing a field is refused",
+            lambda d: d.update(reviewer={"role": "author_system", "agent": "a"}),
+            "reviewer must contain exactly")
+    refuses("a reviewer that is not the author system is refused",
+            lambda d: d["reviewer"].update(role="judge"),
+            "reviewer.role must be author_system")
+    refuses("a blank reviewer field is refused",
+            lambda d: d["reviewer"].update(model="   "),
+            "reviewer.model must be a non-empty string")
+    refuses("an unknown judge_assessment decision is refused",
+            lambda d: d["judge_assessment"].update(decision="mostly"),
+            "judge_assessment.decision must be")
+    refuses("a judge_assessment with extra keys is refused",
+            lambda d: d["judge_assessment"].update(extra=1),
+            "judge_assessment must contain exactly")
+    refuses("strengths must be a list of non-empty strings",
+            lambda d: d.update(strengths_to_preserve=["", "ok"]),
+            "strengths_to_preserve must be a list")
+    refuses("root_causes must be a list",
+            lambda d: d.update(root_causes={}), "root_causes must be a list")
+    refuses("improvements must be a list",
+            lambda d: d.update(improvements={}), "improvements must be a list")
+
+    # Root-cause and improvement item shapes. Each of these is a field an
+    # aggregator later groups on, so a bad value silently mis-files the item.
+    def with_cause(**over):
+        base = {"category": "verification-gap", "description": "d",
+                "evidence": ["e"], "systemic": True, "confidence": "high",
+                "affected_files": ["scripts/verify.py"]}
+        base.update(over)
+        return lambda d: d.update(root_causes=[base])
+
+    refuses("an unknown root-cause category is refused",
+            with_cause(category="vibes"), "category is unknown")
+    refuses("a non-boolean systemic flag is refused",
+            with_cause(systemic="yes"), "systemic must be a boolean")
+    refuses("an unknown confidence level is refused",
+            with_cause(confidence="certain"), "confidence must be low")
+    refuses("empty evidence is refused",
+            with_cause(evidence=[]), "evidence must not be empty")
+    refuses("a root cause with a missing key is refused",
+            lambda d: d.update(root_causes=[{"category": "verification-gap"}]),
+            "must contain exactly")
+    # An absolute path in a finding is the one that matters: the backlog is read
+    # on a different machine, where /home/someone/... names nothing.
+    refuses("an ABSOLUTE affected_files path is refused",
+            with_cause(affected_files=["/etc/passwd"]),
+            "must be repository-relative")
+    refuses("a parent-escaping affected_files path is refused",
+            with_cause(affected_files=["../../secrets.txt"]),
+            "must be repository-relative")
+
+    def with_improvement(**over):
+        base = {"issue_key": "fix-the-thing", "title": "t", "priority": "p1",
+                "scope": "systemic", "proposed_change": "c",
+                "affected_files": ["scripts/verify.py"],
+                "regression_test": "r", "expected_impact": "i", "risk": "k"}
+        base.update(over)
+        return lambda d: d.update(improvements=[base])
+
+    refuses("a non-slug issue_key is refused",
+            with_improvement(issue_key="Fix The Thing!"),
+            "issue_key must be a 3-80 character lowercase slug")
+    refuses("an unknown priority is refused",
+            with_improvement(priority="urgent"), "priority must be p0")
+    refuses("an unknown scope is refused",
+            with_improvement(scope="everything"), "scope must be systemic")
+    refuses("a blank required improvement field is refused",
+            with_improvement(risk="  "), "risk must be a non-empty string")
+
+    def duplicate_keys(d):
+        item = {"issue_key": "same-key", "title": "t", "priority": "p1",
+                "scope": "systemic", "proposed_change": "c",
+                "affected_files": [], "regression_test": "r",
+                "expected_impact": "i", "risk": "k"}
+        d.update(improvements=[dict(item), dict(item)])
+    refuses("two improvements sharing an issue_key are refused",
+            duplicate_keys, "issue_key values must be unique")
+
+# ── derive_official_result: the score is RECOMPUTED, never taken on trust ────
+# This is the function that refuses to inherit a verdict's own ACCEPT. Its
+# failure paths raise rather than return, so nothing above reached them.
+print("\nOfficial-result derivation:")
+# Eight dimensions at 4 is 32, which clears MIN_TOTAL=27 and MIN_DIMENSION=3.
+# A two-dimension fixture cannot reach the accept threshold at all, so every
+# case below would have derived REJECT for the wrong reason.
+DIMS = [f"d{i}" for i in range(8)]
+_ALL_FOUR = {name: 4 for name in DIMS}
+
+
+def derive(**over):
+    verdict = {"task_id": "t-1", "dimension_scores": dict(_ALL_FOUR),
+               "hard_failures": [], "total_score": 32, "verdict": "ACCEPT"}
+    verdict.update(over)
+    return review.derive_official_result(verdict, "t-1", DIMS)
+
+
+def raises(label, needle, **over):
+    try:
+        derive(**over)
+    except review.ReviewError as exc:
+        check(label, needle in str(exc), f"expected {needle!r} in {exc}")
+    else:
+        check(label, False, "no ReviewError raised")
+
+
+status, total = derive()
+check("a well-formed ACCEPT derives ACCEPT and its total",
+      (status, total) == ("ACCEPT", 32))
+raises("a mismatched task_id raises", "task_id must be", task_id="other")
+raises("missing dimensions raise", "exactly the suite dimensions",
+       dimension_scores={"d0": 4})
+raises("a non-integer dimension score raises", "integers from 0 to 4",
+       dimension_scores=dict(_ALL_FOUR, d1=3.5))
+raises("an out-of-range dimension score raises", "integers from 0 to 4",
+       dimension_scores=dict(_ALL_FOUR, d1=9))
+raises("a total that does not equal the sum raises", "total_score must equal",
+       total_score=99)
+raises("hard_failures that are not strings raise", "hard_failures must be",
+       hard_failures=[{"oops": 1}])
+# The point of the whole function: a verdict claiming ACCEPT over a hard
+# failure is a judging error, and it is named rather than averaged in.
+raises("an ACCEPT claimed over a hard failure is refused",
+       "verdict must be REJECT", hard_failures=["a PDF is missing"])
+# 30 of 32 clears MIN_TOTAL comfortably; the single 2 is what rejects it, so
+# this pins the floor rule specifically rather than the total rule again.
+raises("an ACCEPT claimed below the dimension floor is refused",
+       "verdict must be REJECT", dimension_scores=dict(_ALL_FOUR, d1=2),
+       total_score=30)
+
+
+# ── The CLI is the only entry point CI uses ─────────────────────────────────
+# build_parser and main were entirely untested: every check above called the
+# functions directly. So the dispatch that decides WHICH of them runs, and the
+# ReviewError handler that turns a diagnosis into exit 2 rather than a
+# traceback, were both unexercised — on the module the eval-results workflow
+# invokes by command line and nothing else.
+print("\nCommand-line dispatch:")
+with tempfile.TemporaryDirectory() as temp:
+    temp = Path(temp)
+    run_dir = temp / "run"
+    create_run(run_dir, ("curr-001",), rejected=False)
+    packets = temp / "packets"
+
+    rc = review.main(["prepare", "--run-dir", str(run_dir),
+                      "--output-dir", str(packets)])
+    check("`prepare` exits 0 and writes the packet tree", rc == 0
+          and (packets / "tasks" / "curr-001" / "packet.json").is_file())
+
+    responses = temp / "responses"
+    responses.mkdir()
+    (responses / "curr-001.json").write_text(
+        json.dumps(completed_review("curr-001")), encoding="utf-8")
+    rc = review.main(["aggregate", "--packet-dir", str(packets),
+                      "--responses-dir", str(responses),
+                      "--output-dir", str(temp / "agg")])
+    check("`aggregate` exits 0 on a complete, valid response", rc == 0)
+
+    backlog = temp / "agg" / "improvement-backlog.json"
+    check("aggregate wrote a backlog for merge to consume", backlog.is_file())
+    rc = review.main(["merge", "--backlog", str(backlog),
+                      "--output-dir", str(temp / "merged")])
+    check("`merge` exits 0 and writes a merged backlog", rc == 0
+          and (temp / "merged" / "improvement-backlog.json").is_file())
+
+    # Exit 2 with "no scored eval runs found", NOT a quiet 0. This test was
+    # first written expecting a clean no-op and the code was right: a CI job
+    # pointed at a runs root that turns out to hold nothing has almost
+    # certainly been misconfigured, and reporting success would hide it.
+    rc = review.main(["ci", "--runs-root", str(temp / "runs-empty"),
+                      "--output-dir", str(temp / "ci-out")])
+    check("`ci` over an EMPTY runs root fails loudly rather than passing",
+          rc == 2)
+
+    # A ReviewError must surface as exit 2 with a diagnosis on stderr, not as a
+    # traceback: CI reads the exit code, and a human reads the line.
+    rc = review.main(["prepare", "--run-dir", str(temp / "no-such-run"),
+                      "--output-dir", str(temp / "nowhere")])
+    check("a ReviewError becomes exit 2, not a traceback", rc == 2)
+
+    # argparse's own refusals stay refusals: a missing required flag and an
+    # unknown subcommand both exit non-zero rather than defaulting to `ci`.
+    for argv, label in (([], "no subcommand"),
+                        (["prepare"], "prepare without its required flags"),
+                        (["nonsense"], "an unknown subcommand")):
+        try:
+            review.main(argv)
+        except SystemExit as exc:
+            check(f"{label} is refused by the parser", exc.code != 0)
+        else:
+            check(f"{label} is refused by the parser", False, "no SystemExit")
+
+
 if FAILS:
     print(f"\nFAIL: {len(FAILS)} author-review check(s) failed")
     for failure in FAILS:

@@ -13,9 +13,21 @@
 | Worksheet | Answer key | Skills summary |
 |:---:|:---:|:---:|
 | [<img src="docs/samples/worksheet_geometry-1.png" width="250">](docs/samples/worksheet_geometry-1.png) | [<img src="docs/samples/answerkey_geometry-1.png" width="250">](docs/samples/answerkey_geometry-1.png) | [<img src="docs/samples/skills_summary-1.png" width="250">](docs/samples/skills_summary-1.png) |
-| To-scale figures, work space, ramped difficulty | Step-by-step solutions, boxed answers | Formula boxes + worked mini-examples |
+| To-scale figures, work space, ramped difficulty | Quick Answers up top, worked solutions, ♠ for hand-judged items | Formula boxes + worked mini-examples |
 
-*Real, unretouched output. The `read_data` type even renders data charts from the same numbers it verifies:* [data-handling worksheet →](docs/samples/worksheet_data-1.png)
+*Real, unretouched output, rebuilt with every layout change. The key's verification and curriculum metadata live on [a final summary page of their own →](docs/samples/answerkey_summary_page.png), and the `read_data` type renders data charts from the same numbers it verifies: [data-handling worksheet →](docs/samples/worksheet_data-1.png)*
+
+## Get the skill (without the 286 MB of evidence)
+
+This repository carries its own eval system and three fully judged eval runs — 9,699 files of verdicts, observations, and judged PDFs. That is the **evidence** behind the claims below, and it stays in the repo so every number remains checkable. It is not the **product**, so downloads exclude it automatically:
+
+- **[Download ZIP](../../archive/refs/heads/main.zip) or a [release](../../releases) tarball** — ~2 MB, ~230 files: `SKILL.md`, `scripts/`, `templates/`, `references/`, `tests/`, and the docs. `.gitattributes` `export-ignore` keeps the eval corpus out of every archive GitHub serves.
+- **Clone, skill only** — sparse checkout skips the corpus while keeping history:
+  ```bash
+  git clone --filter=blob:none --sparse <repo-url> && cd math-worksheets-skill
+  git sparse-checkout set --no-cone '/*' '!evals'
+  ```
+- **Full clone** — `git clone` as usual when you want the eval system, the retained runs, and the analyses they feed.
 
 Works with any AI agent that can read files and run shell commands — **Claude Code**, **Gemini**, **Codex**, **OpenClaw** — via the standard `SKILL.md` format, with portable fallbacks for every platform-specific step.
 
@@ -249,6 +261,7 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 ## Changelog
 
 ### v3.6.0 — 2026-08-08
+- **Downloads are 2 MB, not 286 MB.** `.gitattributes` marks `evals/` `export-ignore`, so GitHub's Download ZIP and release tarballs carry the skill (~230 files) without the retained eval corpus (9,699 files) — while clones keep the full evidence base. The README's new *Get the skill* section gives the sparse-checkout recipe for lean clones. Sample images are regenerated from a fresh v3.6 build, so the screenshots show the layout the code actually produces (including the new [final summary page](docs/samples/answerkey_summary_page.png)); the SSA watch-out on the study-guide sample is the very ambiguity problem 4 of the worksheet sample teaches.
 - **The answer key reads the way a grader uses it: header, Quick Answers, worked solutions — and a final page of its own for the metadata.** The verification note, curriculum block, and common-wrong-answers table now claim the key's LAST page via `\AtEndDocument{\clearpage...}` emitted by the generated bank, so the `ak_` author writes nothing extra and the one-`\input` contract is untouched. Previously all three sat between the bank and the first worked solution, pushing the actual answers a page down on busy sheets.
 - **The hand-judged mark is now `$\spadesuit$`.** The old `---` sat one glyph from a minus sign — the exact neighbourhood a maths key crowds — and read as "nothing here". A card suit appears nowhere else in these documents, so it carries one meaning, and the summary-page legend states it. The eval harness's bank cross-check recognises both generations (♠ on current sheets, the em dash on retained pre-v3.6 runs), because the corpus is a history, not a snapshot.
 - **Answer keys breathe; worksheets stay measured.** `\akheader` now switches on rubber inter-problem space (0.5cm stretching toward a full centimetre), `\raggedbottom`, a small flexible `\parskip`, and 2pt between bank rows. The worksheet keeps its fixed layout deliberately — work space there is a per-problem measurement the page budget charges for, and stretch would be the budget lying. The ak page ceiling gains the +1 page the summary now occupies.

@@ -77,6 +77,10 @@ THIN_SIDE_CM = 2.0                 # (any angle < 25 deg or drawn side < 2cm)
 # about 0.5cm wide, so 1.0cm apart still touches once both carry a subscript.
 # Measured, not guessed — below it the A/B_2 pair overprints, above it does not.
 CROWDED_VERTEX_CM = 1.0
+# How far a vertex letter stands off from its own vertex, along the outward
+# angle bisector. Small on purpose: the label must still read as belonging to
+# that vertex. 3pt is a hair over 1mm.
+VERTEX_STANDOFF_PT = 3.0
 RIGHT_TOL = math.radians(0.1)      # |angle - 90 deg| <= 0.1 deg -> square mark
 
 # THE right-triangle labelling convention, shared with the shipped \rtfig and
@@ -270,11 +274,32 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
     # vertex labels (subscripts _1/_2 are point NAMES, not printed values)
     cx = (p0[0] + w1[0] + fp[0]) / 3.0
     cy = (p0[1] + w1[1] + fp[1]) / 3.0
-    for name, text, pos in ((n_p0, "$" + ang_name + "$", p0),
-                            (n_w1, "$" + w_ang + "_1$", w1),
-                            (n_f, "$" + f_ang + "$", fp)):
-        d = _unitv(pos[0] - cx, pos[1] - cy)
-        lines.append(_node(_anchor(*d), pos, text, thin))
+    # A vertex label goes along the OUTWARD ANGLE BISECTOR of its own two
+    # edges, which is the standard TikZ idiom for polygon labelling and is
+    # strictly better than the direction-from-centroid this used to use.
+    #
+    # Centroid direction fails exactly where this figure lives. On a flat
+    # triangle the centroid sits almost ON the base, so vertex A's outward
+    # direction comes out nearly horizontal — pointing straight along the base
+    # at B_2, the neighbour it most needs to avoid. The bisector cannot do
+    # that: it points away from BOTH edges meeting at the vertex, so at a
+    # spike it runs out along the spike's axis, away from everything.
+    for name, text, pos, e1, e2 in ((n_p0, "$" + ang_name + "$", p0, w1, fp),
+                                    (n_w1, "$" + w_ang + "_1$", w1, p0, fp),
+                                    (n_f, "$" + f_ang + "$", fp, p0, w1)):
+        u1 = _unitv(e1[0] - pos[0], e1[1] - pos[1])
+        u2 = _unitv(e2[0] - pos[0], e2[1] - pos[1])
+        d = _unitv(-(u1[0] + u2[0]), -(u1[1] + u2[1]))
+        if d == (0.0, 0.0):          # degenerate: edges exactly opposed
+            d = _unitv(pos[0] - cx, pos[1] - cy)
+        # ...and stood off ALONG it, TikZ's `label distance`. The bisector is
+        # what makes a stand-off safe: it is the one direction guaranteed to
+        # lead away from both edges, so pushing along it cannot walk the label
+        # into the figure. This is what actually separates "C" from the "b = N"
+        # sharing the apex — the two were landing 0.6pt apart, which reads as
+        # "b = 26C" and is far too small an overlap for the 45% gate to see.
+        lines.append(_node(_anchor(*d), pos, text, thin,
+                           shift_dir=d, shift_pt=VERTEX_STANDOFF_PT))
     # W2 sits ON the base inside the solid triangle — push its label clear.
     #
     # Clear of the BASE was the whole rule, and it is not enough: W2 slides
@@ -305,7 +330,7 @@ def _swing_lines(sols, ang_name, opp, other, raw, unit, solve_fors):
         if nx * (pos[0] - away_from[0]) + ny * (pos[1] - away_from[1]) < 0:
             nx, ny = -nx, -ny
         nu = _unitv(nx, ny)
-        shift = extra_shift if extra_shift else (2.0 if thin else 0.0)
+        shift = extra_shift if extra_shift else (7.0 if thin else 0.0)
         return _node(_anchor(*nu), pos, text, thin, shift_dir=nu, shift_pt=shift)
 
     # THE FIXED SIDE'S LABEL POSITION IS COMPUTED, NOT CHOSEN.

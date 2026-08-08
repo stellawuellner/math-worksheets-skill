@@ -139,33 +139,45 @@ now degrades the artifact.
   Above that gap nothing changes, so every already-clean figure is identical.
   12 → 6, and the `A`/`B_2` collision is gone from the rendered page.
 
-  **Still open, and an ESTIMATED box model does not close it — measured.**
-  The six survivors are the angle label against a side label (`35` on `a`,
-  `50°` on `a`) and the arc-on-swing-label case at A = 44. And
-  `check_overprint` UNDER-reports: at A = 15 the page reads `b = 26C` while
-  the gate is silent, because `26` ends at 301.85pt and `C` starts at
-  301.23pt — a 0.6pt overlap, 8% of the `C`, far below the 45% rule.
+  **Then the standard TikZ polygon-labelling idioms, which did close the
+  apex case.** Two changes, both measured:
+  - A vertex letter goes along the OUTWARD ANGLE BISECTOR of its own two
+    edges, not the direction from the centroid, and stands off along it
+    (`VERTEX_STANDOFF_PT`). The bisector is the one direction guaranteed to
+    lead away from both edges, so a stand-off along it cannot walk the label
+    back into the figure. Centroid direction fails precisely here: on a flat
+    triangle the centroid sits almost ON the base, so vertex A's outward
+    direction comes out nearly horizontal, pointing along the base at `B_2`.
+  - A thin figure's side labels stand further off their own side (2pt → 7pt).
 
-  The obvious next step is to give every label a WIDTH instead of treating it
-  as a point. That was built and measured, and it is recorded here as a
-  NEGATIVE result so the fourth attempt is not the same as the third:
+  Together: **6 of 33 → 5**, and — the part the gate cannot report — the
+  apex adjacency is gone. `26` against `C` went from **−0.63pt (overlapping,
+  reading as "b = 26C") to +0.67pt clear with 8.6pt of vertical daylight**;
+  A = 20 likewise, −0.41pt → +1.29pt. That is pinned by a test asserting the
+  measured GAP, since the verdict cannot express it.
 
-  - Scoring the fixed side against estimated label boxes instead of anchor
-    points: **6 of 33, unchanged**, and the rendered page is byte-identical.
-  - Extending the same search to the two swing labels: **7 of 33 — worse.**
-    That is the fourth time moving the swing labels has made things worse.
-  - Why it cannot work from an estimate: character-count widths are far too
-    coarse at this scale. Against `pdftotext -bbox` on a rendered page,
-    `$b = 26$` estimates 0.930cm and measures 1.063cm (12% under), but `$C$`
-    estimates 0.155cm and measures 0.275cm — **44% under.** The model then
-    computes 0.44cm of clear paper exactly where the page has none, so it
-    keeps a position it should reject.
+  **An ESTIMATED box model, by contrast, does nothing — recorded so the next
+  attempt skips it.** Giving every label a width and scoring positions
+  against boxes rather than points was built and measured:
+  - Fixed side scored against estimated boxes: **6 of 33, unchanged**, and
+    the rendered page byte-identical.
+  - The same search extended to the swing labels: **7 of 33 — worse.** That
+    is the fourth time moving the swing labels has made things worse.
+  - Why an estimate cannot work: character-count widths are far too coarse
+    here. Against `pdftotext -bbox`, `$b = 26$` estimates 0.930cm and
+    measures 1.063cm (12% under), but `$C$` estimates 0.155cm and measures
+    0.275cm — **44% under**. The model computes 0.44cm of clear paper
+    exactly where the page has none.
 
-  Real extents are only knowable after typesetting, so closing this properly
-  means a two-pass render — place, measure the PDF, re-place — or shipping
-  per-glyph metrics. Either is a larger piece of work than it looks, and
-  neither should be started by re-deriving the above. Until then: render an
-  SSA page and look at it. The gate's silence is not evidence.
+  The lesson is that standoff geometry beat extent modelling: moving labels
+  reliably AWAY needs only a correct direction, while deciding whether they
+  FIT needs a width nobody has before typesetting.
+
+  **Still open:** five survivors, all the angle label against a side label
+  (`35` on `a`, `50°` on `a`) or the arc-on-swing-label case at A = 44. And
+  `check_overprint` still under-reports adjacency in general — a 45% overlap
+  rule cannot see two boxes that merely touch. Render an SSA page and look at
+  it; the gate's silence is not evidence.
 
   A measurement warning, learned twice while producing the numbers above: a
   geometric "label is within N cm of a drawn segment" proxy does NOT track

@@ -360,6 +360,27 @@ def main():
             check("B_2's label is shifted away from A, not toward it",
                   bool(b2) and "xshift=6.0pt" in b2[0], b2[0] if b2 else "")
 
+            # ADJACENCY, which this gate is structurally unable to report.
+            # The page used to read "b = 26C": "26" ended at 301.85pt and "C"
+            # started at 301.23 — 0.6pt of overlap, 8% of the C, against a 45%
+            # rule. So assert the measured GAP, not the verdict. Standing the
+            # vertex letters off along the outward angle bisector and pushing a
+            # thin figure's side labels further off their own side opens it to
+            # about +0.7pt with 8.6pt of vertical daylight.
+            box = {}
+            for _pw, _ph, words in op.words_by_page(thin):
+                for x0, y0, x1, y1, t in words:
+                    box.setdefault(t, []).append((x0, y0, x1, y1))
+            if "26" in box and "C" in box:
+                lab, vert = box["26"][0], box["C"][0]
+                check("the apex letter and the side label it sits beside do "
+                      "not touch — measured, because the 45% rule cannot see "
+                      "a 0.6pt overlap",
+                      vert[0] - lab[2] > 0.0,
+                      f"'26' ends {lab[2]:.2f}, 'C' starts {vert[0]:.2f}")
+            else:
+                check("the probe printed both '26' and 'C'", False, str(sorted(box)[:12]))
+
         good = build(CLEAN, tmp, "clean")
         if not good:
             check("the clean probe compiles", False, "no PDF produced")

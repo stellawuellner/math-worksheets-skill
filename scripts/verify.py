@@ -114,6 +114,61 @@ except ImportError as e:
         "Or run via scripts/run_verify.sh, which picks a python that has sympy.\n")
     sys.exit(1)
 
+# ── CAS version: a floor, and the version the guarantee was measured on ──────
+# These are two different controls and only one of them is load-bearing.
+#
+# MIN_SYMPY is a floor against the genuinely ancient. It buys less than it
+# looks like it should: this file's sympy surface is small and old (Symbol,
+# simplify, trigsimp, nsimplify, solve/integrate/limit via attribute access,
+# lambdify with the mpmath backend), so an out-of-range sympy does not raise
+# AttributeError and stop — it computes, and answers differently. A floor
+# catches the loud failure. The dangerous one is silent.
+#
+# MEASURED_SYMPY is therefore the control that matters. "0 false accepts on
+# 6,993 corpus checks" is a statement about a CAS, not about this script, and
+# it was measured on 1.14.0. Running elsewhere does not make the verifier
+# wrong, but it does mean the number no longer describes the run — so the run
+# says so, on stdout and in the header of every report, rather than inheriting
+# a guarantee it was not measured under. Deliberately NOT a hard failure:
+# refusing to run on a newer sympy would age the skill into uselessness, and
+# an author who cannot run the gate at all ships unverified answers instead.
+MIN_SYMPY = (1, 12)
+MEASURED_SYMPY = "1.14.0"
+
+
+def _version_tuple(v):
+    """('1.14.0rc1') -> (1, 14, 0). Leading digits of each part, stopping at
+    the first part that has none — NOT every digit in the part. Deleting the
+    non-digits instead reads '0rc1' as 1, so a release candidate sorts above
+    the release it precedes. Harmless against a two-component floor and wrong
+    anywhere else, which is the kind of thing that stays wrong."""
+    out = []
+    for part in str(v).split("."):
+        m = re.match(r"\d+", part)
+        if not m:
+            break
+        out.append(int(m.group()))
+    return tuple(out)
+
+
+if _version_tuple(sympy.__version__)[:2] < MIN_SYMPY:
+    sys.stderr.write(
+        f"Error: sympy {sympy.__version__} is older than the "
+        f"{'.'.join(map(str, MIN_SYMPY))} this verifier requires.\n"
+        "Below that floor the results are not the ones any corpus here "
+        "measured, and the failures are silent rather than loud.\n"
+        f"Fix: {sys.executable} -m pip install --upgrade "
+        f'"sympy>={".".join(map(str, MIN_SYMPY))}"\n')
+    sys.exit(1)
+
+
+def sympy_stamp():
+    """The version line every run prints. Names the drift when there is any."""
+    if sympy.__version__ == MEASURED_SYMPY:
+        return f"SymPy {sympy.__version__}"
+    return (f"SymPy {sympy.__version__} (corpus baselines were measured on "
+            f"{MEASURED_SYMPY} — results here are not covered by that run)")
+
 
 class VerifyInputError(Exception):
     """Raised when the JSON input is malformed or an expression is disallowed."""
@@ -2836,7 +2891,7 @@ def run_verification(json_path):
         return 1
 
     print(f"Verifying: {topic} ({len(problems)} problems) · "
-          f"SymPy {sympy.__version__}\n")
+          f"{sympy_stamp()}\n")
 
     results = []
     trap_details = []      # (pid, line) for every distinguishable trap

@@ -6,7 +6,7 @@
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
-**v3.3.1** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
+**v3.3.2** · [Changelog](#changelog) · elementary → AP Calculus BC · agent-agnostic · every answer machine-verified
 
 > Ask in plain language — **"make Leo a law-of-sines worksheet"** — and get three print-ready PDFs whose every answer has been checked by a computer algebra system before it reaches a student.
 
@@ -131,9 +131,9 @@ python3 -m venv .venv
 .venv/bin/python3 -m pip install "sympy==1.14.0" "coverage>=7"
 ```
 
-Verification behavior is CAS-version-specific; the corpus baselines (GSM8K, MATH) were established on SymPy 1.14. The verifier prints the SymPy version it ran with in its report.
+**On versions, because "0 false accepts" is a claim about a CAS, not about a script.** `verify.py` enforces a floor of **sympy 1.12** and refuses to run below it. The floor is the weaker of the two controls and it is worth saying why: this verifier's sympy surface is small and old, so an out-of-range CAS does not raise `AttributeError` and stop — it computes, and answers differently. A floor catches the loud failure; the dangerous one is silent. The control that carries weight is the stamp. The corpus baselines (GSM8K, MATH) were established on **1.14.0**, and every run prints the version it actually used — and says so explicitly when that is not 1.14.0, rather than letting the run inherit a guarantee nobody measured it under. There is deliberately **no upper bound**: refusing to run on a newer sympy would age this skill into uselessness, and an author who cannot run the gate at all ships unverified answers instead.
 
-No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`.
+No tectonic? `compile.sh` falls back to `pdflatex` — install the package set up front since pdflatex can't auto-download: `texlive-latex-base texlive-pictures texlive-latex-recommended texlive-latex-extra`. That path has a real version floor too: the figure house styles need **pgfplots ≥ 1.18**, and older distributions ship less (Ubuntu 20.04 has 1.16). The preamble checks and stops with an actionable message, because pgfplots' own refusal — *"Please use at most `compat=1.16`"* — points the wrong way: lowering the compat level silently changes axis scaling under every shipped style. tectonic always fetches a current pgfplots, so this only bites the fallback path.
 
 ## Skill Contents
 
@@ -204,7 +204,10 @@ math-worksheets/
 │   ├── check_template_use.py         ← the shell must \input the preamble, never hand-roll it
 │   ├── check_artifact_health.py      ← recorded-run artifact integrity
 │   ├── visual_regression.py          ← renders each document, diffs against approved baselines
-│   ├── test_*.py                     ← 28 suites; coverage.sh globs and runs them all
+│   ├── test_*.py                     ← 29 suites; coverage.sh globs and runs them all
+│   ├── test_dependency_versions.py   ← the sympy floor + measured baseline + the
+│   │                                   pgfplots compat floor, checked against every
+│   │                                   file that states a version
 │   ├── test_suite_wiring.py          ← asserts every suite runs somewhere it can assert
 │   │                                   something — in particular that the render-and-
 │   │                                   read-back suites run in the CI job that has TeX
@@ -228,7 +231,7 @@ python3 scripts/score_eval_run.py doctor       # eval-grading PDF prerequisites
 python3 scripts/review_eval_run.py --help      # post-eval author feedback loop
 ```
 
-`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **28 Python suites**. `run_tests.sh` runs 19 of those 28 directly; `coverage.sh` globs and runs all 28, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
+`run_tests.sh` pins the runtime contract across **107 fixtures and checks** — 38 verify, 19 answer-key, 16 layout, 10 facet/trap, 5 log, 5 answer-line, 4 template, 4 skill-coverage, 3 study-guide, 3 prose — plus integrity suites for the capability and curriculum evals, the scoring harness, author review, the page budget, the visual-environment guard and the overprint detector, and the fixture half of **29 Python suites**. `run_tests.sh` runs 20 of those 29 directly; `coverage.sh` globs and runs all 29, and CI runs both, so every suite executes on every push — `tests/test_suite_wiring.py` asserts exactly that rather than leaving it to this sentence. The eval checks keep the 3-task smoke subset synchronized with the 28-task capability suite, require coverage of every public verifier type, prove the 500 curriculum prompts remain unique and evenly distributed, prevent judge-supplied totals or ACCEPT labels from bypassing the rubric, and keep post-eval diagnoses from changing official scores. Correct keys exit 0, wrong answers exit 1, manual-only exit 2, and injection or schema violations exit 1 without executing anything.
 
 `coverage.sh` runs the fixtures and **every** `tests/test_*.py` under `coverage` and fails below **90%** (currently **90%**). The suite list is globbed, not hand-maintained: it was hand-maintained once and drifted until eleven wired suites never ran under coverage, so the reported percentage described a shrinking fraction of the tests while reading like a whole-project number. Among them: `test_audit_fixes.py` (soundness pins from two adversarial audits), `test_error_paths.py` (input validation for every type), `test_verify.py` (scale-aware numeric comparison, symbolic traps, the equation form, and the defensive branches that keep a malformed key producing a verdict rather than a traceback), `test_answer_slots.py` (per-response coverage and the slot-form contract), `test_tikz_libraries.py` (which compiles every figure snippet the docs print, plus a 7-page probe exercising the whole house style), `test_seed_defects.py` (the calibration seeder's transforms), and `test_preamble_layout.py`, which compiles a document and reads the resulting PDF back to pin printed behaviour a source-only checker cannot see.
 
@@ -243,6 +246,11 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 > The coverage and false-accept badges reflect the enforced CI floor and the last corpus run; connect the repo to Codecov if you want a live coverage badge.
 
 ## Changelog
+
+### v3.3.2 — 2026-08-08
+- **The version contract is now stated once and enforced.** Four places stated a sympy version, using three different numbers, and nothing checked any of them: CI installed `sympy>=1.12`, the dev setup said `==1.14.0`, the prose said "baselines were established on 1.14", and a changelog line claimed SymPy was "pinned" when no code read a version at all. `verify.py` now refuses to run below **1.12** and prints the version every run — saying explicitly when it is not the **1.14.0** the GSM8K/MATH corpora were measured on, so a run cannot quietly inherit a guarantee nobody measured it under. **The floor is the weaker control and the README says so**: this verifier's sympy surface is small and old, so an out-of-range CAS does not raise `AttributeError` and stop — it computes, and answers differently. No upper bound, deliberately: an author who cannot run the gate ships unverified answers instead.
+- **pgfplots ≥ 1.18 is now checked, not assumed.** `compat=1.18` is a hard requirement of the figure house styles, and Ubuntu 20.04 ships 1.16. Unguarded, pgfplots refuses with *"Please use at most `compat=1.16`"* — advice that fixes the error and silently changes axis scaling under every shipped style. The preamble stops first with a message naming the actual fix (tectonic, or a newer texlive). Only reachable on the pdflatex fallback; tectonic always fetches a current pgfplots.
+- `tests/test_dependency_versions.py` pins all of it, including that CI's lower bound can never drop below the verifier's floor. It caught its own first bug: `_version_tuple` stripped non-digits rather than stopping at them, reading `1.14.0rc1` as `(1, 14, 1)` and sorting a release candidate above the release it precedes.
 
 ### v3.3.1 — 2026-08-08
 - **`\ans` was math-only in study guides, and an end-to-end build found it.** `\akheader` replaces `\ans` with a text-safe compact box; `\ssheader` does not, so an `ss_` document got the base definition — a bare `\boldsymbol`, which is illegal outside math mode. Every shipped exemplar happens to write `$\ans{...}$`, so the text-mode path had never been exercised; a study guide written from SKILL.md's prose ("print each result with `\ans{...}`") instead failed the `compile-ss` gate with `! Missing $ inserted`, the last gate in the chain, the error naming a line two away from the cause. `\ensuremath` fixes it with no change to math-mode output at all — visual regression moved 0 of 2304 cells on the study-guide case — and `tests/test_preamble_layout.py` now pins both authoring forms, mutation-tested against the old macro.
@@ -284,7 +292,7 @@ CI runs everything on every push. For deeper validation, the corpus evals check 
 - **New verify types:** `system`, `series`, `inequality`, complex via `I`, `stats` (mean/median/mode/range/variance/stdev/quartiles), `probability`, `read_data` (charts/tables), `definite_integral` (mpmath quadrature), `estimate`, and `compare` — plus task-reframing recipes that turn many "understanding" topics into checkable tasks. 24 types total.
 - **Standards, difficulty, Bloom:** per-problem `standard` (K–4 through HS + AP CED, in `references/standards-map.md`), `difficulty` (1–5 ladders, ramp-checked), and `bloom` tags; tiered-differentiation workflow.
 - **Coverage:** elementary → AP Calculus BC; validated against the Marble OS-taxonomy (503 topics) — ~61% machine-verifiable, with an honest `manual` boundary for open reasoning (optional LLM-judge review aid in `references/manual-review-aid.md`).
-- **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy pinned and version-stamped; MIT `LICENSE`; CI runs the test suites on every push.
+- **Portability & release:** agent-agnostic (OpenClaw/Claude Code/Gemini/Codex); pdflatex fallback; SymPy version-stamped into every report (a floor was added later, in v3.3.2 — "pinned" overstated what this release shipped); MIT `LICENSE`; CI runs the test suites on every push.
 - **Testing:** regression suite (18 fixtures incl. injection/schema/coverage) + audit-fix suite (21 assertions); verifier validated on GSM8K calculator annotations (4282/4282, test split) and MATH boxed answers (2711/2711) with 0 false accepts, 6,993 checks in total.
 
 ### v2.3.0 — 2026-07-20

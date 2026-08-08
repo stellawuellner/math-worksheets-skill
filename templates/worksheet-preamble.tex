@@ -29,6 +29,26 @@
 % run into the margin. The lever it replaces is worse — an author who cannot fit
 % a figure otherwise redraws it smaller by hand, or drops detail from it.
 \usepackage{adjustbox}
+% compat=1.18 is a HARD floor, not a preference: the graph and chart house
+% styles below are written against 1.18 semantics. pgfplots' own refusal is
+% accurate but points the wrong way — "Sorry, 'compat=1.18' is unknown in this
+% context. Please use at most 'compat=1.16'" reads as an instruction to lower
+% the number, which silently changes axis scaling and tick placement under
+% every shipped style. The real fix is a newer TeX, and only the distribution
+% knows that. tectonic always downloads a current pgfplots, so this can only
+% bite on the pdflatex fallback on an older distro (Ubuntu 20.04 ships 1.16),
+% which is exactly the user least likely to guess why.
+\makeatletter
+\@ifpackagelater{pgfplots}{2021/05/15}{}{%
+  \PackageError{worksheet-preamble}{%
+    pgfplots is older than 1.18 (this TeX has v\pgfplotsversion)%
+  }{%
+    The figure styles need compat=1.18. Do NOT lower the compat level to
+    match: it changes axis scaling under every shipped style.^^J
+    Fix: install tectonic (it fetches a current pgfplots), or upgrade
+    TeX Live -- on Debian/Ubuntu, texlive-pictures from a newer release.%
+  }}
+\makeatother
 \pgfplotsset{compat=1.18}
 % TikZ libraries. Each one below is loaded because a MATH worksheet needs it;
 % see references/latex-templates.md for which problem shapes use which, with

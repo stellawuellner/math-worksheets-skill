@@ -93,6 +93,16 @@ if ! "$PYTHON" "$SCRIPT_DIR/test_suite_wiring.py"; then
 fi
 wiring_ran=1
 
+# The version contract: sympy floor + measured baseline + the pgfplots compat
+# floor, checked against every file that states a version. Four statements,
+# three numbers and zero enforcement is what this replaced.
+echo
+if ! "$PYTHON" "$SCRIPT_DIR/test_dependency_versions.py"; then
+  echo "❌ test_dependency_versions.py failed"
+  exit 1
+fi
+versions_ran=1
+
 # A recorded run is a snapshot; the code moves on. This asks whether the stored
 # artifacts still look like what the skill produces TODAY — dead workarounds for
 # fixed faults, printed defects no gate catches, content a reference file could
@@ -1369,4 +1379,4 @@ EOS
 fi
 
 echo
-echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard"
+echo "✅ All tests passed — $verify_ran verify fixtures · $layout_ran layout fixtures · $log_ran log fixtures · $ak_ran answer-key fixtures · $tpl_ran template fixtures · $sg_ran study-guide fixtures · $cov_ran skill-coverage fixtures · $prose_ran ss-prose fixtures · $facet_ran facet/trap checks · $ansline_ran answer-line fixtures · $eval_ran capability-eval integrity check · $curriculum_eval_ran curriculum-eval integrity check · $scoring_harness_ran scoring-harness suite · $author_review_ran author-review suite · $page_budget_ran page-budget suite · $visual_env_ran visual-environment guard · $overprint_ran overprint detector · $wiring_ran suite-wiring guard · $versions_ran version-contract guard"

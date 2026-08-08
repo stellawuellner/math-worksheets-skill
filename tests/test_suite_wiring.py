@@ -91,10 +91,40 @@ def needs_engine(name):
     return bool(ENGINE_PROBE.search(code_only(read(os.path.join(TESTS, name)))))
 
 
+def strip_yaml_comments(text):
+    """Drop `#` comments, keeping line structure.
+
+    Every membership test below asks "does this job RUN x", and a comment is
+    not a step. This matters more than it sounds: the comment explaining why
+    the TeX job installs sympy contains the word "sympy" and names two of the
+    suites it guards, so matching against raw text made three assertions
+    unfalsifiable — deleting the step they check left them green. Caught by
+    mutation-testing the assertions rather than by trusting them.
+
+    A `#` inside a quoted string is not a comment; the workflow has none today,
+    but tracking quote state costs three lines and removes the caveat.
+    """
+    out = []
+    for line in text.split("\n"):
+        q = None
+        for i, ch in enumerate(line):
+            if q:
+                if ch == q:
+                    q = None
+            elif ch in "\"'":
+                q = ch
+            elif ch == "#":
+                line = line[:i]
+                break
+        out.append(line)
+    return "\n".join(out)
+
+
 def workflow_jobs(text):
     """Split tests.yml into {job-name: body}. Jobs are the 2-space keys under
     `jobs:`; a body runs to the next such key. Enough structure for "which job
-    mentions this file", and no YAML dependency to install in CI."""
+    RUNS this file", and no YAML dependency to install in CI."""
+    text = strip_yaml_comments(text)
     body = text.split("\njobs:", 1)[1] if "\njobs:" in text else text
     starts = [(m.group(1), m.start()) for m in
               re.finditer(r"^  ([a-zA-Z0-9_-]+):\s*$", body, re.M)]
@@ -153,6 +183,17 @@ def main():
           not silent,
           f"{', '.join(silent)} — these skip cleanly and report green wherever "
           "no engine exists, so running them only in `verify` tests nothing")
+
+    # TeX alone is not the whole environment. These suites render figures via
+    # scripts/render_figures.py, which imports verify.py's triangle solver, so
+    # sympy is a hard requirement in this job too. Missing it is worse than a
+    # skip: test_ssa_figure_labels exits 1, and test_overprint quietly drops
+    # three renderer checks and still exits 0. Both happened on the first CI run
+    # that executed this step.
+    check("the TeX job also installs sympy, which the figure renderer needs",
+          "sympy" in tex_job,
+          "test_ssa_figure_labels exits 1 without it and test_overprint "
+          "degrades to 'renderer unavailable' while still passing")
 
     # ── 3. The README's count matches what is on disk ────────────────────────
     # Not a wiring fact, but it is the number a reader trusts, and it is the

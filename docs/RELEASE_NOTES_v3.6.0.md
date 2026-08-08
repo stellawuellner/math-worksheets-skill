@@ -1,10 +1,11 @@
 # v3.6.0 — Answer-key redesign, lean downloads, 95% coverage
 
-> The annotated tag `v3.6.0` carries these same notes. This file exists so
-> cutting the GitHub Release is copy-paste: *Releases → Draft a new release →
-> choose tag `v3.6.0` → paste this body.* (The automation that prepared this
-> release can push branches but not tags — the tag push is the one manual
-> step, from any full-access checkout: `git push origin v3.6.0`.)
+> This file is the release body. To cut the release, run the **release**
+> workflow (*Actions → release → Run workflow → tag `v3.6.0`*): it creates
+> the tag at the current default-branch head and publishes the Release with
+> this text. The workflow exists because the branch-scoped automation
+> credential cannot push tags; Actions' own token can, and a dispatched run
+> is auditable.
 
 Since v2.0.0 — the previous release — this project became a different system.
 Newest first:

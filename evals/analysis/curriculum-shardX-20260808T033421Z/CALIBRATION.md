@@ -206,8 +206,12 @@ is strengthened, not weakened.
    entry's rubric and say what a grader would do with it, converts both from
    inference to transcription — the same mechanism that made the bank
    transcription work.
-2. **Re-run the calibration single-model.** The two-model split makes every
-   per-class rate an estimate over 4–5 cases from a mixed instrument.
+2. ~~**Re-run the calibration single-model.**~~ **Done — see
+   `CALIBRATION-PASS2.md`.** One model across all 25: the transcription rubric
+   took ramp-inversion from 0/5 to 5/5 cited and vague-rubric from 0/5 to 3/5
+   (the two misses are a sampling artifact of "transcribe the first manual
+   entry"), the curr-082 fabrication did not recur, and pass-to-pass agreement
+   was 96% with the one flip being the fabricated rejection itself.
 3. ~~**Adjudicate the three control findings.**~~ **Done** — see §controls.
    1 real (curr-482's unverified particular solutions), 1 false hard failure
    (curr-082's tick labels, which are correct in both the TikZ source and the

@@ -1,6 +1,10 @@
 ---
 name: math-worksheets
 description: Generate professional math practice worksheets and full answer keys as PDFs. Compiles LaTeX to PDF using tectonic (free, no account needed). Supports any math topic from elementary through AP Calculus BC (Pre-Algebra, Algebra 1/2, Geometry, Pre-Calc, Calculus AB/BC — limits, derivatives, integrals, series). Handles coordinate plane grids, geometric figures, tables, and multi-part problems. Use when a user asks for a math worksheet, practice problems, homework help sheet, or answer key for any K-12 math topic including calculus.
+version: 3.6.0
+metadata:
+  author: trond.ai
+  tags: [math, education, worksheets, latex, verification]
 ---
 
 # Math Worksheet Generator
@@ -14,6 +18,15 @@ Throughout this document, `$SKILL_DIR` means the directory containing this SKILL
 ## A note on accuracy
 
 Generate the problems with whatever model your agent is already running. Correctness does not depend on the model getting the math right the first time: the SymPy verification gate (steps 4–5) independently checks every answer and blocks the build if any check fails, so a wrong answer never reaches the PDF. Stronger reasoning models simply need fewer retries to pass the gate. The skill does not detect, switch, or recommend models.
+
+## Limitations
+
+What the gates guarantee is bounded, and the boundaries are deliberate:
+
+- **Manual answers are not machine-verified.** Proofs, constructions, sketches, and "explain your reasoning" responses are declared `manual` in the verification file and printed with a ♠ marker in the answer key; only a human can grade them. A sheet with zero machine-checkable answers refuses to build unless explicitly acknowledged (step 4).
+- **Verification proves the math and its transcription, not pedagogical fitness.** A green gate chain means every printed answer was recomputed and matched — not that the problems teach the requested topic well or ramp sensibly. Those judgments stay with the human reviewing the output.
+- **`approx` and trap checks confirm the arithmetic of the formula you wrote, not that the formula fits the story.** Keep expressions faithful transcriptions of the problem's givens; see the trust-boundary notes in step 4.
+- **The verifier's guarantee is version-specific.** Its accuracy was measured against ground-truth corpora on a pinned SymPy release; every run stamps the version it used and flags drift from the measured baseline.
 
 ## Prerequisites
 

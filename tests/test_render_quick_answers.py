@@ -43,6 +43,18 @@ check("a non-expression prints as itself, not as --- (see defect 1/4 below)",
 check("injection-shaped string is escaped, never injected",
       rqa._fmt(r"\input{/etc/passwd}")
       == r"\textbackslash{}input\{/etc/passwd\}")
+check("authored scientific notation prints as m x 10^n, not a fraction",
+      rqa._fmt("6.2*10**(-4)") == r"$\dec{6.2} \mtimes 10^{-4}$")
+check("positive-exponent scientific notation takes the same path",
+      rqa._fmt("4.5*10**7") == r"$\dec{4.5} \mtimes 10^{7}$")
+check("caret form of scientific notation is normalized into the path",
+      rqa._fmt("8*10^8") == r"$\dec{8} \mtimes 10^{8}$")
+check("a symbolic exponent is not scientific notation",
+      rqa._fmt("2*10**x") == r"$2 \cdot 10^{x}$")
+check("an authored fraction stays a fraction (form preservation cuts both ways)",
+      rqa._fmt("6.2/10000") == r"$\frac{6.2}{10000}$")
+check("an unsimplified product of powers is not claimed as one m x 10^n",
+      "mtimes" not in rqa._fmt("(2*10**3)*(4*10**5)"))
 check("list comma-joined", rqa._fmt([2, 3]) == "2, 3")
 check("dict as var = value pairs",
       rqa._fmt({"x": 3, "y": 2}) == "$x = $ 3, $y = $ 2")

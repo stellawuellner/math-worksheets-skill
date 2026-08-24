@@ -183,6 +183,12 @@ def _drop_unit_factors(expr):
     return strip(expr)
 
 
+# An expected string the author wrote as scientific notation: a numeric
+# mantissa times a power of ten. Matched on the ^→** normalized string.
+_SCI_RE = re.compile(
+    r"^\s*([+-]?\d+(?:\.\d+)?)\s*\*\s*10\s*\*\*\s*\(?\s*([+-]?\d+)\s*\)?\s*$")
+
+
 def _math(s):
     """Typeset an expression string the author's way, or raise VerifyInputError.
 
@@ -191,6 +197,13 @@ def _math(s):
     Canonicalisation is not cosmetic here: it turned a completely factored
     3*(x-3)*(x+3) into (x+3)(3x-9) on a sheet whose directions say "Factor
     completely", and shipped a wrong answer.
+
+    Scientific notation gets its own printer for the same reason: even with
+    evaluate=False, parse_expr rewrites "6.2*10**(-4)" into 6.2/10**4 and the
+    bank printed \\frac{6.2}{10000} — correct, and not the form the sheet
+    teaches. A string that IS the authored form m*10**n prints as m ⋅ 10^n
+    directly from the matched literals (locale-aware via \\dec/\\mtimes), so
+    the value identity with what the verifier accepted holds by construction.
     """
     # An `equiv` answer may be written as the equation the student writes
     # ("(x-3)**2 + (y+5)**2 = 25"); verify.py compares lhs - rhs, and the bank
@@ -203,6 +216,10 @@ def _math(s):
         return f"${lhs} = {rhs}$"
     safe_parse(s)                      # validate — raises VerifyInputError
     normalized = s.replace("^", "**")
+    sci = _SCI_RE.match(normalized)
+    if sci:
+        mant, exp = (g.lstrip("+") for g in sci.groups())
+        return rf"$\dec{{{mant}}} \mtimes 10^{{{exp}}}$"
     try:
         expr = parse_expr(normalized, local_dict=_LOCALS, evaluate=False)
     except Exception:                  # printer-only fallback; already validated
